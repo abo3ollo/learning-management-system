@@ -3,128 +3,220 @@
 import Link from "next/link";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { 
-  Users, 
-  BookOpen, 
-  GraduationCap, 
+import {
+  Users,
+  BookOpen,
+  GraduationCap,
   FileQuestion,
-  Circle,
-  Library,
+  MapPin,
+  Handshake,
   TrendingUp,
+  BarChart3,
   UserPlus,
-  Settings
+  Library,
+  Settings,
+  Clock,
+  Search,
+  Bell,
+  HelpCircle,
 } from "lucide-react";
 
 export default function AdminDashboard() {
   const currentUser = useQuery(api.user.auth.getCurrentUser);
   const pendingUsers = useQuery(api.user.admin.getPendingRegistrations);
-  
-  // Don't render until we have data
+
   if (!currentUser) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#001f24]" />
       </div>
     );
   }
 
   const stats = [
-    { title: "الطلاب", value: "27", change: "+12%", icon: GraduationCap, color: "bg-blue-500", href: "/admin/students" },
-    { title: "المعلمون", value: "2", change: "+0%", icon: Users, color: "bg-green-500", href: "/admin/teachers" },
-    { title: "المواد", value: "10", change: "+5%", icon: BookOpen, color: "bg-purple-500", href: "/admin/courses" },
-    { title: "المطالبات", value: "7", change: "+3", icon: FileQuestion, color: "bg-orange-500", href: "/admin/exams" },
-    { title: "المراكز", value: "1", change: "+0%", icon: Circle, color: "bg-red-500", href: "/admin/circles" },
-    { title: "المعاصرون", value: "2", change: "+0%", icon: Users, color: "bg-teal-500", href: "/admin/teachers" },
-    { title: "المعدلات", value: "0.00", change: "-0%", icon: TrendingUp, color: "bg-yellow-500", href: "/admin/analytics" },
-    { title: "بنك الأسئلة", value: "0", change: "+0", icon: FileQuestion, color: "bg-indigo-500", href: "/admin/exams" },
+    { title: "Students",      value: "27",   icon: GraduationCap, trend: "+12%", up: true,  iconBg: "bg-blue-50",    iconColor: "text-blue-500"   },
+    { title: "Teachers",      value: "2",    icon: Users,         trend: "+0%",  up: true,  iconBg: "bg-teal-50",    iconColor: "text-teal-500"   },
+    { title: "Courses",       value: "10",   icon: BookOpen,      trend: "+5%",  up: true,  iconBg: "bg-slate-100",  iconColor: "text-slate-500"  },
+    { title: "Claims",        value: "7",    icon: FileQuestion,  trend: "+3",   up: true,  iconBg: "bg-red-50",     iconColor: "text-red-400"    },
+    { title: "Centers",       value: "1",    icon: MapPin,        trend: "+0%",  up: true,  iconBg: "bg-blue-50",    iconColor: "text-blue-400"   },
+    { title: "Collaborators", value: "2",    icon: Handshake,     trend: "+0%",  up: true,  iconBg: "bg-orange-50",  iconColor: "text-orange-400" },
+    { title: "Avg Rates",     value: "0.00", icon: TrendingUp,    trend: "-0%",  up: false, iconBg: "bg-yellow-50",  iconColor: "text-yellow-500" },
+    { title: "Question Bank", value: "0",    icon: BarChart3,     trend: "+0",   up: true,  iconBg: "bg-purple-50",  iconColor: "text-purple-400" },
   ];
 
   const quickActions = [
-    { title: "إضافة طالب", icon: UserPlus, href: "/admin/students/new", color: "bg-blue-100 text-blue-700" },
-    { title: "مصرف الوسائل", icon: Library, href: "/admin/content", color: "bg-green-100 text-green-700" },
-    { title: "الإعدادات", icon: Settings, href: "/admin/settings", color: "bg-gray-100 text-gray-700" },
-    { title: "خطة الدروس", icon: BookOpen, href: "/admin/plans", color: "bg-purple-100 text-purple-700" },
+    { title: "Add Student",     icon: UserPlus, href: "/admin/students",     bg: "bg-blue-50",   iconBg: "bg-blue-600",   labelColor: "text-blue-600"   },
+    { title: "Media Center",    icon: Library,  href: "/admin/content",      bg: "bg-green-100",  iconBg: "bg-green-600",  labelColor: "text-green-600"  },
+    { title: "System Settings", icon: Settings, href: "/admin/settings",     bg: "bg-slate-100",  iconBg: "bg-slate-700",  labelColor: "text-slate-700"  },
+    { title: "Lesson Plan",     icon: BookOpen, href: "/admin/plans",        bg: "bg-purple-100", iconBg: "bg-purple-600", labelColor: "text-purple-600" },
   ];
 
-  const pendingCount = pendingUsers?.length || 0;
+  const recentSubmissions = [
+    { title: "Quiz #4 - Biology",   time: "2m ago",  dot: "bg-green-500"  },
+    { title: "Assignment: History", time: "15m ago", dot: "bg-gray-800"   },
+    { title: "New Support Ticket",  time: "1h ago",  dot: "bg-orange-400" },
+  ];
+
+  const pendingCount = pendingUsers?.length ?? 0;
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Section */}
-      <div className="bg-linear-to-r from-indigo-600 to-purple-600 rounded-xl p-6 text-white">
-        <h2 className="text-2xl font-bold mb-2">مساء الخير! 👋</h2>
-        <p className="text-indigo-100">نظرة عامة على منتجاتك</p>
-      </div>
+    <div className="min-h-screen bg-[#f7fafa]">
+      {/* Top bar */}
+      <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+        <h1 className="text-xl font-bold text-[#001f24]">Dashboard</h1>
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search data..."
+              className="pl-9 pr-4 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg w-56 focus:outline-none focus:ring-2 focus:ring-[#03363d]/20"
+            />
+          </div>
+          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <Bell className="h-5 w-5 text-gray-500" />
+          </button>
+          <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+            <HelpCircle className="h-5 w-5 text-gray-500" />
+          </button>
+          <div className="w-9 h-9 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center text-sm font-semibold text-gray-600">
+            {currentUser.name?.charAt(0).toUpperCase()}
+          </div>
+        </div>
+      </header>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => {
-          const Icon = stat.icon;
-          return (
-            <Link
-              key={stat.title}
-              href={stat.href}
-              className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow border border-gray-100"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className={`p-2 rounded-lg ${stat.color} bg-opacity-10`}>
-                  <Icon className={`h-5 w-5 ${stat.color.replace('bg-', 'text-')}`} />
-                </div>
-                <span className={`text-xs font-medium ${
-                  stat.change.startsWith('+') ? 'text-green-600' : 'text-red-600'
-                }`}>
-                  {stat.change}
-                </span>
-              </div>
-              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
-              <p className="text-sm text-gray-500 mt-1">{stat.title}</p>
-            </Link>
-          );
-        })}
-      </div>
+      <div className="p-8 max-w-7xl mx-auto space-y-8">
+        {/* Welcome */}
+        <div className="rounded-xl px-6 py-10 ms-14">
+          <h2 className="text-3xl font-bold text-[#001f24]">
+            Good Evening, Admin 👋
+          </h2>
+          <p className="text-gray-500 mt-1 text-sm">
+            Overview of your academic products and system performance.
+          </p>
+        </div>
 
-      {/* Pending Approvals Alert */}
-      {pendingCount > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
-          <div className="flex items-center justify-between flex-wrap gap-4">
+        {/* Pending approval banner */}
+        {pendingCount > 0 && (
+          <div className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
-                <Users className="h-5 w-5 text-amber-600" />
+              <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center">
+                <Users className="h-4 w-4 text-amber-600" />
               </div>
               <div>
-                <p className="font-semibold text-amber-800">
-                  {pendingCount} طالب جديد ينتظر الموافقة
+                <p className="font-semibold text-gray-900 text-sm">
+                  {pendingCount} pending {pendingCount === 1 ? "registration" : "registrations"}
                 </p>
-                <p className="text-sm text-amber-600">قم بمراجعة طلبات التسجيل</p>
+                <p className="text-xs text-gray-500">Review and approve new accounts</p>
               </div>
             </div>
             <Link
               href="/admin/approvals"
-              className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors text-sm font-medium"
+              className="text-sm font-medium bg-[#001f24] text-white px-4 py-2 rounded-lg hover:bg-[#03363d] transition-colors"
             >
-              مراجعة الآن
+              Review →
             </Link>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Quick Actions */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">إجراءات سريعة</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
+        {/* Stats grid — row 1 */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {stats.slice(0, 4).map((stat) => {
+            const Icon = stat.icon;
             return (
-              <Link
-                key={action.title}
-                href={action.href}
-                className={`${action.color} rounded-xl p-4 text-center hover:opacity-80 transition-opacity`}
+              <div
+                key={stat.title}
+                className="bg-white rounded-xl p-5 border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all"
               >
-                <Icon className="h-6 w-6 mx-auto mb-2" />
-                <p className="text-sm font-medium">{action.title}</p>
-              </Link>
+                <div className="flex items-start justify-between mb-4">
+                  <div className={`w-11 h-11 rounded-xl ${stat.iconBg} flex items-center justify-center`}>
+                    <Icon className={`h-5 w-5 ${stat.iconColor}`} />
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    stat.up ? "text-green-600" : "text-red-500"
+                  }`}>
+                    {stat.trend} {stat.up ? "↗" : "↘"}
+                  </span>
+                </div>
+                <p className="text-3xl font-bold text-[#001f24]">{stat.value}</p>
+                <p className="text-xs text-gray-500 mt-1 font-medium">{stat.title}</p>
+              </div>
             );
           })}
+        </div>
+
+        {/* Stats grid — row 2 */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {stats.slice(4, 8).map((stat) => {
+            const Icon = stat.icon;
+            return (
+              <div
+                key={stat.title}
+                className="bg-white rounded-xl p-5 border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all"
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div className={`w-11 h-11 rounded-xl ${stat.iconBg} flex items-center justify-center`}>
+                    <Icon className={`h-5 w-5 ${stat.iconColor}`} />
+                  </div>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                    stat.up ? "text-green-600" : "text-red-500"
+                  }`}>
+                    {stat.trend} {stat.up ? "↗" : "↘"}
+                  </span>
+                </div>
+                <p className="text-3xl font-bold text-[#001f24]">{stat.value}</p>
+                <p className="text-xs text-gray-500 mt-1 font-medium">{stat.title}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Quick Actions */}
+        <div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-1 h-5 bg-[#001f24] rounded-full" />
+            <h3 className="text-base font-semibold text-[#001f24]">Quick Actions</h3>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {quickActions.map((action) => {
+              const Icon = action.icon;
+              return (
+                <Link
+                  key={action.title}
+                  href={action.href}
+                  className={`${action.bg} rounded-xl p-6 flex flex-col items-center gap-3 hover:opacity-90 hover:shadow-sm transition-all group`}
+                >
+                  <div className={`w-14 h-14 ${action.iconBg} rounded-2xl flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm`}>
+                    <Icon className="h-7 w-7 text-white"  />
+                  </div>
+                  <p className={`text-sm font-semibold ${action.labelColor}`}>{action.title}</p>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Recent Submissions */}
+        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-50">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              Recent Submissions
+            </p>
+          </div>
+          <div className="divide-y divide-gray-50">
+            {recentSubmissions.map((item, i) => (
+              <div key={i} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className={`w-2 h-2 rounded-full ${item.dot}`} />
+                  <p className="text-sm font-medium text-gray-800">{item.title}</p>
+                </div>
+                <div className="flex items-center gap-1.5 text-gray-400">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="text-xs">{item.time}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
