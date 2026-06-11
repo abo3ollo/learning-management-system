@@ -1,3 +1,4 @@
+// convex/index.ts
 // تصدير دوال المصادقة
 export * from "./user/auth";
 
@@ -13,5 +14,5 @@ export * from "./user/admin";
 // تصدير الدوال المساعدة
 export * from "./user/helpers";
 
-// تصدير دوال العلاقات
+// تصدير دوال العلاقات 
 export * from "./relationships/parentStudent";

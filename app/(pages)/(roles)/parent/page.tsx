@@ -10,7 +10,7 @@ import { useEffect } from "react";
 export default function ParentDashboard() {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
-  const currentUser = useQuery(api.user.getCurrentUser);
+  const currentUser = useQuery(api.user.auth.getCurrentUser);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) {

@@ -23,6 +23,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
+import { RiParentFill } from "react-icons/ri";
 
 export default function AdminLayout({
   children,
@@ -57,8 +58,9 @@ export default function AdminLayout({
 
   const navItems = [
     { href: "/admin",          label: "Dashboard",       icon: LayoutDashboard },
-    { href: "/admin/students", label: "Students",        icon: GraduationCap   },
     { href: "/admin/teachers", label: "Teachers",        icon: Users           },
+    { href: "/admin/students", label: "Students",        icon: GraduationCap   },
+    { href: "/admin/parents",  label: "Parents",         icon: RiParentFill    },
     { href: "/admin/courses",  label: "Courses",         icon: BookOpen        },
     { href: "/admin/exams",    label: "Question Bank",   icon: BarChart3    },
     { href: "/admin/circles",  label: "Circles",         icon: Circle          },

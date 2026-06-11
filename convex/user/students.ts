@@ -66,13 +66,19 @@ export const createStudent = mutation({
       updatedAt: Date.now(),
     });
     
-    // ربط ولي الأمر إذا وجد
+    // ✅ ربط ولي الأمر إذا وجد - مع إضافة permissions المطلوبة
     if (args.parentId) {
       await ctx.db.insert("parentStudentLinks", {
         parentId: args.parentId,
         studentId: student,
         relationship: args.guardianRelationship || "guardian",
         isPrimary: true,
+        permissions: {                    // ✅ إضافة permissions المطلوبة
+          viewGrades: true,
+          financialAccess: false,
+          pickupNotification: false,
+          emergencyContact: false,
+        },
         createdAt: Date.now(),
       });
     }

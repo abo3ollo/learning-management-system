@@ -32,7 +32,15 @@ export default defineSchema({
     grade: v.optional(v.string()),
     enrollmentDate: v.optional(v.number()),
     
-    // Parent/Guardian info (for students without parent accounts)
+    // Parent specific fields (أضيفت لدعم أولياء الأمور)
+    parentId: v.optional(v.string()),           // معرف ولي الأمر المخصص
+    workPhone: v.optional(v.string()),          // هاتف العمل
+    workAddress: v.optional(v.string()),        // عنوان العمل
+    jobTitle: v.optional(v.string()),           // المسمى الوظيفي
+    nationalId: v.optional(v.string()),         // رقم الهوية الوطنية
+    relationship: v.optional(v.string()),       // صلة القرابة للطالب
+    
+    // Guardian info (for students without parent accounts)
     guardianName: v.optional(v.string()),
     guardianPhone: v.optional(v.string()),
     guardianEmail: v.optional(v.string()),
@@ -45,13 +53,20 @@ export default defineSchema({
     .index("by_email", ["email"])
     .index("by_status", ["status"])
     .index("by_role", ["role"])
-    .index("by_studentId", ["studentId"]),
+    .index("by_studentId", ["studentId"])
+    .index("by_parentId", ["parentId"]),        // إضافة index للوالدين
 
   parentStudentLinks: defineTable({
     parentId: v.id("users"),
     studentId: v.id("users"),
-    relationship: v.optional(v.string()),
-    isPrimary: v.boolean(),
+    relationship: v.string(),                    // أب، أم، وصي، إلخ
+    isPrimary: v.boolean(),                     // جهة اتصال أساسية
+    permissions: v.object({                     // صلاحيات ولي الأمر
+      viewGrades: v.boolean(),                  // عرض الدرجات
+      financialAccess: v.boolean(),             // الوصول المالي
+      pickupNotification: v.boolean(),          // إشعار الاستلام
+      emergencyContact: v.boolean(),            // جهة اتصال طوارئ
+    }),
     createdAt: v.number(),
   })
     .index("by_parent_student", ["parentId", "studentId"])
@@ -86,14 +101,19 @@ export default defineSchema({
     .index("by_resourceId", ["resourceId"])
     .index("by_action", ["action"]),
 
-  adminSettings: defineTable({
-    requireApproval: v.boolean(),
-    autoApproveRoles: v.array(v.string()),
-    studentIdPrefix: v.string(),
-    nextStudentIdNumber: v.number(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  }),
+  // convex/schema.ts
+adminSettings: defineTable({
+  requireApproval: v.boolean(),
+  autoApproveRoles: v.array(v.string()),
+  studentIdPrefix: v.string(),
+  teacherIdPrefix: v.optional(v.string()),    // ✅ optional
+  parentIdPrefix: v.optional(v.string()),     // ✅ optional
+  nextStudentIdNumber: v.number(),
+  nextTeacherIdNumber: v.optional(v.number()), // ✅ optional
+  nextParentIdNumber: v.optional(v.number()),  // ✅ optional
+  createdAt: v.number(),
+  updatedAt: v.number(),
+}),
 
   courses: defineTable({
     title: v.string(),
