@@ -20,11 +20,13 @@ import {
   FaChevronDown,
   FaBars,
   FaTimes,
+  FaChalkboardTeacher,
 } from "react-icons/fa";
 import { HiOutlineAcademicCap } from "react-icons/hi";
 import { MdOutlineMonitor, MdOutlineRadio } from "react-icons/md";
 import { BsChatDots, BsBarChartSteps } from "react-icons/bs";
-import { RiGraduationCapFill } from "react-icons/ri";
+import { RiGraduationCapFill, RiParentFill } from "react-icons/ri";
+import {  PiStudentBold } from "react-icons/pi";
 
 // ─── translations ────────────────────────────────────────────────
 const t = {
@@ -56,17 +58,17 @@ const t = {
       sub: "We designed our tools to meet the specific needs of everyone in the educational ecosystem.",
       cards: [
         {
-          icon: "🎓",
+          icon: PiStudentBold,
           title: "Students",
           desc: "An immersive learning experience with unlimited access to resources and personalised study plans that fit your own pace.",
         },
         {
-          icon: "👨‍🏫",
+          icon: FaChalkboardTeacher,
           title: "Teachers",
           desc: "Advanced management tools, interactive virtual classrooms, and the ability to direct-track student performance and provide instant feedback.",
         },
         {
-          icon: "👨‍👩‍👧",
+          icon: RiParentFill,
           title: "Parents",
           desc: "A comprehensive dashboard to monitor children's education, and the ability to direct communications with staff to ensure best results.",
         },
@@ -76,9 +78,9 @@ const t = {
       title: "Highly Interactive Live Classes",
       sub: "Go beyond the limits of traditional learning with our virtual classrooms that allow real-time interaction, progress tracking, and advanced digital explanation tools.",
       features: [
-        { icon: FaChartLine,    title: "Real time Progress Tracking",  desc: "Analyse student performance during the session and identify strengths and weaknesses immediately." },
-        { icon: FaComments,     title: "Interactive Discussions",       desc: "Breakout rooms to promote student collaboration and group problem solving." },
-        { icon: FaArchive,      title: "Smart Archiving",               desc: "Automatically recording of all lectures with smart indexing for easy review." },
+        { icon: FaChartLine, title: "Real time Progress Tracking", desc: "Analyse student performance during the session and identify strengths and weaknesses immediately." },
+        { icon: FaComments, title: "Interactive Discussions", desc: "Breakout rooms to promote student collaboration and group problem solving." },
+        { icon: FaArchive, title: "Smart Archiving", desc: "Automatically recording of all lectures with smart indexing for easy review." },
       ],
       badge: "Current Class: Advanced Navigation",
       live: "Live",
@@ -87,9 +89,9 @@ const t = {
       title: "How to Start Your Journey?",
       sub: "Simple steps separate you from joining the best specialised educational academy.",
       steps: [
-        { n: "1", title: "Register Now",       desc: "Create your account in less than a minute for free." },
-        { n: "2", title: "Choose Your Course",  desc: "Browse hundreds of specialised courses in various fields." },
-        { n: "3", title: "Join the Class",      desc: "Start learning with elite experts." },
+        { n: "1", title: "Register Now", desc: "Create your account in less than a minute for free." },
+        { n: "2", title: "Choose Your Course", desc: "Browse hundreds of specialised courses in various fields." },
+        { n: "3", title: "Join the Class", desc: "Start learning with elite experts." },
         { n: "4", title: "Track Your Progress", desc: "Get certified and receive periodic performance reports." },
       ],
     },
@@ -97,16 +99,16 @@ const t = {
       title: "For Parents: Be Part of Their Success",
       sub: "We believe that the partnership between home and the academy is the key to success. We've provided all the tools you need to stay close to your child's educational journey.",
       features: [
-        { icon: FaComments,     title: "Direct Communication", desc: "Live chats with teachers and coordinators at any time." },
-        { icon: FaChartLine,    title: "Precise Tracking",    desc: "Weekly and monthly performance reports showing the student's progress." },
+        { icon: FaComments, title: "Direct Communication", desc: "Live chats with teachers and coordinators at any time." },
+        { icon: FaChartLine, title: "Precise Tracking", desc: "Weekly and monthly performance reports showing the student's progress." },
       ],
     },
     teachers: {
       title: "For Teachers: Teach with Creativity",
       sub: "Give your students the best educational experience through smart assignment management and virtual classroom tools that save time and increase productivity.",
       features: [
-        { icon: FaCheckCircle,  title: "Automated Assignment Management", desc: "Automated grading and distribution task for each academic level." },
-        { icon: FaDesktop,      title: "Integrated Virtual Classrooms",  desc: "Smart whiteboard tools, file sharing, and real-time polling." },
+        { icon: FaCheckCircle, title: "Automated Assignment Management", desc: "Automated grading and distribution task for each academic level." },
+        { icon: FaDesktop, title: "Integrated Virtual Classrooms", desc: "Smart whiteboard tools, file sharing, and real-time polling." },
       ],
     },
     testimonials: {
@@ -127,10 +129,10 @@ const t = {
       brand: "Marine Academy",
       brandSub: "The global leader in marine and technical education, aiming to graduate a creative and technologically empowered generation.",
       cols: [
-        { title: "Academy",   links: ["About Us", "Our Team", "Careers", "News"] },
+        { title: "Academy", links: ["About Us", "Our Team", "Careers", "News"] },
         { title: "Resources", links: ["Blog", "Help Center", "Marine Standards", "Pricing"] },
-        { title: "Legal",     links: ["Privacy Policy", "Terms of Service", "Cookie Policy"] },
-        { title: "Support",   links: ["Contact Us", "Fleet Training", "Global Support"] },
+        { title: "Legal", links: ["Privacy Policy", "Terms of Service", "Cookie Policy"] },
+        { title: "Support", links: ["Contact Us", "Fleet Training", "Global Support"] },
       ],
       sitemap: "Sitemap",
       lang: "English (EN)",
@@ -165,18 +167,18 @@ const t = {
       title: "من نخدم؟",
       sub: "صمّمنا أدواتنا لتلبية الاحتياجات الخاصة لكل فرد في المنظومة التعليمية.",
       cards: [
-        { icon: "🎓", title: "الطلاب",           desc: "تجربة تعليمية غامرة مع وصول غير محدود للموارد وخطط دراسية مخصصة تناسب وتيرتك الخاصة." },
-        { icon: "👨‍🏫", title: "المعلمون",        desc: "أدوات إدارة متقدمة وفصول افتراضية تفاعلية وإمكانية متابعة أداء الطلاب مباشرةً وتقديم تغذية راجعة فورية." },
-        { icon: "👨‍👩‍👧", title: "أولياء الأمور", desc: "لوحة تحكم شاملة لمتابعة التعليم والتواصل المباشر مع الكادر لضمان أفضل النتائج." },
+        { icon: PiStudentBold , title: "الطلاب", desc: "تجربة تعليمية غامرة مع وصول غير محدود للموارد وخطط دراسية مخصصة تناسب وتيرتك الخاصة." },
+        { icon: FaChalkboardTeacher, title: "المعلمون", desc: "أدوات إدارة متقدمة وفصول افتراضية تفاعلية وإمكانية متابعة أداء الطلاب مباشرةً وتقديم تغذية راجعة فورية." },
+        { icon: RiParentFill, title: "أولياء الأمور", desc: "لوحة تحكم شاملة لمتابعة التعليم والتواصل المباشر مع الكادر لضمان أفضل النتائج." },
       ],
     },
     live: {
       title: "فصول مباشرة تفاعلية للغاية",
       sub: "تجاوز حدود التعلم التقليدي مع فصولنا الافتراضية التي تتيح التفاعل الفوري ومتابعة التقدم وأدوات الشرح الرقمية المتقدمة.",
       features: [
-        { icon: FaChartLine,     title: "تتبع التقدم الفوري",      desc: "تحليل أداء الطالب خلال الجلسة وتحديد نقاط القوة والضعف فوراً." },
-        { icon: FaComments,      title: "نقاشات تفاعلية",          desc: "غرف تجمّع لتعزيز التعاون بين الطلاب وحل المشكلات جماعياً." },
-        { icon: FaArchive,       title: "أرشفة ذكية",              desc: "تسجيل تلقائي لجميع المحاضرات مع فهرسة ذكية لسهولة المراجعة." },
+        { icon: FaChartLine, title: "تتبع التقدم الفوري", desc: "تحليل أداء الطالب خلال الجلسة وتحديد نقاط القوة والضعف فوراً." },
+        { icon: FaComments, title: "نقاشات تفاعلية", desc: "غرف تجمّع لتعزيز التعاون بين الطلاب وحل المشكلات جماعياً." },
+        { icon: FaArchive, title: "أرشفة ذكية", desc: "تسجيل تلقائي لجميع المحاضرات مع فهرسة ذكية لسهولة المراجعة." },
       ],
       badge: "الفصل الحالي: الملاحة المتقدمة",
       live: "مباشر",
@@ -185,26 +187,26 @@ const t = {
       title: "كيف تبدأ رحلتك؟",
       sub: "خطوات بسيطة تفصلك عن الانضمام إلى أفضل أكاديمية تعليمية متخصصة.",
       steps: [
-        { n: "1", title: "سجّل الآن",          desc: "أنشئ حسابك في أقل من دقيقة مجاناً." },
-        { n: "2", title: "اختر دورتك",          desc: "تصفّح مئات الدورات المتخصصة في مجالات متنوعة." },
-        { n: "3", title: "انضم إلى الفصل",      desc: "ابدأ التعلم مع نخبة من الخبراء." },
-        { n: "4", title: "تابع تقدمك",          desc: "احصل على شهادة وتقارير أداء دورية." },
+        { n: "1", title: "سجّل الآن", desc: "أنشئ حسابك في أقل من دقيقة مجاناً." },
+        { n: "2", title: "اختر دورتك", desc: "تصفّح مئات الدورات المتخصصة في مجالات متنوعة." },
+        { n: "3", title: "انضم إلى الفصل", desc: "ابدأ التعلم مع نخبة من الخبراء." },
+        { n: "4", title: "تابع تقدمك", desc: "احصل على شهادة وتقارير أداء دورية." },
       ],
     },
     parents: {
       title: "لأولياء الأمور: كونوا جزءاً من نجاحهم",
       sub: "نؤمن بأن الشراكة بين المنزل والأكاديمية هي مفتاح النجاح. وفّرنا لك جميع الأدوات للبقاء قريباً من رحلة طفلك التعليمية.",
       features: [
-        { icon: FaComments,      title: "تواصل مباشر", desc: "دردشات مباشرة مع المعلمين والمنسقين في أي وقت." },
-        { icon: FaChartLine,     title: "متابعة دقيقة", desc: "تقارير أداء أسبوعية وشهرية تُظهر تقدم الطالب." },
+        { icon: FaComments, title: "تواصل مباشر", desc: "دردشات مباشرة مع المعلمين والمنسقين في أي وقت." },
+        { icon: FaChartLine, title: "متابعة دقيقة", desc: "تقارير أداء أسبوعية وشهرية تُظهر تقدم الطالب." },
       ],
     },
     teachers: {
       title: "للمعلمين: علّموا بإبداع",
       sub: "امنح طلابك أفضل تجربة تعليمية من خلال إدارة ذكية للواجبات وأدوات الفصول الافتراضية التي توفّر الوقت وتزيد الإنتاجية.",
       features: [
-        { icon: FaCheckCircle,   title: "إدارة آلية للواجبات",      desc: "تصحيح وتوزيع آلي للمهام لكل مستوى دراسي." },
-        { icon: FaDesktop,       title: "فصول افتراضية متكاملة",   desc: "أدوات لوح ذكي ومشاركة ملفات واستطلاع فوري." },
+        { icon: FaCheckCircle, title: "إدارة آلية للواجبات", desc: "تصحيح وتوزيع آلي للمهام لكل مستوى دراسي." },
+        { icon: FaDesktop, title: "فصول افتراضية متكاملة", desc: "أدوات لوح ذكي ومشاركة ملفات واستطلاع فوري." },
       ],
     },
     testimonials: {
@@ -226,9 +228,9 @@ const t = {
       brandSub: "الرائد العالمي في التعليم البحري والتقني، يسعى إلى تخريج جيل مبدع ومتمكن تكنولوجياً.",
       cols: [
         { title: "الأكاديمية", links: ["عن الأكاديمية", "فريقنا", "الوظائف", "الأخبار"] },
-        { title: "الموارد",    links: ["المدونة", "مركز المساعدة", "معايير الأسطول", "الأسعار"] },
+        { title: "الموارد", links: ["المدونة", "مركز المساعدة", "معايير الأسطول", "الأسعار"] },
         { title: "القانونية", links: ["سياسة الخصوصية", "شروط الخدمة", "سياسة الكوكيز"] },
-        { title: "الدعم",      links: ["اتصل بنا", "تدريب الأسطول", "الدعم العالمي"] },
+        { title: "الدعم", links: ["اتصل بنا", "تدريب الأسطول", "الدعم العالمي"] },
       ],
       sitemap: "خريطة الموقع",
       lang: "العربية (AR)",
@@ -381,9 +383,8 @@ export default function LandingPage() {
           {/* Hero image placeholder */}
           <div className="relative hidden lg:block">
             <div className="w-full h-105 bg-linear-to-br from-[#0a2540] to-[#1a7a8a] rounded-3xl overflow-hidden flex items-center justify-center">
-              <div className="text-center text-white opacity-60">
-                <FaDesktop className="h-20 w-20 mx-auto mb-4" />
-                <p className="text-sm">Platform Preview</p>
+              <div className="w-full h-full opacity-80">
+                <img src="images/hero.png" alt="Hero illustration" className="w-full h-full object-cover" />
               </div>
             </div>
             {/* Floating badge */}
@@ -408,15 +409,18 @@ export default function LandingPage() {
             <p className="text-gray-500 max-w-xl mx-auto">{c.serve.sub}</p>
           </div>
           <div className="grid md:grid-cols-3 gap-6">
-            {c.serve.cards.map((card) => (
-              <div key={card.title} className="border border-gray-100 rounded-2xl p-8 hover:border-[#1a7a8a]/30 hover:shadow-md transition-all group">
-                <div className="w-14 h-14 bg-[#e0f5f7] rounded-2xl flex items-center justify-center mb-5 group-hover:bg-[#1a7a8a]/10 transition-colors">
-                  <span className="text-2xl">{card.icon}</span>
+            {c.serve.cards.map((card) => {
+              const Icon = card.icon; 
+              return (
+                <div key={card.title} className="border border-gray-100 rounded-2xl p-8 hover:border-[#1a7a8a]/30 hover:shadow-md transition-all group">
+                  <div className="w-14 h-14 bg-[#e0f5f7] rounded-2xl flex items-center justify-center mb-5 group-hover:bg-[#1a7a8a]/10 transition-colors">
+                    <Icon className="w-7 h-7 text-[#1a6774]" />
+                  </div>
+                  <h3 className="text-lg font-bold text-[#0a2540] mb-3">{card.title}</h3>
+                  <p className="text-gray-500 text-sm leading-relaxed">{card.desc}</p>
                 </div>
-                <h3 className="text-lg font-bold text-[#0a2540] mb-3">{card.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{card.desc}</p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -426,9 +430,8 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center">
           {/* Mock screen */}
           <div className="bg-[#0a2540] rounded-3xl overflow-hidden aspect-video flex items-center justify-center relative order-last lg:order-first">
-            <div className="text-center text-white opacity-40">
-              <FaDesktop className="h-16 w-16 mx-auto mb-3" />
-              <p className="text-xs">Live Class Interface</p>
+            <div className="w-full h-full opacity-80">
+              <img src="images/clasess.png" alt="Mock screen" className="w-full h-full object-center" />
             </div>
             <div className="absolute bottom-4 left-4 right-4 bg-white/10 backdrop-blur rounded-xl px-4 py-2 flex items-center justify-between">
               <p className="text-white text-xs font-medium">{c.live.badge}</p>
@@ -500,8 +503,8 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="lg:block bg-linear-to-br from-[#e0f5f7] to-[#f0f9fa] rounded-3xl aspect-square flex items-center justify-center">
-            <div className="text-center text-[#1a7a8a] opacity-40 p-12">
-              <span className="text-8xl">👨‍👩‍👧</span>
+            <div className="w-full h-full opacity-80">
+              <img src="images/unnamed.png" alt="parent screen" className="w-full h-full object-center" />
             </div>
           </div>
         </div>
@@ -511,8 +514,8 @@ export default function LandingPage() {
       <section className="py-20 bg-[#f7fafa]">
         <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-2 gap-16 items-center">
           <div className="bg-linear-to-br from-[#0a2540] to-[#1a7a8a] rounded-3xl aspect-square flex items-center justify-center">
-            <div className="text-center text-white opacity-40 p-12">
-              <span className="text-8xl">👨‍🏫</span>
+            <div className="w-full h-full opacity-80">
+              <img src="images/teachers.png" alt="teacher screen" className="w-full h-full object-center" />
             </div>
           </div>
           <div>

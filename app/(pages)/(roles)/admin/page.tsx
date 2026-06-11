@@ -20,6 +20,11 @@ import {
   Bell,
   HelpCircle,
 } from "lucide-react";
+import { PiStudentBold } from "react-icons/pi";
+import { FaChalkboardTeacher ,FaHandshake  } from "react-icons/fa";
+import { LuBaggageClaim } from "react-icons/lu";
+import { IoMdTrendingUp } from "react-icons/io";
+
 
 export default function AdminDashboard() {
   const currentUser = useQuery(api.user.auth.getCurrentUser);
@@ -34,13 +39,13 @@ export default function AdminDashboard() {
   }
 
   const stats = [
-    { title: "Students",      value: "27",   icon: GraduationCap, trend: "+12%", up: true,  iconBg: "bg-blue-50",    iconColor: "text-blue-500"   },
-    { title: "Teachers",      value: "2",    icon: Users,         trend: "+0%",  up: true,  iconBg: "bg-teal-50",    iconColor: "text-teal-500"   },
+    { title: "Students",      value: "27",   icon: PiStudentBold, trend: "+12%", up: true,  iconBg: "bg-blue-50",    iconColor: "text-blue-500"   },
+    { title: "Teachers",      value: "2",    icon: FaChalkboardTeacher, trend: "+0%",  up: true,  iconBg: "bg-teal-50",    iconColor: "text-teal-500"   },
     { title: "Courses",       value: "10",   icon: BookOpen,      trend: "+5%",  up: true,  iconBg: "bg-slate-100",  iconColor: "text-slate-500"  },
-    { title: "Claims",        value: "7",    icon: FileQuestion,  trend: "+3",   up: true,  iconBg: "bg-red-50",     iconColor: "text-red-400"    },
+    { title: "Claims",        value: "7",    icon: LuBaggageClaim ,  trend: "+3",   up: true,  iconBg: "bg-red-50",     iconColor: "text-red-400"    },
     { title: "Centers",       value: "1",    icon: MapPin,        trend: "+0%",  up: true,  iconBg: "bg-blue-50",    iconColor: "text-blue-400"   },
-    { title: "Collaborators", value: "2",    icon: Handshake,     trend: "+0%",  up: true,  iconBg: "bg-orange-50",  iconColor: "text-orange-400" },
-    { title: "Avg Rates",     value: "0.00", icon: TrendingUp,    trend: "-0%",  up: false, iconBg: "bg-yellow-50",  iconColor: "text-yellow-500" },
+    { title: "Collaborators", value: "2",    icon: FaHandshake ,     trend: "+0%",  up: true,  iconBg: "bg-orange-50",  iconColor: "text-orange-400" },
+    { title: "Avg Rates",     value: "0.00", icon: IoMdTrendingUp,    trend: "-0%",  up: false, iconBg: "bg-yellow-50",  iconColor: "text-yellow-500" },
     { title: "Question Bank", value: "0",    icon: BarChart3,     trend: "+0",   up: true,  iconBg: "bg-purple-50",  iconColor: "text-purple-400" },
   ];
 

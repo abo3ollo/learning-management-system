@@ -20,6 +20,7 @@ import {
   Menu,
   X,
   ClipboardCheck,
+  BarChart3,
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 
@@ -59,7 +60,7 @@ export default function AdminLayout({
     { href: "/admin/students", label: "Students",        icon: GraduationCap   },
     { href: "/admin/teachers", label: "Teachers",        icon: Users           },
     { href: "/admin/courses",  label: "Courses",         icon: BookOpen        },
-    { href: "/admin/exams",    label: "Question Bank",   icon: FileQuestion    },
+    { href: "/admin/exams",    label: "Question Bank",   icon: BarChart3    },
     { href: "/admin/circles",  label: "Circles",         icon: Circle          },
     { href: "/admin/content",  label: "Content Library", icon: Library         },
     { href: "/admin/approvals",label: "Approvals",       icon: ClipboardCheck  },
