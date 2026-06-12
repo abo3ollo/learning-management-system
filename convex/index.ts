@@ -13,6 +13,7 @@ export * from "./user/admin";
 
 // تصدير الدوال المساعدة
 export * from "./user/helpers";
+export * from "./user/teachers";
 
 // تصدير دوال العلاقات 
 export * from "./relationships/parentStudent";

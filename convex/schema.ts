@@ -18,12 +18,13 @@ export default defineSchema({
       v.literal("approved"),
       v.literal("rejected"),
       v.literal("active"),
-      v.literal("inactive")
+      v.literal("inactive"),
+      v.literal("on_leave")  // ✅ إضافة حالة الإجازة للمعلمين
     ),
     rejectionReason: v.optional(v.string()),
     approvedAt: v.optional(v.number()),
     approvedBy: v.optional(v.id("users")),
-    
+
     // Student specific fields
     studentId: v.optional(v.string()),
     birthDate: v.optional(v.number()),
@@ -31,21 +32,30 @@ export default defineSchema({
     address: v.optional(v.string()),
     grade: v.optional(v.string()),
     enrollmentDate: v.optional(v.number()),
-    
-    // Parent specific fields (أضيفت لدعم أولياء الأمور)
-    parentId: v.optional(v.string()),           // معرف ولي الأمر المخصص
-    workPhone: v.optional(v.string()),          // هاتف العمل
-    workAddress: v.optional(v.string()),        // عنوان العمل
-    jobTitle: v.optional(v.string()),           // المسمى الوظيفي
-    nationalId: v.optional(v.string()),         // رقم الهوية الوطنية
-    relationship: v.optional(v.string()),       // صلة القرابة للطالب
-    
-    // Guardian info (for students without parent accounts)
+
+    // Teacher specific fields ✅
+    teacherId: v.optional(v.string()),           // معرف المعلم المخصص
+    specialization: v.optional(v.string()),      // التخصص
+    qualification: v.optional(v.string()),       // المؤهل العلمي
+    experience: v.optional(v.number()),          // سنوات الخبرة
+    hireDate: v.optional(v.number()),            // تاريخ التوظيف
+    salary: v.optional(v.number()),              // الراتب
+    subjects: v.optional(v.array(v.string())),   // المواد التي يدرسها
+
+    // Parent specific fields
+    parentId: v.optional(v.string()),
+    workPhone: v.optional(v.string()),
+    workAddress: v.optional(v.string()),
+    jobTitle: v.optional(v.string()),
+    nationalId: v.optional(v.string()),
+    relationship: v.optional(v.string()),
+
+    // Guardian info
     guardianName: v.optional(v.string()),
     guardianPhone: v.optional(v.string()),
     guardianEmail: v.optional(v.string()),
     guardianRelationship: v.optional(v.string()),
-    
+
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
   })
@@ -54,7 +64,8 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_role", ["role"])
     .index("by_studentId", ["studentId"])
-    .index("by_parentId", ["parentId"]),        // إضافة index للوالدين
+    .index("by_teacherId", ["teacherId"])   // ✅ إضافة index للمعلمين
+    .index("by_parentId", ["parentId"]),      // إضافة index للوالدين
 
   parentStudentLinks: defineTable({
     parentId: v.id("users"),
@@ -90,6 +101,7 @@ export default defineSchema({
       rejectedBy: v.optional(v.string()),
       studentId: v.optional(v.string()),
       parentId: v.optional(v.string()),
+      teacherId: v.optional(v.string()),  
       updatedFields: v.optional(v.array(v.string())),
       updatedBy: v.optional(v.string()),
       createdBy: v.optional(v.string()),
@@ -102,18 +114,18 @@ export default defineSchema({
     .index("by_action", ["action"]),
 
   // convex/schema.ts
-adminSettings: defineTable({
-  requireApproval: v.boolean(),
-  autoApproveRoles: v.array(v.string()),
-  studentIdPrefix: v.string(),
-  teacherIdPrefix: v.optional(v.string()),    // ✅ optional
-  parentIdPrefix: v.optional(v.string()),     // ✅ optional
-  nextStudentIdNumber: v.number(),
-  nextTeacherIdNumber: v.optional(v.number()), // ✅ optional
-  nextParentIdNumber: v.optional(v.number()),  // ✅ optional
-  createdAt: v.number(),
-  updatedAt: v.number(),
-}),
+  adminSettings: defineTable({
+    requireApproval: v.boolean(),
+    autoApproveRoles: v.array(v.string()),
+    studentIdPrefix: v.string(),
+    teacherIdPrefix: v.optional(v.string()),    // ✅ optional
+    parentIdPrefix: v.optional(v.string()),     // ✅ optional
+    nextStudentIdNumber: v.number(),
+    nextTeacherIdNumber: v.optional(v.number()), // ✅ optional
+    nextParentIdNumber: v.optional(v.number()),  // ✅ optional
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }),
 
   courses: defineTable({
     title: v.string(),

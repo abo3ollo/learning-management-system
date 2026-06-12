@@ -15,6 +15,7 @@ import type * as user_auth from "../user/auth.js";
 import type * as user_helpers from "../user/helpers.js";
 import type * as user_parents from "../user/parents.js";
 import type * as user_students from "../user/students.js";
+import type * as user_teachers from "../user/teachers.js";
 
 import type {
   ApiFromModules,
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   "user/helpers": typeof user_helpers;
   "user/parents": typeof user_parents;
   "user/students": typeof user_students;
+  "user/teachers": typeof user_teachers;
 }>;
 
 /**

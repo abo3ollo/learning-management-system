@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { RiParentFill } from "react-icons/ri";
+import { FaChalkboardTeacher } from "react-icons/fa";
 
 export default function AdminLayout({
   children,
@@ -58,7 +59,7 @@ export default function AdminLayout({
 
   const navItems = [
     { href: "/admin",          label: "Dashboard",       icon: LayoutDashboard },
-    { href: "/admin/teachers", label: "Teachers",        icon: Users           },
+    { href: "/admin/teachers", label: "Teachers",        icon: FaChalkboardTeacher },
     { href: "/admin/students", label: "Students",        icon: GraduationCap   },
     { href: "/admin/parents",  label: "Parents",         icon: RiParentFill    },
     { href: "/admin/courses",  label: "Courses",         icon: BookOpen        },
