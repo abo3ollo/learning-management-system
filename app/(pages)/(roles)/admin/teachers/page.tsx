@@ -26,6 +26,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddTeacherModal } from "@/app/_components/AddTeacherModal";
+import { FaMoneyBill } from "react-icons/fa";
 
 export default function AdminTeachersPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -38,6 +39,7 @@ export default function AdminTeachersPage() {
     status: selectedFilter !== "all" ? selectedFilter : undefined,
     search: searchQuery || undefined,
   });
+  console.log(teachersData);
   const teachersStats = useQuery(api.user.teachers.getTeachersStats);
   const deleteTeacher = useMutation(api.user.teachers.deleteTeacher);
 
@@ -256,6 +258,7 @@ export default function AdminTeachersPage() {
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">معلومات الاتصال</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">التخصص</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">المواد</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">المرتب</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الحالة</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الإجراءات</th>
                 </tr>
@@ -341,9 +344,16 @@ export default function AdminTeachersPage() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1.5">
                             <BookOpen className="h-3.5 w-3.5 text-gray-400" />
-                            <span className="text-sm font-semibold text-[#001f24]">{teacher.courseCount || 0}</span>
+                            <span className="text-sm font-semibold text-[#001f24]">{teacher.subjects || "—"}</span>
                             <span className="text-xs text-gray-400">مواد</span>
                           </div>
+                        </td>
+                        
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-gray-600  font-medium rounded-full `}>
+                            <FaMoneyBill className="h-3 w-3 text-gray-400 " />
+                            {teacher.salary ? `${teacher.salary} جنيه` : "—"}
+                          </span>
                         </td>
 
                         <td className="px-6 py-4">
@@ -352,6 +362,7 @@ export default function AdminTeachersPage() {
                             {statusBadge.label}
                           </span>
                         </td>
+
 
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1">

@@ -31,6 +31,7 @@ export default function AdminStudentsPage() {
     status: selectedFilter !== "all" ? selectedFilter : undefined,
     search: searchQuery || undefined,
   });
+  console.log(studentsData);
   const pendingApprovals = useQuery(api.user.admin.getPendingRegistrations);
 
   const deleteStudent = useMutation(api.user.students.deleteStudent);
@@ -194,6 +195,7 @@ export default function AdminStudentsPage() {
                 <tr className="border-b border-gray-100 bg-[#f7fafa]">
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Student</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Contact</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Parent</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Joined</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
@@ -256,6 +258,22 @@ export default function AdminStudentsPage() {
                             <p className="text-sm text-gray-600 flex items-center gap-1.5">
                               <Phone className="h-3.5 w-3.5 text-gray-400" />
                               {student.phoneNumber}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          <p className="text-sm text-gray-600 flex items-center gap-1.5">
+                            <Mail className="h-3.5 w-3.5 text-gray-400" />
+                            {student.parents?.[0]?.email || "No parent email"}
+                          </p>
+                          {student.phoneNumber && (
+                            <p className="text-sm text-gray-600 flex items-center gap-1.5">
+                              <Phone className="h-3.5 w-3.5 text-gray-400" />
+                            {student.parents?.[0]?.phoneNumber || "No parent phone number"}
+                              
                             </p>
                           )}
                         </div>

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as classes_classes from "../classes/classes.js";
 import type * as index from "../index.js";
 import type * as relationships_parentStudent from "../relationships/parentStudent.js";
 import type * as user_admin from "../user/admin.js";
@@ -24,6 +25,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "classes/classes": typeof classes_classes;
   index: typeof index;
   "relationships/parentStudent": typeof relationships_parentStudent;
   "user/admin": typeof user_admin;

@@ -25,6 +25,8 @@ import {
 import { Loader2 } from "lucide-react";
 import { RiParentFill } from "react-icons/ri";
 import { FaChalkboardTeacher } from "react-icons/fa";
+import { SiGoogleclassroom } from "react-icons/si";
+
 
 export default function AdminLayout({
   children,
@@ -62,7 +64,7 @@ export default function AdminLayout({
     { href: "/admin/teachers", label: "Teachers",        icon: FaChalkboardTeacher },
     { href: "/admin/students", label: "Students",        icon: GraduationCap   },
     { href: "/admin/parents",  label: "Parents",         icon: RiParentFill    },
-    { href: "/admin/courses",  label: "Courses",         icon: BookOpen        },
+    { href: "/admin/classes",  label: "Classes",         icon: SiGoogleclassroom },
     { href: "/admin/exams",    label: "Question Bank",   icon: BarChart3    },
     { href: "/admin/circles",  label: "Circles",         icon: Circle          },
     { href: "/admin/content",  label: "Content Library", icon: Library         },

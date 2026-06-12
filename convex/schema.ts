@@ -101,7 +101,7 @@ export default defineSchema({
       rejectedBy: v.optional(v.string()),
       studentId: v.optional(v.string()),
       parentId: v.optional(v.string()),
-      teacherId: v.optional(v.string()),  
+      teacherId: v.optional(v.string()),
       updatedFields: v.optional(v.array(v.string())),
       updatedBy: v.optional(v.string()),
       createdBy: v.optional(v.string()),
@@ -113,7 +113,6 @@ export default defineSchema({
     .index("by_resourceId", ["resourceId"])
     .index("by_action", ["action"]),
 
-  // convex/schema.ts
   adminSettings: defineTable({
     requireApproval: v.boolean(),
     autoApproveRoles: v.array(v.string()),
@@ -126,6 +125,39 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }),
+
+  // classes
+  classes: defineTable({
+    classNameEn: v.string(),        // الاسم بالإنجليزي
+    classNameAr: v.string(),        // الاسم بالعربي
+    classCode: v.string(),          // كود الفصل (مثال: G5-A, P3-1)
+    grade: v.string(),              // الصف (مثال: الصف الأول الثانوي)
+    gradeLevel: v.number(),         // المستوى الدراسي (1,2,3...)
+    section: v.optional(v.string()), // الشعبة (أ, ب, ج...)
+    supervisorId: v.optional(v.id("users")), // مشرف الفصل (معلم)
+    academicYear: v.string(),       // العام الدراسي (مثال: 2025-2026)
+    maxStudents: v.number(),        // الحد الأقصى للطلاب
+    currentStudents: v.number(),    // عدد الطلاب الحالي
+    location: v.optional(v.string()), // الموقع (مبنى أ - غرفة 101)
+    status: v.union(
+      v.literal("active"),
+      v.literal("inactive"),
+      v.literal("completed")
+    ),
+    schedule: v.optional(v.object({
+      days: v.array(v.string()),    // أيام الأسبوع
+      startTime: v.string(),        // وقت البداية
+      endTime: v.string(),          // وقت النهاية
+    })),
+    students: v.array(v.id("users")), // قائمة الطلاب المسجلين
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_classCode", ["classCode"])
+    .index("by_grade", ["grade"])
+    .index("by_supervisor", ["supervisorId"])
+    .index("by_academicYear", ["academicYear"])
+    .index("by_status", ["status"]),
 
   courses: defineTable({
     title: v.string(),

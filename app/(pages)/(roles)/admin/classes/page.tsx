@@ -1,3 +1,4 @@
+// app/(pages)/(roles)/admin/classes/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -8,133 +9,127 @@ import {
   Search,
   Edit,
   Trash2,
-  UserPlus,
-  Mail,
-  Phone,
   Users,
   Download,
   Loader2,
   Filter,
-  Briefcase,
-  Building2,
+  GraduationCap,
+  Calendar,
+  MapPin,
+  Clock,
   CheckCircle,
   XCircle,
-  Link2,
+  BookOpen,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AddParentModal } from "@/app/_components/AddParentModal";
-import { LinkParentStudentModal } from "@/app/_components/LinkParentStudentModal";
+import { AddClassModal } from "@/app/_components/AddClassModal";
+import { SiGoogleclassroom } from "react-icons/si";
+import { PiStudentBold } from "react-icons/pi";
 
-export default function AdminParentsPage() {
+export default function AdminClassesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
-  const [selectedParentId, setSelectedParentId] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState("all");
+  const [selectedYear, setSelectedYear] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  const parentsData = useQuery(api.user.parents.getParents, {
+  const classesData = useQuery(api.classes.classes.getClasses, {
     status: selectedFilter !== "all" ? selectedFilter : undefined,
+    academicYear: selectedYear !== "all" ? selectedYear : undefined,
     search: searchQuery || undefined,
   });
-  console.log(parentsData);
-  
-  const parentsStats = useQuery(api.user.parents.getParentsStats);
-  const deleteParent = useMutation(api.user.parents.deleteParent);
+  console.log(classesData);
+  const classesStats = useQuery(api.classes.classes.getClassesStats);
+  const deleteClass = useMutation(api.classes.classes.deleteClass);
 
-  const parents = parentsData || [];
-  const isLoading = parentsData === undefined;
+  const classes = classesData || [];
+  const isLoading = classesData === undefined;
 
-  const activeCount = parents.filter((p: any) => p.status === "active").length;
-  const totalStudentsLinked = parents.reduce((acc: number, p: any) => acc + (p.childrenCount || 0), 0);
+  const academicYears = ["2023-2024", "2024-2025", "2025-2026"];
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "active":
+        return { label: "نشط", className: "bg-green-50 text-green-700 border border-green-200" };
+      case "inactive":
+        return { label: "غير نشط", className: "bg-gray-50 text-gray-600 border border-gray-200" };
+      case "completed":
+        return { label: "مكتمل", className: "bg-blue-50 text-blue-700 border border-blue-200" };
+      default:
+        return { label: "نشط", className: "bg-green-50 text-green-700 border border-green-200" };
+    }
+  };
 
   const stats = [
     {
-      label: "Total Parents",
-      value: parents.length,
-      icon: Users,
+      label: "إجمالي الفصول",
+      value: classesStats?.total || classes.length,
+      icon: SiGoogleclassroom,
       iconBg: "bg-blue-50",
       iconColor: "text-blue-500",
       trend: "+0%",
       up: true,
     },
     {
-      label: "Active",
-      value: activeCount,
+      label: "فصول نشطة",
+      value: classesStats?.active || classes.filter((c: any) => c.status === "active").length,
       icon: CheckCircle,
       iconBg: "bg-green-50",
       iconColor: "text-green-500",
-      trend: `+${activeCount}`,
+      trend: "+0%",
       up: true,
     },
     {
-      label: "Linked Students",
-      value: totalStudentsLinked,
-      icon: Link2,
+      label: "إجمالي الطلاب",
+      value: classesStats?.totalStudents || classes.reduce((sum: number, c: any) => sum + (c.currentStudents || 0), 0),
+      icon: PiStudentBold,
       iconBg: "bg-purple-50",
       iconColor: "text-purple-500",
-      trend: `+${totalStudentsLinked}`,
+      trend: "+0%",
       up: true,
     },
   ];
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "active":
-        return { label: "Active", className: "bg-green-50 text-green-700 border border-green-200" };
-      case "inactive":
-        return { label: "Inactive", className: "bg-gray-50 text-gray-600 border border-gray-200" };
-      default:
-        return { label: "Active", className: "bg-green-50 text-green-700 border border-green-200" };
-    }
-  };
-
-  const handleDelete = async (parentId: string) => {
-    if (!confirm("Are you sure you want to delete this parent? This action cannot be undone.")) return;
+  const handleDelete = async (classId: string) => {
+    if (!confirm("هل أنت متأكد من حذف هذا الفصل؟ لا يمكن التراجع عن هذا الإجراء.")) return;
     
-    setDeletingId(parentId);
+    setDeletingId(classId);
     try {
-      await deleteParent({ parentId: parentId as any });
+      await deleteClass({ classId: classId as any });
     } catch (error: any) {
-      console.error("Error deleting parent:", error);
-      alert(error.message || "An error occurred while deleting the parent.");
+      console.error("Error deleting class:", error);
+      alert(error.message || "حدث خطأ أثناء حذف الفصل");
     } finally {
       setDeletingId(null);
     }
   };
 
-  const handleLinkParents = (parentId: string) => {
-    setSelectedParentId(parentId);
-    setIsLinkModalOpen(true);
-  };
-
-   const handleExportCSV = () => {
+  const handleExportCSV = () => {
     setIsExporting(true);
     try {
-      // إعداد البيانات للتصدير
-      const exportData = parents.map((parent: any) => ({
-        "ID": parent.parentId || parent._id.slice(-6),
-        "Name": parent.name,
-        "Email": parent.email,
-        "Phone": parent.phoneNumber || "",
-        "Job Title": parent.jobTitle || "",
-        "Work Address": parent.workAddress || "",
-        "Status": parent.status === "active" ? "Active" : "Inactive",
-        "Linked Students": parent.childrenCount || 0,
-        "Registered Date": new Date(parent.createdAt).toLocaleDateString(),
+      const exportData = classes.map((cls: any) => ({
+        "كود الفصل": cls.classCode,
+        "الاسم (عربي)": cls.classNameAr,
+        "الاسم (إنجليزي)": cls.classNameEn,
+        "الصف": cls.grade,
+        "الشعبة": cls.section,
+        "مشرف الفصل": cls.supervisorName || "غير محدد",
+        "عدد الطلاب": cls.currentStudents || 0,
+        "الحد الأقصى": cls.maxStudents,
+        "الموقع": cls.location || "",
+        "العام الدراسي": cls.academicYear,
+        "الحالة": cls.status === "active" ? "نشط" : cls.status === "completed" ? "مكتمل" : "غير نشط",
       }));
 
-      // تحويل إلى CSV
       const headers = Object.keys(exportData[0] || {});
       const csvRows = [
         headers.join(","),
-        ...exportData.map(row => 
+        ...exportData.map((row: any) => 
           headers.map(header => {
             const value = row[header as keyof typeof row];
-            // معالجة القيم التي تحتوي على فواصل
             if (typeof value === "string" && (value.includes(",") || value.includes('"'))) {
               return `"${value.replace(/"/g, '""')}"`;
             }
@@ -144,20 +139,18 @@ export default function AdminParentsPage() {
       ];
 
       const csvContent = csvRows.join("\n");
-      
-      // إنشاء رابط التحميل
       const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
       link.setAttribute("href", url);
-      link.setAttribute("download", `parents_export_${new Date().toISOString().slice(0, 19)}.csv`);
+      link.setAttribute("download", `classes_${new Date().toISOString().slice(0, 19)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Error exporting data:", error);
-      alert("Failed to export data");
+      alert("فشل تصدير البيانات");
     } finally {
       setIsExporting(false);
     }
@@ -167,27 +160,27 @@ export default function AdminParentsPage() {
     <div className="min-h-screen bg-[#f7fafa]">
       {/* Top bar */}
       <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-        <h1 className="text-xl font-semibold text-[#001f24]">Parents</h1>
+        <h1 className="text-xl font-semibold text-[#001f24]">إدارة الفصول</h1>
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
             className="gap-2 border-gray-200 text-gray-600 hover:bg-gray-50"
             onClick={handleExportCSV}
-            disabled={isExporting || parents.length === 0}
+            disabled={isExporting || classes.length === 0}
           >
             {isExporting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <Download className="h-4 w-4" />
             )}
-            {isExporting ? "Exporting..." : "Export CSV"}
+            {isExporting ? "جاري التصدير..." : "تصدير CSV"}
           </Button>
           <Button
             onClick={() => setIsAddModalOpen(true)}
             className="gap-2 bg-[#001f24] hover:bg-[#03363d] text-white"
           >
             <Plus className="h-4 w-4" />
-            Add Parent
+            إضافة فصل
           </Button>
         </div>
       </header>
@@ -195,9 +188,9 @@ export default function AdminParentsPage() {
       <div className="p-8 max-w-7xl mx-auto space-y-6">
         {/* Page title */}
         <div>
-          <h2 className="text-2xl font-bold text-[#001f24]">Manage Parents</h2>
+          <h2 className="text-2xl font-bold text-[#001f24]">إدارة الفصول الدراسية</h2>
           <p className="text-gray-500 mt-1 text-sm">
-            View, add, and manage all registered parents and link them to students.
+            عرض وإضافة وإدارة جميع الفصول الدراسية
           </p>
         </div>
 
@@ -232,7 +225,7 @@ export default function AdminParentsPage() {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search by name, email, or phone number..."
+              placeholder="بحث باسم الفصل أو كود الفصل..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9 border-gray-200 focus-visible:ring-[#03363d]/20"
@@ -240,18 +233,29 @@ export default function AdminParentsPage() {
           </div>
           <div className="flex gap-2">
             <select
+              value={selectedYear}
+              onChange={(e) => setSelectedYear(e.target.value)}
+              className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#03363d]/20 bg-white"
+            >
+              <option value="all">جميع السنوات</option>
+              {academicYears.map((year) => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+            <select
               value={selectedFilter}
               onChange={(e) => setSelectedFilter(e.target.value)}
               className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#03363d]/20 bg-white"
             >
-              <option value="all">All Parents</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="all">جميع الفصول</option>
+              <option value="active">نشط</option>
+              <option value="completed">مكتمل</option>
+              <option value="inactive">غير نشط</option>
             </select>
             <Button
               variant="outline"
               size="icon"
-              onClick={() => { setSelectedFilter("all"); setSearchQuery(""); }}
+              onClick={() => { setSelectedFilter("all"); setSelectedYear("all"); setSearchQuery(""); }}
               className="border-gray-200 text-gray-500 hover:bg-gray-50"
             >
               <Filter className="h-4 w-4" />
@@ -265,135 +269,119 @@ export default function AdminParentsPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-[#f7fafa]">
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Parent</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Contact Information</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Job Title</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Students</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الفصل</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الصف / الشعبة</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">مشرف الفصل</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">عدد الطلاب</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">العام الدراسي</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الحالة</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الإجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-16 text-center">
+                    <td colSpan={7} className="px-6 py-16 text-center">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#001f24]" />
                     </td>
                   </tr>
-                ) : parents.length === 0 ? (
+                ) : classes.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-16 text-center">
+                    <td colSpan={7} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center">
-                          <Users className="h-8 w-8 text-blue-400" />
+                          <BookOpen className="h-8 w-8 text-blue-400" />
                         </div>
-                        <p className="text-gray-500 font-medium">No parents found</p>
+                        <p className="text-gray-500 font-medium">لا توجد فصول دراسية</p>
                         <Button
                           size="sm"
                           onClick={() => setIsAddModalOpen(true)}
                           className="bg-[#001f24] hover:bg-[#03363d] text-white gap-2"
                         >
                           <Plus className="h-4 w-4" />
-                          Add Parent
+                          إضافة فصل
                         </Button>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  parents.map((parent: any) => {
-                    const statusBadge = getStatusBadge(parent.status);
+                  classes.map((cls: any) => {
+                    const statusBadge = getStatusBadge(cls.status);
                     return (
-                      <tr key={parent._id} className="hover:bg-[#f7fafa] transition-colors">
-                        {/* Parent */}
+                      <tr key={cls._id} className="hover:bg-[#f7fafa] transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                              <span className="text-blue-600 font-bold text-sm">
-                                {parent.name?.charAt(0)?.toUpperCase() || "?"}
-                              </span>
-                            </div>
+                            
                             <div>
-                              <p className="font-semibold text-[#001f24] text-sm">{parent.name}</p>
-                              <p className="text-xs text-gray-400 font-mono">
-                                #{parent.parentId || parent._id.slice(-6).toUpperCase()}
-                              </p>
+                              <p className="text-xs text-gray-400 font-mono">{cls.classCode}</p>
                             </div>
                           </div>
                         </td>
 
-                        {/* Contact */}
                         <td className="px-6 py-4">
                           <div className="space-y-1">
-                            <p className="text-sm text-gray-600 flex items-center gap-1.5">
-                              <Mail className="h-3.5 w-3.5 text-gray-400" />
-                              {parent.email}
-                            </p>
-                            {parent.phoneNumber && (
-                              <p className="text-sm text-gray-600 flex items-center gap-1.5">
-                                <Phone className="h-3.5 w-3.5 text-gray-400" />
-                                {parent.phoneNumber}
-                              </p>
-                            )}
+                            <p className="text-sm text-gray-600">{cls.grade}</p>
+                            <p className="text-xs text-gray-400">شعبة {cls.section}</p>
                           </div>
                         </td>
 
-                        {/* Job Title */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1.5">
-                            <Briefcase className="h-3.5 w-3.5 text-gray-400" />
+                            <GraduationCap className="h-3.5 w-3.5 text-gray-400" />
                             <span className="text-sm text-gray-600">
-                              {parent.jobTitle || "—"}
+                              {cls.supervisorName || "غير محدد"}
                             </span>
                           </div>
-                          {parent.workAddress && (
+                          {cls.location && (
                             <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                              <Building2 className="h-3 w-3" />
-                              {parent.workAddress.length > 30 ? parent.workAddress.slice(0, 30) + "..." : parent.workAddress}
+                              <MapPin className="h-3 w-3" />
+                              {cls.location}
                             </p>
                           )}
-                        </td>
+                         </td>
 
-                        {/* Children Count */}
                         <td className="px-6 py-4">
-                          <button
-                            onClick={() => handleLinkParents(parent._id)}
-                            className="flex items-center gap-1.5 text-[#1a7a8a] hover:text-[#001f24] transition-colors group"
-                          >
-                            <Users className="h-4 w-4" />
-                            <span className="text-sm font-semibold">{parent.childrenCount || 0}</span>
-                            <span className="text-xs text-gray-400 group-hover:text-gray-500">Students</span>
-                          </button>
-                        </td>
+                          <div className="flex items-center gap-1.5">
+                            <Users className="h-3.5 w-3.5 text-gray-400" />
+                            <span className="text-sm font-semibold text-[#001f24]">{cls.currentStudents || 0}</span>
+                            <span className="text-xs text-gray-400">/ {cls.maxStudents}</span>
+                          </div>
+                         </td>
 
-                        {/* Status */}
                         <td className="px-6 py-4">
-                          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusBadge.className}`}>
+                          <div className="flex items-center gap-1.5">
+                            <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                            <span className="text-sm text-gray-600">{cls.academicYear}</span>
+                          </div>
+                         </td>
+
+                        <td className="px-6 py-4">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${statusBadge.className}`}>
                             {statusBadge.label}
                           </span>
-                        </td>
+                         </td>
 
-                        {/* Actions */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1">
-                            <Link href={`/admin/parents/${parent._id}`}>
+                            <Link href={`/admin/classes/${cls._id}`}>
                               <button className="p-2 hover:bg-blue-50 rounded-lg transition-colors group">
                                 <Edit className="h-4 w-4 text-gray-400 group-hover:text-blue-600" />
                               </button>
                             </Link>
                             <button
                               className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
-                              onClick={() => handleDelete(parent._id)}
-                              disabled={deletingId === parent._id}
+                              onClick={() => handleDelete(cls._id)}
+                              disabled={deletingId === cls._id}
                             >
-                              {deletingId === parent._id ? (
+                              {deletingId === cls._id ? (
                                 <Loader2 className="h-4 w-4 animate-spin text-red-400" />
                               ) : (
                                 <Trash2 className="h-4 w-4 text-gray-400 group-hover:text-red-500" />
                               )}
                             </button>
                           </div>
-                        </td>
-                      </tr>
+                         </td>
+                       </tr>
                     );
                   })
                 )}
@@ -402,27 +390,19 @@ export default function AdminParentsPage() {
           </div>
 
           {/* Table footer */}
-          {parents.length > 0 && (
+          {classes.length > 0 && (
             <div className="px-6 py-3 border-t border-gray-50 bg-[#f7fafa]">
               <p className="text-xs text-gray-400 text-right">
-                Showing <span className="font-semibold text-[#001f24]">{parents.length}</span> of {" "}
-                <span className="font-semibold text-[#001f24]">{parents.length}</span> parents
+                عرض <span className="font-semibold text-[#001f24]">{classes.length}</span> من{" "}
+                <span className="font-semibold text-[#001f24]">{classes.length}</span> فصل
               </p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Modals */}
-      <AddParentModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
-      <LinkParentStudentModal 
-        isOpen={isLinkModalOpen} 
-        onClose={() => {
-          setIsLinkModalOpen(false);
-          setSelectedParentId(null);
-        }}
-        parentId={selectedParentId}
-      />
+      {/* Add Class Modal */}
+      <AddClassModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
     </div>
   );
 }
