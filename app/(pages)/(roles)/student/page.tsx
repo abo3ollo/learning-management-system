@@ -10,7 +10,7 @@ import { useEffect } from "react";
 export default function StudentDashboard() {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
-  const currentUser = useQuery(api.user.getCurrentUser);
+  const currentUser = useQuery(api.user.auth.getCurrentUser);
   const courses = currentUser && currentUser.role === "student"
     ? useQuery(api.courses.getStudentCourses, {
         studentId: currentUser._id,

@@ -16,21 +16,26 @@ import {
   GraduationCap,
   Calendar,
   MapPin,
-  Clock,
   CheckCircle,
   XCircle,
   BookOpen,
+  UserPlus,
+  UserMinus,
+  School,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddClassModal } from "@/app/_components/AddClassModal";
-import { SiGoogleclassroom } from "react-icons/si";
-import { PiStudentBold } from "react-icons/pi";
+import { ManageClassStudentsModal } from "@/app/_components/ManageClassStudentsModal";
+import { ManageClassTeachersModal } from "@/app/_components/ManageClassTeachersModal";
 
 export default function AdminClassesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isManageStudentsModalOpen, setIsManageStudentsModalOpen] = useState(false);
+  const [isManageTeachersModalOpen, setIsManageTeachersModalOpen] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [selectedYear, setSelectedYear] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -41,14 +46,13 @@ export default function AdminClassesPage() {
     academicYear: selectedYear !== "all" ? selectedYear : undefined,
     search: searchQuery || undefined,
   });
-  console.log(classesData);
   const classesStats = useQuery(api.classes.classes.getClassesStats);
   const deleteClass = useMutation(api.classes.classes.deleteClass);
 
   const classes = classesData || [];
   const isLoading = classesData === undefined;
 
-  const academicYears = ["2023-2024", "2024-2025", "2025-2026"];
+  const academicYears = ["2025-2026" ,"2026-2027", "2027-2028", "2028-2029", "2029-2030"];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -67,7 +71,7 @@ export default function AdminClassesPage() {
     {
       label: "إجمالي الفصول",
       value: classesStats?.total || classes.length,
-      icon: SiGoogleclassroom,
+      icon: BookOpen,
       iconBg: "bg-blue-50",
       iconColor: "text-blue-500",
       trend: "+0%",
@@ -85,7 +89,7 @@ export default function AdminClassesPage() {
     {
       label: "إجمالي الطلاب",
       value: classesStats?.totalStudents || classes.reduce((sum: number, c: any) => sum + (c.currentStudents || 0), 0),
-      icon: PiStudentBold,
+      icon: Users,
       iconBg: "bg-purple-50",
       iconColor: "text-purple-500",
       trend: "+0%",
@@ -105,6 +109,16 @@ export default function AdminClassesPage() {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleManageStudents = (classId: string) => {
+    setSelectedClassId(classId);
+    setIsManageStudentsModalOpen(true);
+  };
+
+  const handleManageTeachers = (classId: string) => {
+    setSelectedClassId(classId);
+    setIsManageTeachersModalOpen(true);
   };
 
   const handleExportCSV = () => {
@@ -127,7 +141,7 @@ export default function AdminClassesPage() {
       const headers = Object.keys(exportData[0] || {});
       const csvRows = [
         headers.join(","),
-        ...exportData.map((row: any) => 
+        ...exportData.map((row: Record<string, unknown>) => 
           headers.map(header => {
             const value = row[header as keyof typeof row];
             if (typeof value === "string" && (value.includes(",") || value.includes('"'))) {
@@ -272,7 +286,8 @@ export default function AdminClassesPage() {
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الفصل</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الصف / الشعبة</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">مشرف الفصل</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">عدد الطلاب</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الطلاب</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">المعلمون</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">العام الدراسي</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الحالة</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الإجراءات</th>
@@ -281,13 +296,13 @@ export default function AdminClassesPage() {
               <tbody className="divide-y divide-gray-50">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-16 text-center">
+                    <td colSpan={8} className="px-6 py-16 text-center">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#001f24]" />
                     </td>
                   </tr>
                 ) : classes.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-16 text-center">
+                    <td colSpan={8} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center">
                           <BookOpen className="h-8 w-8 text-blue-400" />
@@ -311,8 +326,11 @@ export default function AdminClassesPage() {
                       <tr key={cls._id} className="hover:bg-[#f7fafa] transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            
+                            <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
+                              <BookOpen className="h-5 w-5 text-blue-500" />
+                            </div>
                             <div>
+                              <p className="font-semibold text-[#001f24] text-sm">{cls.classNameAr}</p>
                               <p className="text-xs text-gray-400 font-mono">{cls.classCode}</p>
                             </div>
                           </div>
@@ -338,28 +356,46 @@ export default function AdminClassesPage() {
                               {cls.location}
                             </p>
                           )}
-                         </td>
+                        </td>
 
+                        {/* زر إدارة الطلاب */}
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-1.5">
-                            <Users className="h-3.5 w-3.5 text-gray-400" />
-                            <span className="text-sm font-semibold text-[#001f24]">{cls.currentStudents || 0}</span>
-                            <span className="text-xs text-gray-400">/ {cls.maxStudents}</span>
-                          </div>
-                         </td>
+                          <button
+                            onClick={() => handleManageStudents(cls._id)}
+                            className="flex items-center gap-1.5 text-[#1a7a8a] hover:text-[#001f24] transition-colors group"
+                            title="إدارة الطلاب"
+                          >
+                            <Users className="h-4 w-4" />
+                            <span className="text-sm font-semibold">{cls.currentStudents || 0}</span>
+                            <span className="text-xs text-gray-400 group-hover:text-gray-500">طالب</span>
+                          </button>
+                        </td>
+
+                        {/* زر إدارة المعلمين */}
+                        <td className="px-6 py-4">
+                          <button
+                            onClick={() => handleManageTeachers(cls._id)}
+                            className="flex items-center gap-1.5 text-[#1a7a8a] hover:text-[#001f24] transition-colors group"
+                            title="إدارة المعلمين"
+                          >
+                            <School className="h-4 w-4" />
+                            <span className="text-sm font-semibold">{cls.teachers?.length || 0}</span>
+                            <span className="text-xs text-gray-400 group-hover:text-gray-500">معلم</span>
+                          </button>
+                        </td>
 
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1.5">
                             <Calendar className="h-3.5 w-3.5 text-gray-400" />
                             <span className="text-sm text-gray-600">{cls.academicYear}</span>
                           </div>
-                         </td>
+                        </td>
 
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${statusBadge.className}`}>
                             {statusBadge.label}
                           </span>
-                         </td>
+                        </td>
 
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1">
@@ -380,8 +416,8 @@ export default function AdminClassesPage() {
                               )}
                             </button>
                           </div>
-                         </td>
-                       </tr>
+                        </td>
+                      </tr>
                     );
                   })
                 )}
@@ -401,8 +437,24 @@ export default function AdminClassesPage() {
         </div>
       </div>
 
-      {/* Add Class Modal */}
+      {/* Modals */}
       <AddClassModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
+      <ManageClassStudentsModal 
+        isOpen={isManageStudentsModalOpen} 
+        onClose={() => {
+          setIsManageStudentsModalOpen(false);
+          setSelectedClassId(null);
+        }}
+        classId={selectedClassId}
+      />
+      <ManageClassTeachersModal 
+        isOpen={isManageTeachersModalOpen} 
+        onClose={() => {
+          setIsManageTeachersModalOpen(false);
+          setSelectedClassId(null);
+        }}
+        classId={selectedClassId}
+      />
     </div>
   );
 }

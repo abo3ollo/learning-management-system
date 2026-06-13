@@ -11,6 +11,7 @@
 import type * as classes_classes from "../classes/classes.js";
 import type * as index from "../index.js";
 import type * as relationships_parentStudent from "../relationships/parentStudent.js";
+import type * as schedules_schedules from "../schedules/schedules.js";
 import type * as user_admin from "../user/admin.js";
 import type * as user_auth from "../user/auth.js";
 import type * as user_helpers from "../user/helpers.js";
@@ -28,6 +29,7 @@ declare const fullApi: ApiFromModules<{
   "classes/classes": typeof classes_classes;
   index: typeof index;
   "relationships/parentStudent": typeof relationships_parentStudent;
+  "schedules/schedules": typeof schedules_schedules;
   "user/admin": typeof user_admin;
   "user/auth": typeof user_auth;
   "user/helpers": typeof user_helpers;

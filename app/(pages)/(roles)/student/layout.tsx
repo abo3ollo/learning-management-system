@@ -15,7 +15,7 @@ export default function StudentLayout({
 }) {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
-  const currentUser = useQuery(api.user.getCurrentUser);
+  const currentUser = useQuery(api.user.auth.getCurrentUser);
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) {

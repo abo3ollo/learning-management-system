@@ -127,37 +127,109 @@ export default defineSchema({
   }),
 
   // classes
-  classes: defineTable({
-    classNameEn: v.string(),        // الاسم بالإنجليزي
-    classNameAr: v.string(),        // الاسم بالعربي
-    classCode: v.string(),          // كود الفصل (مثال: G5-A, P3-1)
-    grade: v.string(),              // الصف (مثال: الصف الأول الثانوي)
-    gradeLevel: v.number(),         // المستوى الدراسي (1,2,3...)
-    section: v.optional(v.string()), // الشعبة (أ, ب, ج...)
-    supervisorId: v.optional(v.id("users")), // مشرف الفصل (معلم)
-    academicYear: v.string(),       // العام الدراسي (مثال: 2025-2026)
-    maxStudents: v.number(),        // الحد الأقصى للطلاب
-    currentStudents: v.number(),    // عدد الطلاب الحالي
-    location: v.optional(v.string()), // الموقع (مبنى أ - غرفة 101)
-    status: v.union(
-      v.literal("active"),
-      v.literal("inactive"),
-      v.literal("completed")
+// convex/schema.ts - تعديل جدول classes
+classes: defineTable({
+  classNameEn: v.string(),
+  classNameAr: v.string(),
+  classCode: v.string(),
+  grade: v.string(),
+  gradeLevel: v.number(),
+  section: v.string(),
+  supervisorId: v.optional(v.id("users")),
+  academicYear: v.string(),
+  maxStudents: v.number(),
+  currentStudents: v.number(),
+  location: v.optional(v.string()),
+  status: v.union(
+    v.literal("active"),
+    v.literal("inactive"),
+    v.literal("completed")
+  ),
+  schedule: v.optional(v.object({
+    days: v.array(v.string()),
+    startTime: v.string(),
+    endTime: v.string(),
+  })),
+  students: v.array(v.id("users")),
+  teachers: v.optional(v.array(v.id("users"))), // ✅ جعل teachers اختيارياً
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_classCode", ["classCode"])
+  .index("by_grade", ["grade"])
+  .index("by_supervisor", ["supervisorId"])
+  .index("by_academicYear", ["academicYear"])
+  .index("by_status", ["status"]),
+
+
+// جدول الحصص الأسبوعي
+schedules: defineTable({
+  classId: v.id("classes"),           // الفصل
+  academicYear: v.string(),            // العام الدراسي
+  term: v.union(v.literal("first"), v.literal("second")), // الفصل الدراسي
+  weekDays: v.array(v.object({
+    day: v.union(
+      v.literal("sunday"),
+      v.literal("monday"),
+      v.literal("tuesday"),
+      v.literal("wednesday"),
+      v.literal("thursday"),
+      v.literal("friday"),
+      v.literal("saturday")
     ),
-    schedule: v.optional(v.object({
-      days: v.array(v.string()),    // أيام الأسبوع
-      startTime: v.string(),        // وقت البداية
-      endTime: v.string(),          // وقت النهاية
+    periods: v.array(v.object({
+      periodNumber: v.number(),         // رقم الحصة (1،2،3...)
+      startTime: v.string(),            // وقت البداية "08:00"
+      endTime: v.string(),              // وقت النهاية "09:00"
+      subject: v.string(),              // المادة
+      teacherId: v.optional(v.id("users")),      // المعلم
+      room: v.optional(v.string()),     // رقم الفصل/القاعة
+      isBreak: v.boolean(),             // هل هي حصة استراحة؟
+      notes: v.optional(v.string()),    // ملاحظات
     })),
-    students: v.array(v.id("users")), // قائمة الطلاب المسجلين
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_classCode", ["classCode"])
-    .index("by_grade", ["grade"])
-    .index("by_supervisor", ["supervisorId"])
-    .index("by_academicYear", ["academicYear"])
-    .index("by_status", ["status"]),
+  })),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_class", ["classId"])
+  .index("by_academicYear", ["academicYear"]),
+
+// تسجيل الحضور
+attendance: defineTable({
+  classId: v.id("classes"),
+  studentId: v.id("users"),
+  date: v.string(),                     // تاريخ الحصة "2024-01-15"
+  periodNumber: v.number(),             // رقم الحصة
+  status: v.union(
+    v.literal("present"),               // حاضر
+    v.literal("absent"),                // غائب
+    v.literal("late"),                  // متأخر
+    v.literal("excused")                // بعذر
+  ),
+  checkInTime: v.optional(v.string()),  // وقت الدخول
+  checkOutTime: v.optional(v.string()), // وقت الخروج
+  notes: v.optional(v.string()),
+  recordedBy: v.id("users"),            // المعلم الذي سجل الحضور
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_class_date", ["classId", "date"])
+  .index("by_student", ["studentId"])
+  .index("by_date", ["date"]),
+
+// إشعارات التذكير
+scheduleReminders: defineTable({
+  scheduleId: v.id("schedules"),
+  classId: v.id("classes"),
+  periodNumber: v.number(),
+  reminderTime: v.number(),              // وقت الإشعار (timestamp)
+  sent: v.boolean(),                    // هل تم الإرسال؟
+  sentAt: v.optional(v.number()),
+  createdAt: v.number(),
+})
+  .index("by_schedule", ["scheduleId"])
+  .index("by_class", ["classId"])
+  .index("by_reminderTime", ["reminderTime"]),
 
   courses: defineTable({
     title: v.string(),

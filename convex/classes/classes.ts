@@ -46,7 +46,6 @@ export const createClass = mutation({
 
     const classCode = await generateClassCode(ctx, args.gradeLevel, args.section);
 
-    // التحقق من عدم وجود كود مكرر
     const existing = await ctx.db
       .query("classes")
       .withIndex("by_classCode", (q) => q.eq("classCode", classCode))
@@ -75,7 +74,6 @@ export const createClass = mutation({
       updatedAt: Date.now(),
     });
 
-    // ✅ تسجيل في سجل التدقيق - بدون classCode
     await ctx.db.insert("auditLogs", {
       userId: admin._id,
       action: "CREATE_CLASS",
@@ -89,6 +87,295 @@ export const createClass = mutation({
     });
 
     return { success: true, classId, classCode };
+  },
+});
+
+// ✅ إضافة طالب إلى الفصل
+export const addStudentToClass = mutation({
+  args: {
+    classId: v.id("classes"),
+    studentId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const admin = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!admin || admin.role !== "admin") {
+      throw new Error("مطلوب صلاحيات مشرف");
+    }
+
+    const classData = await ctx.db.get(args.classId);
+    if (!classData) throw new Error("الفصل غير موجود");
+
+    const student = await ctx.db.get(args.studentId);
+    if (!student || student.role !== "student") throw new Error("الطالب غير موجود");
+
+    const currentStudents = classData.students || [];
+    
+    if (currentStudents.includes(args.studentId)) {
+      throw new Error("الطالب مسجل بالفعل في هذا الفصل");
+    }
+
+    if (currentStudents.length >= classData.maxStudents) {
+      throw new Error("الحد الأقصى للطلاب في هذا الفصل قد تم الوصول إليه");
+    }
+
+    const updatedStudents = [...currentStudents, args.studentId];
+    await ctx.db.patch(args.classId, {
+      students: updatedStudents,
+      currentStudents: updatedStudents.length,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ إزالة طالب من الفصل
+export const removeStudentFromClass = mutation({
+  args: {
+    classId: v.id("classes"),
+    studentId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const admin = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!admin || admin.role !== "admin") {
+      throw new Error("مطلوب صلاحيات مشرف");
+    }
+
+    const classData = await ctx.db.get(args.classId);
+    if (!classData) throw new Error("الفصل غير موجود");
+
+    const currentStudents = classData.students || [];
+    
+    if (!currentStudents.includes(args.studentId)) {
+      throw new Error("الطالب غير مسجل في هذا الفصل");
+    }
+
+    const updatedStudents = currentStudents.filter(id => id !== args.studentId);
+    await ctx.db.patch(args.classId, {
+      students: updatedStudents,
+      currentStudents: updatedStudents.length,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ إضافة معلم إلى الفصل
+export const addTeacherToClass = mutation({
+  args: {
+    classId: v.id("classes"),
+    teacherId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const admin = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!admin || admin.role !== "admin") {
+      throw new Error("مطلوب صلاحيات مشرف");
+    }
+
+    const classData = await ctx.db.get(args.classId);
+    if (!classData) throw new Error("الفصل غير موجود");
+
+    const teacher = await ctx.db.get(args.teacherId);
+    if (!teacher || teacher.role !== "teacher") throw new Error("المعلم غير موجود");
+
+    // ✅ التحقق من undefined باستخدام || []
+    const currentTeachers = classData.teachers || [];
+    
+    if (currentTeachers.includes(args.teacherId)) {
+      throw new Error("المعلم موجود بالفعل في هذا الفصل");
+    }
+
+    const updatedTeachers = [...currentTeachers, args.teacherId];
+    await ctx.db.patch(args.classId, {
+      teachers: updatedTeachers,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ إزالة معلم من الفصل
+export const removeTeacherFromClass = mutation({
+  args: {
+    classId: v.id("classes"),
+    teacherId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const admin = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!admin || admin.role !== "admin") {
+      throw new Error("مطلوب صلاحيات مشرف");
+    }
+
+    const classData = await ctx.db.get(args.classId);
+    if (!classData) throw new Error("الفصل غير موجود");
+
+    // ✅ التحقق من undefined باستخدام || []
+    const currentTeachers = classData.teachers || [];
+    
+    if (!currentTeachers.includes(args.teacherId)) {
+      throw new Error("المعلم غير موجود في هذا الفصل");
+    }
+
+    const updatedTeachers = currentTeachers.filter(id => id !== args.teacherId);
+    await ctx.db.patch(args.classId, {
+      teachers: updatedTeachers,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ جلب طلاب الفصل
+export const getClassStudents = query({
+  args: { classId: v.id("classes") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const admin = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!admin || admin.role !== "admin") {
+      throw new Error("مطلوب صلاحيات مشرف");
+    }
+
+    const classData = await ctx.db.get(args.classId);
+    if (!classData) throw new Error("الفصل غير موجود");
+
+    const students = await Promise.all(
+      (classData.students || []).map(async (studentId) => {
+        const student = await ctx.db.get(studentId);
+        return student;
+      })
+    );
+
+    return students.filter(Boolean);
+  },
+});
+
+// ✅ جلب معلمي الفصل
+export const getClassTeachers = query({
+  args: { classId: v.id("classes") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const admin = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!admin || admin.role !== "admin") {
+      throw new Error("مطلوب صلاحيات مشرف");
+    }
+
+    const classData = await ctx.db.get(args.classId);
+    if (!classData) throw new Error("الفصل غير موجود");
+
+    // ✅ التحقق من undefined باستخدام || []
+    const teachers = await Promise.all(
+      (classData.teachers || []).map(async (teacherId) => {
+        const teacher = await ctx.db.get(teacherId);
+        return teacher;
+      })
+    );
+
+    return teachers.filter(Boolean);
+  },
+});
+
+// ✅ جلب الطلاب غير المسجلين في الفصل
+export const getAvailableStudents = query({
+  args: { classId: v.id("classes") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const admin = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!admin || admin.role !== "admin") {
+      throw new Error("مطلوب صلاحيات مشرف");
+    }
+
+    const classData = await ctx.db.get(args.classId);
+    if (!classData) throw new Error("الفصل غير موجود");
+
+    const allStudents = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "student"))
+      .collect();
+
+    const enrolledStudentIds = new Set(classData.students || []);
+    const availableStudents = allStudents.filter(student => !enrolledStudentIds.has(student._id));
+
+    return availableStudents;
+  },
+});
+
+// ✅ جلب المعلمين غير المسجلين في الفصل
+export const getAvailableTeachers = query({
+  args: { classId: v.id("classes") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const admin = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!admin || admin.role !== "admin") {
+      throw new Error("مطلوب صلاحيات مشرف");
+    }
+
+    const classData = await ctx.db.get(args.classId);
+    if (!classData) throw new Error("الفصل غير موجود");
+
+    const allTeachers = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "teacher"))
+      .collect();
+
+    const enrolledTeacherIds = new Set(classData.teachers || []);
+    const availableTeachers = allTeachers.filter(teacher => !enrolledTeacherIds.has(teacher._id));
+
+    return availableTeachers;
   },
 });
 
@@ -113,26 +400,24 @@ export const getClasses = query({
       throw new Error("مطلوب صلاحيات مشرف");
     }
 
-    let classesQuery = ctx.db.query("classes");
+    let classes = await ctx.db.query("classes").collect();
 
+    // Apply filters
     if (args.status) {
-      classesQuery = classesQuery.filter((q) => q.eq(q.field("status"), args.status));
+      classes = classes.filter((c) => c.status === args.status);
     }
     if (args.academicYear) {
-      classesQuery = classesQuery.filter((q) => q.eq(q.field("academicYear"), args.academicYear));
+      classes = classes.filter((c) => c.academicYear === args.academicYear);
     }
     if (args.gradeLevel) {
-      classesQuery = classesQuery.filter((q) => q.eq(q.field("gradeLevel"), args.gradeLevel));
+      classes = classes.filter((c) => c.gradeLevel === args.gradeLevel);
     }
-
-    let classes = await classesQuery.collect();
-
     if (args.search && args.search.trim() !== "") {
       const searchLower = args.search.toLowerCase();
-      classes = classes.filter((cls) =>
-        cls.classNameAr.toLowerCase().includes(searchLower) ||
-        cls.classNameEn.toLowerCase().includes(searchLower) ||
-        cls.classCode.toLowerCase().includes(searchLower)
+      classes = classes.filter((c) =>
+        c.classNameAr.toLowerCase().includes(searchLower) ||
+        c.classNameEn.toLowerCase().includes(searchLower) ||
+        c.classCode.toLowerCase().includes(searchLower)
       );
     }
 
@@ -147,6 +432,7 @@ export const getClasses = query({
           ...cls,
           supervisorName: supervisor?.name || "غير محدد",
           currentStudents: cls.students?.length || 0,
+          teachersCount: (cls.teachers || []).length,
         };
       })
     );
@@ -187,11 +473,21 @@ export const getClassById = query({
       })
     );
 
+    // جلب المعلمين المسجلين
+    const teachers = await Promise.all(
+      (classData.teachers || []).map(async (teacherId) => {
+        const teacher = await ctx.db.get(teacherId);
+        return teacher;
+      })
+    );
+
     return {
       ...classData,
       supervisorName: supervisor?.name || "غير محدد",
       students: students.filter(Boolean),
+      teachers: teachers.filter(Boolean),
       currentStudents: classData.students?.length || 0,
+      teachersCount: (classData.teachers || []).length,
     };
   },
 });
@@ -227,6 +523,9 @@ export const updateClass = mutation({
     if (!admin || admin.role !== "admin") {
       throw new Error("مطلوب صلاحيات مشرف");
     }
+
+    const classData = await ctx.db.get(args.classId);
+    if (!classData) throw new Error("الفصل غير موجود");
 
     const updateData: any = { updatedAt: Date.now() };
     if (args.classNameEn !== undefined) updateData.classNameEn = args.classNameEn;
