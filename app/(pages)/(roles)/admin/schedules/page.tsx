@@ -26,6 +26,8 @@ export default function AdminSchedulesPage() {
   const [selectedTerm, setSelectedTerm] = useState<"first" | "second">("first");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+
+  const classes = useQuery(api.classes.classes.getClasses, {});
   // جلب الجداول حسب العام الدراسي والفصل الدراسي
   const schedules = useQuery(api.schedules.schedules.getSchedulesByYearAndTerm, {
     academicYear: selectedYear,
@@ -40,7 +42,7 @@ export default function AdminSchedulesPage() {
 
   const handleDelete = async (scheduleId: string) => {
     if (!confirm("هل أنت متأكد من حذف هذا الجدول؟")) return;
-    
+
     setDeletingId(scheduleId);
     try {
       await deleteSchedule({ scheduleId: scheduleId as any });
@@ -190,12 +192,12 @@ export default function AdminSchedulesPage() {
                           const maxPeriods = Math.max(
                             ...schedule.weekDays.map((day: any) => day.periods?.length || 0)
                           );
-                          
+
                           return Array.from({ length: maxPeriods }, (_, periodIdx) => {
                             const periodNumber = periodIdx + 1;
                             // العثور على وقت الحصة من أول يوم
                             const firstDayPeriod = schedule.weekDays.find((d: any) => d.periods?.[periodIdx])?.periods[periodIdx];
-                            
+
                             return (
                               <tr key={periodNumber} className="border-b border-gray-100 hover:bg-gray-50">
                                 <td className="p-3 font-medium text-[#001f24] bg-gray-50 text-center">
@@ -211,11 +213,11 @@ export default function AdminSchedulesPage() {
                                 {orderedDays.map(day => {
                                   const dayData = schedule.weekDays.find((d: any) => d.day === day);
                                   const period = dayData?.periods?.[periodIdx];
-                                  
+
                                   if (!period) {
                                     return <td key={day} className="p-3 text-center text-gray-300">—</td>;
                                   }
-                                  
+
                                   return (
                                     <td key={day} className="p-3 text-center align-top">
                                       {period.isBreak ? (
@@ -273,7 +275,7 @@ export default function AdminSchedulesPage() {
       <CreateScheduleModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        classes={[]}
+        classes={classes || []}
       />
     </div>
   );
