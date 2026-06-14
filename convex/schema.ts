@@ -231,6 +231,56 @@ scheduleReminders: defineTable({
   .index("by_class", ["classId"])
   .index("by_reminderTime", ["reminderTime"]),
 
+
+
+  // ─── Add these two tables to your existing convex/schema.ts ─────
+// Inside the defineSchema({ ... }) object, alongside your other tables
+
+  mediaFiles: defineTable({
+    name:       v.string(),
+    type:       v.union(
+      v.literal("image"),
+      v.literal("video"),
+      v.literal("youtube"),
+      v.literal("pdf"),
+      v.literal("audio"),
+    ),
+    url:        v.string(),           // R2 public URL or YouTube URL
+    r2Key:      v.optional(v.string()), // R2 object key (for deletion)
+    size:       v.optional(v.number()),  // bytes (0 for YouTube)
+    mimeType:   v.optional(v.string()),  // e.g. "image/jpeg"
+    context:    v.string(),           // "general" | "classroom" | etc.
+    status:     v.union(v.literal("ok"), v.literal("draft")),
+    uploadedBy: v.id("users"),
+    uploadedAt: v.number(),
+    usedIn:     v.array(v.id("mediaAssignments")), // assignment IDs
+  })
+    .index("by_type",     ["type"])
+    .index("by_context",  ["context"])
+    .index("by_uploader", ["uploadedBy"])
+    .index("by_status",   ["status"]),
+
+  mediaAssignments: defineTable({
+    mediaFileIds:    v.array(v.id("mediaFiles")),
+    assignTo:        v.union(
+      v.literal("class"),
+      v.literal("student"),
+      v.literal("section"),
+    ),
+    targetId:        v.string(),       // classId | studentId | sectionId
+    title:           v.string(),
+    description:     v.optional(v.string()),
+    dueDate:         v.optional(v.number()),
+    alwaysAvailable: v.boolean(),
+    availability:    v.optional(v.string()), // "media.always" | "media.scheduled"
+    status:          v.union(v.literal("draft"), v.literal("published")),
+    assignedBy:      v.id("users"),
+    createdAt:       v.number(),
+  })
+    .index("by_target", ["targetId"])
+    .index("by_status", ["status"])
+    .index("by_assigner", ["assignedBy"]),
+
   courses: defineTable({
     title: v.string(),
     description: v.string(),

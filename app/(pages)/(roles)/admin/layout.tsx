@@ -27,6 +27,7 @@ import { RiParentFill } from "react-icons/ri";
 import { FaChalkboardTeacher } from "react-icons/fa";
 import { SiGoogleclassroom } from "react-icons/si";
 import { AiOutlineSchedule } from "react-icons/ai";
+import { MdOutlinePermMedia } from "react-icons/md";
 
 
 export default function AdminLayout({
@@ -66,8 +67,8 @@ export default function AdminLayout({
     { href: "/admin/students", label: "Students",        icon: GraduationCap   },
     { href: "/admin/parents",  label: "Parents",         icon: RiParentFill    },
     { href: "/admin/classes",  label: "Classes",         icon: SiGoogleclassroom },
-    { href: "/admin/schedules",label: "Schedules",       icon: AiOutlineSchedule    },
-    { href: "/admin/circles",  label: "Circles",         icon: Circle          },
+    { href: "/admin/schedules",label: "Schedules",       icon: AiOutlineSchedule  },
+    { href: "/admin/media",    label: "Media",           icon: MdOutlinePermMedia  },
     { href: "/admin/content",  label: "Content Library", icon: Library         },
     { href: "/admin/approvals",label: "Approvals",       icon: ClipboardCheck  },
     { href: "/admin/settings", label: "Settings",        icon: Settings        },
