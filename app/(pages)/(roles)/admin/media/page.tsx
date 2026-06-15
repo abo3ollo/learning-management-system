@@ -24,6 +24,7 @@ import {
   Music,
   FileArchive,
   MoreVertical,
+  Play,
 } from "lucide-react";
 import Link from "next/link";
 import { BsYoutube } from "react-icons/bs";
@@ -49,14 +50,55 @@ function formatDate(ts?: number) {
   });
 }
 
-function FileIcon({ type, className }: { type: string; className?: string }) {
+function getYouTubeVideoId(url: string): string | null {
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11})/,
+    /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+    /(?:youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+function getYouTubeThumbnail(url: string): string | null {
+  const videoId = getYouTubeVideoId(url);
+  if (videoId) {
+    return `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+  }
+  return null;
+}
+
+function FileIcon({ file, className }: { file: any; className?: string }) {
   const cls = className || "h-12 w-12 mx-auto mb-3";
-  if (type === "image") return <Image className={`${cls} text-blue-400`} />;
-  if (type === "youtube") return <BsYoutube className={`${cls} text-red-500`} />;
-  if (type === "video") return <Video className={`${cls} text-purple-400`} />;
-  if (type === "pdf") return <FileText className={`${cls} text-red-400`} />;
-  if (type === "audio") return <Music className={`${cls} text-green-400`} />;
-  if (type === "archive") return <FileArchive className={`${cls} text-amber-400`} />;
+  
+  if (file.type === "youtube") {
+    const thumbnailUrl = getYouTubeThumbnail(file.url);
+    if (thumbnailUrl) {
+      return (
+        <div className="relative w-full h-full">
+          <img 
+            src={thumbnailUrl}
+            alt={file.name}
+            className="w-full h-full object-cover rounded-lg"
+            onError={(e) => {
+              (e.target as HTMLImageElement).style.display = "none";
+            }}
+          />
+        </div>
+      );
+    }
+    return <BsYoutube className={`${cls} text-red-500`} />;
+  }
+  
+  if (file.type === "image") return <Image className={`${cls} text-blue-400`} />;
+  if (file.type === "video") return <Video className={`${cls} text-purple-400`} />;
+  if (file.type === "pdf") return <FileText className={`${cls} text-red-400`} />;
+  if (file.type === "audio") return <Music className={`${cls} text-green-400`} />;
   return <File className={`${cls} text-gray-400`} />;
 }
 
@@ -72,6 +114,7 @@ function FileModal({
 }) {
   const [copied, setCopied] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
 
   const handleCopy = () => {
     navigator.clipboard.writeText(file.url);
@@ -98,6 +141,17 @@ function FileModal({
     { label: "تاريخ الرفع", value: formatDate(file.uploadedAt) },
   ];
 
+  const getYouTubeEmbedUrl = (url: string) => {
+    const videoId = getYouTubeVideoId(url);
+    if (videoId) {
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+    return null;
+  };
+
+  const embedUrl = file.type === "youtube" ? getYouTubeEmbedUrl(file.url) : null;
+  const thumbnailUrl = file.type === "youtube" ? getYouTubeThumbnail(file.url) : null;
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
@@ -108,7 +162,6 @@ function FileModal({
         onClick={(e) => e.stopPropagation()}
         dir="rtl"
       >
-        {/* Header */}
         <div className="bg-linear-to-r from-[#001f24] to-[#03363d] px-6 py-4 flex items-center justify-between">
           <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-lg transition-colors">
             <X className="h-5 w-5 text-white" />
@@ -116,9 +169,7 @@ function FileModal({
           <h2 className="text-lg font-bold text-white">{file.name}</h2>
         </div>
 
-        {/* Body */}
         <div className="grid grid-cols-2">
-          {/* Left: details */}
           <div className="p-6 divide-y divide-gray-100">
             {rows.map((row) => (
               <div key={row.label} className="flex items-center justify-between py-3">
@@ -127,7 +178,6 @@ function FileModal({
               </div>
             ))}
 
-            {/* URL */}
             <div className="py-3">
               <p className="text-sm font-semibold text-[#001f24] mb-2">الرابط</p>
               <div className="bg-[#f7fafa] border border-[#c0c8c9] rounded-lg px-3 py-2 text-xs text-gray-500 font-mono truncate">
@@ -135,7 +185,6 @@ function FileModal({
               </div>
             </div>
 
-            {/* Status */}
             <div className="flex items-center justify-between py-3">
               <span className="text-sm font-semibold text-[#001f24]">حالة الملف</span>
               <span className="inline-flex items-center gap-1.5 bg-green-100 text-green-700 text-xs font-medium px-3 py-1 rounded-full">
@@ -143,33 +192,51 @@ function FileModal({
               </span>
             </div>
 
-            {/* Usage */}
             <div className="py-3">
               <p className="text-sm font-semibold text-[#001f24] mb-1">الاستخدام</p>
               <p className="text-sm text-gray-500">
                 {file.usedIn?.length === 0 ? "غير مستخدم" : `${file.usedIn?.length} تعيين`}
               </p>
             </div>
-
-            {/* Assignments */}
-            <div className="py-3">
-              <p className="text-sm font-semibold text-[#001f24] mb-1">تعيينات الوسائط</p>
-              <p className="text-sm text-gray-500">
-                {file.usedIn?.length === 0 ? "غير معين" : `${file.usedIn?.length} تعيين`}
-              </p>
-            </div>
           </div>
 
-          {/* Right: preview */}
           <div className="bg-[#f7fafa] flex flex-col items-center justify-center p-8 border-r border-[#c0c8c9]">
-            <div className="w-32 h-32 bg-white rounded-xl border border-[#c0c8c9] flex flex-col items-center justify-center shadow-sm">
-              <FileIcon type={file.type} className="h-14 w-14 mb-2" />
-              <p className="text-xs text-gray-400 text-center truncate w-full px-2">{file.name}</p>
-            </div>
+            {file.type === "youtube" && embedUrl && thumbnailUrl ? (
+              <div className="w-full">
+                {showVideo ? (
+                  <iframe
+                    src={embedUrl}
+                    title={file.name}
+                    className="w-full aspect-video rounded-lg"
+                    allowFullScreen
+                  />
+                ) : (
+                  <div 
+                    className="relative w-full aspect-video rounded-lg overflow-hidden cursor-pointer group"
+                    onClick={() => setShowVideo(true)}
+                  >
+                    <img
+                      src={thumbnailUrl}
+                      alt={file.name}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/50 transition-colors">
+                      <div className="w-14 h-14 rounded-full bg-red-600 flex items-center justify-center">
+                        <Play className="h-6 w-6 text-white mr-1" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="w-32 h-32 bg-white rounded-xl border border-[#c0c8c9] flex flex-col items-center justify-center shadow-sm">
+                <FileIcon file={file} className="h-14 w-14 mb-2" />
+                <p className="text-xs text-gray-400 text-center truncate w-full px-2">{file.name}</p>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[#c0c8c9] bg-[#f7fafa]" dir="rtl">
           <button
             onClick={handleDelete}
@@ -200,14 +267,23 @@ function FileModal({
 // ─── YouTube Modal ───────────────────────────────────────────────
 function YoutubeModal({ onClose }: { onClose: () => void }) {
   const [url, setUrl] = useState("");
+  const [title, setTitle] = useState("");
   const [loading, setLoading] = useState(false);
   const addYoutube = useMutation(api.media.mediafiles.addYoutubeFile);
 
   const handleAdd = async () => {
     if (!url.trim()) return;
+    if (!title.trim()) {
+      alert("يرجى إدخال عنوان الفيديو");
+      return;
+    }
     setLoading(true);
     try {
-      await addYoutube({ url: url.trim(), context: "general" });
+      await addYoutube({ 
+        url: url.trim(), 
+        title: title.trim(),
+        context: "general" 
+      });
       onClose();
     } catch (err) {
       alert("حدث خطأ أثناء إضافة الفيديو");
@@ -234,7 +310,20 @@ function YoutubeModal({ onClose }: { onClose: () => void }) {
           <h2 className="text-lg font-bold text-[#001f24]">إضافة فيديو يوتيوب</h2>
         </div>
 
-        <label className="block text-sm font-medium text-gray-700 mb-2">رابط يوتيوب</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          عنوان الفيديو <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          placeholder="أدخل عنوان الفيديو"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="w-full border border-[#c0c8c9] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] focus:border-transparent mb-4"
+        />
+
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          رابط يوتيوب <span className="text-red-500">*</span>
+        </label>
         <input
           type="url"
           placeholder="https://youtube.com/watch?v=..."
@@ -252,7 +341,7 @@ function YoutubeModal({ onClose }: { onClose: () => void }) {
           </button>
           <button
             onClick={handleAdd}
-            disabled={loading || !url.trim()}
+            disabled={loading || !url.trim() || !title.trim()}
             className="flex items-center gap-2 px-5 py-2 text-sm font-semibold bg-[#001f24] hover:bg-[#03363d] text-white rounded-xl transition-colors disabled:opacity-50"
           >
             {loading && <Loader2 className="h-4 w-4 animate-spin" />}
@@ -286,7 +375,6 @@ export default function MediaDashboard() {
   const isLoading = files === undefined;
   const filtered = files ?? [];
 
-  // Stats
   const stats = {
     total: filtered.length,
     images: filtered.filter((f) => f.type === "image").length,
@@ -350,9 +438,14 @@ export default function MediaDashboard() {
     }
   };
 
+  // Helper to safely get thumbnail
+  const getSafeThumbnail = (url: string): string | null => {
+    const thumbnail = getYouTubeThumbnail(url);
+    return thumbnail;
+  };
+
   return (
     <div className="min-h-screen bg-[#f7fafa]" dir="rtl">
-
       {/* Header */}
       <div className="bg-linear-to-r from-[#001f24] to-[#03363d] px-8 py-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between flex-wrap gap-4">
@@ -391,7 +484,6 @@ export default function MediaDashboard() {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-
         {/* Stats Cards */}
         <div className="grid grid-cols-4 gap-4">
           <div className="bg-white rounded-xl p-4 border border-[#c0c8c9]">
@@ -472,7 +564,6 @@ export default function MediaDashboard() {
               <Filter className="h-4 w-4" /> تصفية
             </button>
 
-            {/* View Toggle */}
             <div className="flex gap-1 border border-gray-200 rounded-lg p-1">
               <button
                 onClick={() => setViewMode("grid")}
@@ -488,7 +579,7 @@ export default function MediaDashboard() {
               </button>
             </div>
 
-            <Link href="/admin/media/assignments" className="ms-auto">
+            <Link href="/admin/media/assignments" className="mr-auto">
               <button className="flex items-center gap-2 border border-[#1a7a8a] text-[#1a7a8a] hover:bg-[#e0f5f7] text-sm font-medium px-4 py-2 rounded-lg transition-colors">
                 <ClipboardList className="h-4 w-4" /> التعيينات الحالية
               </button>
@@ -515,24 +606,55 @@ export default function MediaDashboard() {
           </div>
         ) : viewMode === "grid" ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-            {filtered.map((file) => (
-              <div
-                key={file._id}
-                onClick={() => setSelectedFile(file)}
-                className="bg-white border border-[#c0c8c9] rounded-xl p-4 flex flex-col items-center cursor-pointer hover:border-[#1a7a8a] hover:shadow-md transition-all group"
-              >
-                <div className="w-full flex items-center justify-center h-24 bg-[#f7fafa] rounded-lg mb-3 group-hover:bg-[#e0f5f7] transition-colors">
-                  <FileIcon type={file.type} className="h-14 w-14" />
+            {filtered.map((file) => {
+              const thumbnail = file.type === "youtube" ? getSafeThumbnail(file.url) : null;
+              return (
+                <div
+                  key={file._id}
+                  onClick={() => setSelectedFile(file)}
+                  className="bg-white border border-[#c0c8c9] rounded-xl overflow-hidden cursor-pointer hover:border-[#1a7a8a] hover:shadow-md transition-all group"
+                >
+                  {file.type === "youtube" ? (
+                    <div className="relative w-full aspect-video bg-gray-900">
+                      {thumbnail ? (
+                        <>
+                          <img
+                            src={thumbnail}
+                            alt={file.name}
+                            className="w-full h-full object-cover group-hover:opacity-90 transition-opacity"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = "https://placehold.co/320x180/1a7a8a/white?text=YouTube";
+                            }}
+                          />
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center">
+                              <Play className="h-5 w-5 text-white mr-0.5" />
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <BsYoutube className="h-12 w-12 text-red-500" />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-24 bg-[#f7fafa] group-hover:bg-[#e0f5f7] transition-colors">
+                      <FileIcon file={file} className="h-14 w-14" />
+                    </div>
+                  )}
+                  
+                  <div className="p-3">
+                    <p className="text-xs text-[#001f24] font-medium text-center truncate w-full">
+                      {file.name}
+                    </p>
+                    <p className="text-xs text-gray-400 text-center mt-0.5">
+                      {file.type === "youtube" ? "يوتيوب" : formatBytes(file.size)}
+                    </p>
+                  </div>
                 </div>
-                <p className="text-xs text-[#001f24] font-medium text-center truncate w-full">
-                  {file.name}
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">{formatBytes(file.size)}</p>
-                {file.type === "youtube" && (
-                  <span className="text-xs text-red-500 mt-1">يوتيوب</span>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="bg-white rounded-xl border border-[#c0c8c9] overflow-hidden">
@@ -548,31 +670,49 @@ export default function MediaDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {filtered.map((file) => (
-                    <tr key={file._id} className="hover:bg-[#f7fafa] cursor-pointer" onClick={() => setSelectedFile(file)}>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <FileIcon type={file.type} className="h-8 w-8" />
-                          <div>
-                            <p className="text-sm font-medium text-[#001f24]">{file.name}</p>
-                            {file.type === "youtube" && (
-                              <p className="text-xs text-red-500">يوتيوب</p>
+                  {filtered.map((file) => {
+                    const thumbnail = file.type === "youtube" ? getSafeThumbnail(file.url) : null;
+                    return (
+                      <tr key={file._id} className="hover:bg-[#f7fafa] cursor-pointer" onClick={() => setSelectedFile(file)}>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            {file.type === "youtube" ? (
+                              thumbnail ? (
+                                <img 
+                                  src={thumbnail} 
+                                  alt={file.name}
+                                  className="w-10 h-10 rounded object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = "none";
+                                  }}
+                                />
+                              ) : (
+                                <BsYoutube className="h-8 w-8 text-red-500" />
+                              )
+                            ) : (
+                              <FileIcon file={file} className="h-8 w-8" />
                             )}
+                            <div>
+                              <p className="text-sm font-medium text-[#001f24]">{file.name}</p>
+                              {file.type === "youtube" && (
+                                <p className="text-xs text-red-500">يوتيوب</p>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
-                        {file.type === "image" ? "صورة" : file.type === "youtube" ? "يوتيوب" : file.type === "video" ? "فيديو" : file.type}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{formatBytes(file.size)}</td>
-                      <td className="px-4 py-3 text-sm text-gray-500">{formatDate(file.uploadedAt)}</td>
-                      <td className="px-4 py-3">
-                        <button className="p-1 hover:bg-gray-100 rounded-lg">
-                          <MoreVertical className="h-4 w-4 text-gray-400" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500">
+                          {file.type === "image" ? "صورة" : file.type === "youtube" ? "يوتيوب" : file.type === "video" ? "فيديو" : file.type}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-gray-500">{formatBytes(file.size)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-500">{formatDate(file.uploadedAt)}</td>
+                        <td className="px-4 py-3">
+                          <button className="p-1 hover:bg-gray-100 rounded-lg">
+                            <MoreVertical className="h-4 w-4 text-gray-400" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

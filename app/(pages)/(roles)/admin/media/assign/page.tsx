@@ -7,6 +7,8 @@ import { api } from "@/convex/_generated/api";
 import { useQuery, useMutation } from "convex/react";
 import { Id } from "@/convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
+import { BsYoutube } from "react-icons/bs";
+import { FaFile, FaImage, FaVideo } from "react-icons/fa";
 
 type AssignType = "class" | "student" | "section";
 
@@ -510,10 +512,10 @@ export default function MediaAssignPage() {
                                             {/* File info */}
                                             <div className="flex items-center gap-3 flex-1 mx-4">
                                                 <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center shrink-0 text-2xl">
-                                                    {file.type === "image" ? "🖼️"
-                                                        : file.type === "youtube" ? "▶️"
-                                                            : file.type === "video" ? "🎬"
-                                                                : "📁"}
+                                                    {file.type === "image" ? <FaImage />
+                                                        : file.type === "youtube" ? <BsYoutube />
+                                                            : file.type === "video" ? <FaVideo />
+                                                                : <FaFile />}
                                                 </div>
                                                 <div className="text-right min-w-0 flex-1">
                                                     <p className="text-sm font-semibold text-gray-800 truncate">{file.name}</p>

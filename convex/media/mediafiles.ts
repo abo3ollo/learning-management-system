@@ -131,6 +131,7 @@ export const createMediaFile = mutation({
 export const addYoutubeFile = mutation({
   args: {
     url:     v.string(),
+    title:   v.string(),  // ✅ جعل title مطلوباً
     context: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -152,10 +153,12 @@ export const addYoutubeFile = mutation({
       /(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/
     );
     const videoId = match ? match[1] : args.url;
-    const name = `YouTube: ${videoId}`;
+    
+    // ✅ استخدام العنوان المدخل من المستخدم بدلاً من المولّد تلقائياً
+    const name = args.title;
 
     const fileId = await ctx.db.insert("mediaFiles", {
-      name,
+      name,  // ✅ استخدام العنوان المدخل
       type:       "youtube",
       url:        args.url,
       size:       0,
