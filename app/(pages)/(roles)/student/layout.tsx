@@ -1,12 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { SignOutButton } from "@clerk/nextjs";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import {
+  LayoutDashboard,
+  Circle,
+  LogOut,
+  Menu,
+  X,
+  BarChart3,
+  Bell,
+  User,
+  Wallet,
+  MessageSquare,
+  Award,
+  FileText,
+  Megaphone,
+  School,
+} from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { SiWikibooks } from "react-icons/si";
+import { BsFileCheck } from "react-icons/bs";
 
 export default function StudentLayout({
   children,
@@ -14,69 +33,122 @@ export default function StudentLayout({
   children: React.ReactNode;
 }) {
   const { isLoaded, isSignedIn } = useAuth();
+  const pathname = usePathname();
   const router = useRouter();
+
   const currentUser = useQuery(api.user.auth.getCurrentUser);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn) {
-      router.push("/");
-      return;
-    }
-
+    if (!isLoaded) return;
+    if (!isSignedIn) { router.push("/"); return; }
     if (currentUser !== undefined && currentUser?.role !== "student") {
       router.push("/dashboard");
     }
   }, [isLoaded, isSignedIn, currentUser, router]);
 
-  if (!isLoaded || !currentUser) {
-    return null;
+  if (!isLoaded || currentUser === undefined || currentUser === null) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[#f7fafa]">
+        <Loader2 className="h-10 w-10 animate-spin text-[#001f24]" />
+      </div>
+    );
   }
 
+  if (currentUser.role !== "student") return null;
+
+  // قائمة التنقل الرئيسية
+  const navItems = [
+    { label: "اختياراتي", icon: SiWikibooks , href: "/student/my-courses" },
+    { label: "فصلي", icon: School , href: "/student/my-classes" },
+    { label: "واجبائي", icon: BsFileCheck , href: "/student/assignments" },
+    { label: "حضوري", icon: Circle , href: "/student/attendance" },
+    { label: "ChatBox", icon: MessageSquare , href: "/student/chat" },
+    { label: "وسائطي", icon: BarChart3 , href: "/student/media" },
+    { label: "شهاداتي", icon: Award , href: "/student/certificates" },
+    { label: "المنجر", icon: LayoutDashboard , href: "/student/dashboard" },
+    { label: "الإعلانات", icon: Megaphone , href: "/student/announcements" },
+    { label: "محفظتي", icon: Wallet , href: "/student/wallet" },
+    { label: "إشعاراتي", icon: Bell , href: "/student/notifications" },
+    { label: "ملفي الشخصي", icon: User , href: "/student/profile" },
+  ];
+
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-[#f7fafa] font-sans">
       {/* Sidebar */}
-      <div className="w-64 bg-gray-900 text-white">
-        <div className="p-6">
-          <Link href="/student" className="text-2xl font-bold">
-            📚 Student
-          </Link>
+      <div
+        className={`${
+          sidebarOpen ? "w-64" : "w-20"
+        } bg-[#001f24] text-white transition-all duration-300 flex flex-col shrink-0`}
+      >
+        {/* Logo */}
+        <div className="p-5 flex items-center justify-between border-b border-[#03363d]">
+          {sidebarOpen ? (
+            <Link href="/student" className="text-xl font-semibold tracking-tight">
+              LMS Student
+            </Link>
+          ) : (
+            <Link href="/student" className="text-xl font-semibold">
+              📚
+            </Link>
+          )}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-1.5 hover:bg-[#03363d] rounded-lg transition-colors"
+          >
+            {sidebarOpen ? <X size={18} /> : <Menu size={18} />}
+          </button>
         </div>
 
-        <nav className="mt-8 space-y-1">
-          <Link
-            href="/student"
-            className="block px-6 py-3 hover:bg-gray-800 rounded-r-lg transition-colors"
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/student/courses"
-            className="block px-6 py-3 hover:bg-gray-800 rounded-r-lg transition-colors"
-          >
-            My Courses
-          </Link>
+        {/* Nav */}
+        <nav className="flex-1 py-4 px-3 overflow-y-auto space-y-0.5">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
+                  isActive
+                    ? "bg-[#03363d] text-white"
+                    : "text-[#a3ced6] hover:bg-[#03363d] hover:text-white"
+                }`}
+              >
+                <Icon size={19} className="shrink-0" />
+                {sidebarOpen && (
+                  <span className="text-sm font-medium">{item.label}</span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="absolute bottom-0 w-64 border-t border-gray-700 p-4">
-          <div className="mb-4">
-            <p className="text-xs text-gray-400">Logged in as</p>
-            <p className="font-semibold text-sm">{currentUser.name}</p>
-            <p className="text-xs text-gray-400">{currentUser.email}</p>
-          </div>
+        {/* User + logout */}
+        <div className="border-t border-[#03363d] p-4">
+          {sidebarOpen && (
+            <div className="mb-3">
+              <p className="text-xs text-[#a3ced6] tracking-widest uppercase font-mono">
+                Logged in as
+              </p>
+              <p className="font-semibold text-sm mt-1 truncate">{currentUser.name}</p>
+              <p className="text-xs text-[#759fa7] truncate">{currentUser.email}</p>
+            </div>
+          )}
           <SignOutButton>
-            <button className="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 px-4 rounded transition-colors text-sm font-medium">
-              Sign Out
+            <button className="flex items-center gap-3 w-full bg-[#03363d] hover:bg-[#032a30] text-white py-2.5 px-3 rounded-lg transition-colors text-sm font-medium">
+              <LogOut size={17} />
+              {sidebarOpen && <span>Logout</span>}
             </button>
           </SignOutButton>
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="bg-white border-b border-gray-200 px-6 py-4">
-          <h1 className="text-2xl font-bold text-gray-900">Student Dashboard</h1>
-        </header>
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 overflow-auto">
+          {children}
+        </main>
       </div>
     </div>
   );

@@ -27,17 +27,17 @@ export const getPendingRegistrations = query({
 });
 
 // الموافقة على مستخدم
+// convex/user/admin.ts
+
 export const approveUser = mutation({
-  args: {
+  args: { 
     userId: v.id("users"),
-    role: v.optional(
-      v.union(
-        v.literal("student"),
-        v.literal("teacher"),
-        v.literal("parent"),
-        v.literal("admin")
-      )
-    ),
+    role: v.optional(v.union(
+      v.literal("student"),
+      v.literal("teacher"),
+      v.literal("parent"),
+      v.literal("admin")
+    ))
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -55,12 +55,27 @@ export const approveUser = mutation({
     const user = await ctx.db.get(args.userId);
     if (!user) throw new Error("المستخدم غير موجود");
 
+    // ✅ تحديث الحالة إلى active
     await ctx.db.patch(args.userId, {
-      status: "approved",
+      status: "active",
       approvedAt: Date.now(),
       approvedBy: admin._id,
       updatedAt: Date.now(),
       ...(args.role && { role: args.role }),
+    });
+
+    await ctx.db.insert("auditLogs", {
+      userId: admin._id,
+      action: "APPROVE_USER",
+      resourceType: "user",
+      resourceId: args.userId,
+      details: {
+        previousStatus: user.status,
+        previousRole: user.role,
+        newRole: args.role || user.role,
+        approvedBy: admin.email,
+      },
+      createdAt: Date.now(),
     });
 
     return { success: true };

@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 
-// إنشاء مستخدم من Clerk webhook
+// convex/user/auth.ts
+
 export const createUser = mutation({
   args: {
     clerkId: v.string(),
@@ -11,42 +12,78 @@ export const createUser = mutation({
       v.literal("student"),
       v.literal("teacher"),
       v.literal("parent"),
-      v.literal("admin"),
+      v.literal("admin")
     ),
     phoneNumber: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const existing = await ctx.db
+    // ✅ التحقق من وجود المستخدم بواسطة clerkId
+    const existingByClerkId = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
-    if (existing) {
-      if (existing.role !== args.role) {
-        await ctx.db.patch(existing._id, {
+    if (existingByClerkId) {
+      if (existingByClerkId.role !== args.role) {
+        await ctx.db.patch(existingByClerkId._id, {
           role: args.role,
           updatedAt: Date.now(),
         });
       }
-      return existing._id;
+      return existingByClerkId._id;
     }
 
-    const emailExists = await ctx.db
+    // ✅ التحقق من وجود المستخدم بواسطة البريد الإلكتروني
+    const existingByEmail = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
 
-    if (emailExists) {
-      throw new Error("Email already registered");
+    if (existingByEmail) {
+      // ✅ لو المستخدم موجود وطالب و active (أضافه الأدمن)، نربطه بحساب Clerk
+      if (existingByEmail.role === "student" && existingByEmail.status === "active") {
+        await ctx.db.patch(existingByEmail._id, {
+          clerkId: args.clerkId,
+          updatedAt: Date.now(),
+        });
+        return existingByEmail._id;
+      }
+
+      // ✅ لو المستخدم موجود بحالة pending، نرفض ونقول يستنى موافقة
+      if (existingByEmail.status === "pending") {
+        throw new Error("هذا البريد الإلكتروني قيد الانتظار للموافقة");
+      }
+
+      // ✅ لو المستخدم موجود بدور تاني (معلم، ولي أمر، أدمن)
+      throw new Error("هذا البريد الإلكتروني مستخدم من قبل");
     }
 
+    // ✅ كل الأدوار تتسجل pending (ما عدا الأدمن)
+    let status: "pending" | "approved" | "rejected" | "active" | "inactive" | "on_leave" = "pending";
+    
+    // ✅ الأدمن لازم pending عشان يوافق عليه أدمن تاني
+    if (args.role === "admin") {
+      status = "pending";
+    }
+
+    // ✅ المعلم وولي الأمر pending
+    if (args.role === "teacher" || args.role === "parent") {
+      status = "pending";
+    }
+
+    // ✅ الطالب pending برضه (هيكمل بياناته في المودال)
+    if (args.role === "student") {
+      status = "pending";
+    }
+
+    // ✅ إنشاء مستخدم جديد
     const userId = await ctx.db.insert("users", {
       clerkId: args.clerkId,
       name: args.name,
       email: args.email,
       phoneNumber: args.phoneNumber,
       role: args.role,
-      status: "pending",
+      status: status,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -68,7 +105,6 @@ export const createUser = mutation({
   },
 });
 
-// جلب المستخدم الحالي
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
@@ -80,6 +116,17 @@ export const getCurrentUser = query({
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .first();
 
+    return user;
+  },
+});
+
+export const getUserByEmail = mutation({
+  args: { email: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
     return user;
   },
 });

@@ -29,6 +29,7 @@ export function ManageClassStudentsModal({ isOpen, onClose, classId }: ManageCla
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // ✅ جلب بيانات الفصل بالكامل (بما فيها الطلاب كـ objects)
   const classData = useQuery(api.classes.classes.getClassById, 
     classId ? { classId: classId as any } : "skip"
   );
@@ -36,6 +37,9 @@ export function ManageClassStudentsModal({ isOpen, onClose, classId }: ManageCla
   const availableStudents = useQuery(api.classes.classes.getAvailableStudents, 
     classId ? { classId: classId as any } : "skip"
   );
+
+  console.log("classData students:", classData?.students);
+console.log("Enrolled students count:", classData?.students?.length);
 
   const addStudent = useMutation(api.classes.classes.addStudentToClass);
   const removeStudent = useMutation(api.classes.classes.removeStudentFromClass);
@@ -49,12 +53,16 @@ export function ManageClassStudentsModal({ isOpen, onClose, classId }: ManageCla
 
   if (!isOpen || !classId) return null;
 
+  // ✅ classData.students هي array من objects (بعد التعديل في getClassById)
   const enrolledStudents = classData?.students || [];
-  const available = (availableStudents || []).filter((student: any) =>
-    student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    student.studentId?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  
+  // ✅ فلتر الطلاب المتاحين
+  const available = (availableStudents || []).filter((student: any) => {
+    const searchLower = searchQuery.toLowerCase();
+    return student.name?.toLowerCase().includes(searchLower) ||
+      student.email?.toLowerCase().includes(searchLower) ||
+      student.studentId?.toLowerCase().includes(searchLower);
+  });
 
   const handleAddStudent = async (studentId: string) => {
     setAddingId(studentId);
@@ -166,12 +174,12 @@ export function ManageClassStudentsModal({ isOpen, onClose, classId }: ManageCla
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
                           <span className="text-blue-600 font-bold text-sm">
-                            {student.name?.charAt(0)?.toUpperCase()}
+                            {student.name?.charAt(0)?.toUpperCase() || "?"}
                           </span>
                         </div>
                         <div>
-                          <p className="font-medium text-[#001f24]">{student.name}</p>
-                          <p className="text-xs text-gray-500">{student.email}</p>
+                          <p className="font-medium text-[#001f24]">{student.name || "طالب"}</p>
+                          <p className="text-xs text-gray-500">{student.email || "..."}</p>
                         </div>
                       </div>
                       <Button
@@ -201,16 +209,16 @@ export function ManageClassStudentsModal({ isOpen, onClose, classId }: ManageCla
           </div>
         </div>
 
-        {/* Enrolled Students Section - Collapsible */}
+        {/* ✅ Enrolled Students Section - عرض الطلاب المسجلين بشكل صحيح */}
         {enrolledStudents.length > 0 && (
           <div className="border-t border-[#c0c8c9] p-4 bg-[#f7fafa]">
             <h3 className="text-sm font-semibold text-[#001f24] mb-3">الطلاب المسجلين حالياً</h3>
             <div className="flex flex-wrap gap-2">
               {enrolledStudents.map((student: any) => (
                 <div key={student._id} className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-[#c0c8c9]">
-                  <span className="text-sm text-[#001f24]">{student.name}</span>
+                  <span className="text-sm text-[#001f24]">{student.name || "طالب"}</span>
                   <button
-                    onClick={() => handleRemoveStudent(student._id, student.name)}
+                    onClick={() => handleRemoveStudent(student._id, student.name || "طالب")}
                     className="text-red-500 hover:text-red-700 transition-colors"
                   >
                     {removingId === student._id ? (

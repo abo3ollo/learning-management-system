@@ -1,3 +1,4 @@
+// app/_components/ConvexClerkProvider.tsx
 "use client";
 
 import { ConvexProviderWithClerk } from "convex/react-clerk";
@@ -18,32 +19,91 @@ function UserSync() {
   const currentUser = useQuery(api.user.auth.getCurrentUser);
 
   useEffect(() => {
-    // Skip if not fully loaded
     if (!isLoaded || !isSignedIn) {
       return;
     }
 
-    // Skip on certain pages to avoid redirect loops
-    const skipRedirectPaths = [
-      "/onboarding",
-      "/pending-approval",
-      "/account-rejected",
-      "/sign-in",
-      "/sign-up",
-    ];
-    
+    const skipRedirectPaths = ["/onboarding", "/sign-in", "/sign-up"];
     if (skipRedirectPaths.some((path) => pathname?.startsWith(path))) {
       return;
     }
 
-    // If we're still loading the user query, wait
     if (currentUser === undefined) {
       return;
     }
 
-    // If no user exists in Convex yet, redirect to onboarding
+    if (currentUser) {
+      const role = (currentUser as any).role;
+      const status = currentUser.status;
+
+      // ✅ لو طالب و active - روح على طول student
+      if (role === "student" && status === "active") {
+        if (pathname !== "/student" && !pathname?.startsWith("/student")) {
+          router.push("/student");
+        }
+        return;
+      }
+
+      // ✅ لو طالب و pending - روح pending-approval
+      if (role === "student" && status === "pending") {
+        if (pathname !== "/pending-approval") {
+          router.push("/pending-approval");
+        }
+        return;
+      }
+
+      // ✅ لو أدمن و active - روح على طول admin
+      if (role === "admin" && status === "active") {
+        if (pathname !== "/admin" && !pathname?.startsWith("/admin")) {
+          router.push("/admin");
+        }
+        return;
+      }
+
+      // ✅ لو أدمن و pending - روح pending-approval
+      if (role === "admin" && status === "pending") {
+        if (pathname !== "/pending-approval") {
+          router.push("/pending-approval");
+        }
+        return;
+      }
+
+      // ✅ لو teacher أو parent و pending - روح pending-approval
+      if ((role === "teacher" || role === "parent") && status === "pending") {
+        if (pathname !== "/pending-approval") {
+          router.push("/pending-approval");
+        }
+        return;
+      }
+
+      // ✅ لو teacher أو parent و active - روح dashboard بتاعهم
+      if ((role === "teacher" || role === "parent") && status === "active") {
+        const dashboardMap: Record<string, string> = {
+          teacher: "/teacher",
+          parent: "/parent",
+        };
+        const dashboardPath = dashboardMap[role];
+        if (dashboardPath && pathname !== dashboardPath && !pathname?.startsWith(dashboardPath)) {
+          router.push(dashboardPath);
+        }
+        return;
+      }
+
+      // ✅ لو معندوش role - روح onboarding
+      if (!role) {
+        if (pathname !== "/onboarding") {
+          router.push("/onboarding");
+        }
+        return;
+      }
+
+      return;
+    }
+
     if (!currentUser && user) {
-      router.push("/onboarding");
+      if (pathname !== "/onboarding") {
+        router.push("/onboarding");
+      }
     }
   }, [user, isLoaded, isSignedIn, currentUser, router, pathname]);
 

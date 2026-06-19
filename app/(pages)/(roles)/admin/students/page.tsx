@@ -20,6 +20,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddStudentModal } from "@/app/_components/AddStudentModal";
+import { SiGoogleclassroom } from "react-icons/si";
 
 export default function AdminStudentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -195,6 +196,7 @@ export default function AdminStudentsPage() {
                 <tr className="border-b border-gray-100 bg-[#f7fafa]">
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Student</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Contact</th>
+                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Class</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Parent</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Joined</th>
                   <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
@@ -263,6 +265,18 @@ export default function AdminStudentsPage() {
                         </div>
                       </td>
 
+                      {/* Class */}
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          <p className="text-sm text-gray-600 flex items-center gap-1.5">
+                            <SiGoogleclassroom  className="h-3.5 w-3.5 text-gray-400" />
+                            {student.classInfo?.classNameAr || "No class assigned"}
+                          </p>
+                          
+                        </div>
+                      </td>
+
+                      {/* Parent */}
                       <td className="px-6 py-4">
                         <div className="space-y-1">
                           <p className="text-sm text-gray-600 flex items-center gap-1.5">

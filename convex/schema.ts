@@ -7,6 +7,7 @@ export default defineSchema({
     name: v.string(),
     email: v.string(),
     phoneNumber: v.optional(v.string()),
+    classId: v.optional(v.id("classes")), 
     role: v.union(
       v.literal("student"),
       v.literal("teacher"),
@@ -51,10 +52,7 @@ export default defineSchema({
     relationship: v.optional(v.string()),
 
     // Guardian info
-    guardianName: v.optional(v.string()),
-    guardianPhone: v.optional(v.string()),
-    guardianEmail: v.optional(v.string()),
-    guardianRelationship: v.optional(v.string()),
+
 
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
@@ -65,7 +63,8 @@ export default defineSchema({
     .index("by_role", ["role"])
     .index("by_studentId", ["studentId"])
     .index("by_teacherId", ["teacherId"])   // ✅ إضافة index للمعلمين
-    .index("by_parentId", ["parentId"]),      // إضافة index للوالدين
+    .index("by_parentId", ["parentId"])  
+    .index("by_classId", ["classId"]),// ✅ إضافة index للبحث بالفصل    // إضافة index للوالدين
 
   parentStudentLinks: defineTable({
     parentId: v.id("users"),

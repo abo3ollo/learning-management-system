@@ -1,3 +1,4 @@
+// app/_components/StudentRegistrationModal.tsx
 "use client";
 
 import { useState } from "react";
@@ -6,6 +7,8 @@ import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import {
   X,
   User,
@@ -13,15 +16,21 @@ import {
   Calendar,
   MapPin,
   Mail,
-  AlertCircle
+  AlertCircle,
+  GraduationCap,
+  School,
+  ChevronDown,
 } from "lucide-react";
 
-interface AddStudentModalProps {
+interface StudentRegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
+export function StudentRegistrationModal({ isOpen, onClose }: StudentRegistrationModalProps) {
+  const { user } = useUser();
+  const router = useRouter();
+
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -30,12 +39,14 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
     gender: "",
     address: "",
     classId: "",
+   
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const createStudent = useMutation(api.user.students.createStudent);
-  const classes = useQuery(api.classes.classes.getClasses, {});
+  // ✅ استخدام registerStudent (للتسجيل الذاتي)
+  const registerStudent = useMutation(api.user.students.registerStudent);
+  const classes = useQuery(api.classes.classes.getActiveClasses, {});
 
   if (!isOpen) return null;
 
@@ -61,7 +72,6 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Convert date string to timestamp (number)
   const convertDateToTimestamp = (dateString: string): number => {
     return new Date(dateString).getTime();
   };
@@ -73,43 +83,36 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
 
     setIsSubmitting(true);
     try {
-      await createStudent({
+      // ✅ تسجيل الطالب بحالة pending
+      await registerStudent({
         name: formData.fullName,
-        email: formData.email || undefined,
-        phoneNumber: formData.phone, // Changed from 'phone' to 'phoneNumber'
-        birthDate: convertDateToTimestamp(formData.birthDate), // Convert string to number
-        gender: formData.gender as "male" | "female", // Type assertion
+        email: formData.email || user?.emailAddresses?.[0]?.emailAddress || undefined,
+        phoneNumber: formData.phone,
+        birthDate: convertDateToTimestamp(formData.birthDate),
+        gender: formData.gender as "male" | "female",
         address: formData.address || undefined,
-        classId: formData.classId  as any|| undefined, // ✅ إضافة classId
+        classId: formData.classId as any || undefined,
       });
 
-      // Reset form and close
-      setFormData({
-        fullName: "",
-        email: "",
-        phone: "",
-        birthDate: "",
-        gender: "",
-        address: "",
-         classId: "", // ✅ إعادة تعيين classId
-      });
+      // ✅ نروح pending-approval
+      router.push("/pending-approval");
       onClose();
     } catch (error) {
-      console.error("Error creating student:", error);
-      setErrors({ submit: "حدث خطأ أثناء إضافة الطالب" });
+      console.error("Error registering student:", error);
+      setErrors({ submit: "حدث خطأ أثناء التسجيل. يرجى المحاولة مرة أخرى." });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Modal Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-white border-b border-[#c0c8c9] px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">إضافة طالب</h2>
-            <p className="text-sm text-gray-500 mt-1">تسجيل طالب جديد في النظام</p>
+            <h2 className="text-xl font-bold text-[#001f24]">تسجيل طالب جديد</h2>
+            <p className="text-sm text-gray-500 mt-1">أدخل بياناتك للتسجيل في المنصة</p>
           </div>
           <button
             onClick={onClose}
@@ -119,18 +122,17 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
           </button>
         </div>
 
-        {/* Modal Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Section: Personal Information */}
+          {/* المعلومات الشخصية */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">
+            <h3 className="text-lg font-semibold text-[#001f24] mb-4 pb-2 border-b border-[#c0c8c9] flex items-center gap-2">
+              <User className="h-5 w-5 text-[#1a7a8a]" />
               المعلومات الشخصية
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Full Name */}
               <div className="space-y-2">
-                <Label htmlFor="fullName" className="flex items-center gap-1">
+                <Label htmlFor="fullName" className="flex items-center gap-1 text-sm font-medium text-gray-700">
                   اسم الطالب <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
@@ -139,7 +141,7 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
                     id="fullName"
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    className={`pr-10 ${errors.fullName ? 'border-red-500' : ''}`}
+                    className={`pr-10 ${errors.fullName ? 'border-red-500' : 'border-[#c0c8c9]'} focus:ring-2 focus:ring-[#1a7a8a]`}
                     placeholder="أدخل اسم الطالب كاملاً"
                   />
                 </div>
@@ -150,9 +152,8 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
                 )}
               </div>
 
-              {/* Phone */}
               <div className="space-y-2">
-                <Label htmlFor="phone" className="flex items-center gap-1">
+                <Label htmlFor="phone" className="flex items-center gap-1 text-sm font-medium text-gray-700">
                   رقم الهاتف <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
@@ -162,7 +163,7 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className={`pr-10 ${errors.phone ? 'border-red-500' : ''}`}
+                    className={`pr-10 ${errors.phone ? 'border-red-500' : 'border-[#c0c8c9]'} focus:ring-2 focus:ring-[#1a7a8a]`}
                     placeholder="05XXXXXXXX"
                   />
                 </div>
@@ -173,9 +174,8 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
                 )}
               </div>
 
-              {/* Birth Date */}
               <div className="space-y-2">
-                <Label htmlFor="birthDate" className="flex items-center gap-1">
+                <Label htmlFor="birthDate" className="flex items-center gap-1 text-sm font-medium text-gray-700">
                   تاريخ الميلاد <span className="text-red-500">*</span>
                 </Label>
                 <div className="relative">
@@ -185,7 +185,7 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
                     type="date"
                     value={formData.birthDate}
                     onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                    className={`pr-10 ${errors.birthDate ? 'border-red-500' : ''}`}
+                    className={`pr-10 ${errors.birthDate ? 'border-red-500' : 'border-[#c0c8c9]'} focus:ring-2 focus:ring-[#1a7a8a]`}
                   />
                 </div>
                 {errors.birthDate && (
@@ -195,17 +195,17 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
                 )}
               </div>
 
-              {/* Gender */}
               <div className="space-y-2">
-                <Label htmlFor="gender" className="flex items-center gap-1">
+                <Label htmlFor="gender" className="flex items-center gap-1 text-sm font-medium text-gray-700">
                   الجنس <span className="text-red-500">*</span>
                 </Label>
                 <select
                   id="gender"
                   value={formData.gender}
                   onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.gender ? 'border-red-500' : 'border-gray-200'
-                    }`}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] bg-white ${
+                    errors.gender ? 'border-red-500' : 'border-[#c0c8c9]'
+                  }`}
                 >
                   <option value="">-- اختر --</option>
                   <option value="male">ذكر</option>
@@ -218,9 +218,8 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
                 )}
               </div>
 
-              {/* Email */}
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="email">
+                <Label htmlFor="email" className="text-sm font-medium text-gray-700">
                   البريد الإلكتروني <span className="text-gray-400 text-xs">(اختياري)</span>
                 </Label>
                 <div className="relative">
@@ -230,89 +229,100 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="pr-10"
+                    className="pr-10 border-[#c0c8c9] focus:ring-2 focus:ring-[#1a7a8a]"
                     placeholder="student@example.com"
                   />
                 </div>
-                <p className="text-xs text-gray-400">سيتم التوليد تلقائياً إذا ترك فارغاً</p>
+                <p className="text-xs text-gray-400">سيتم استخدام البريد الإلكتروني المسجل في حسابك إذا ترك فارغاً</p>
               </div>
+            </div>
+          </div>
 
-              {/* Class */}
-              <div className="space-y-2">
-                <Label htmlFor="classId">الفصل الدراسي</Label>
+          {/* الفصل الدراسي */}
+          <div>
+            <h3 className="text-lg font-semibold text-[#001f24] mb-4 pb-2 border-b border-[#c0c8c9] flex items-center gap-2">
+              <School className="h-5 w-5 text-[#1a7a8a]" />
+              الفصل الدراسي
+            </h3>
+            <div className="space-y-2">
+              <Label htmlFor="classId" className="text-sm font-medium text-gray-700">اختر فصلك</Label>
+              <div className="relative">
                 <select
                   id="classId"
                   value={formData.classId}
                   onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-3 py-2 border border-[#c0c8c9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] bg-white appearance-none"
                 >
                   <option value="">-- اختر الفصل --</option>
                   {classes?.map((cls: any) => (
                     <option key={cls._id} value={cls._id}>
-                      {cls.classNameAr} ({cls.classCode})
+                      {cls.classNameAr} ({cls.classCode}) - {cls.grade}
                     </option>
                   ))}
                 </select>
+                <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
               </div>
+              {classes?.length === 0 && (
+                <p className="text-xs text-amber-600">لا توجد فصول نشطة حالياً. يرجى التواصل مع الإدارة.</p>
+              )}
             </div>
           </div>
 
-          {/* Section: Guardian Information */}
+          {/* معلومات ولي الأمر */}
           
 
-          {/* Section: Address */}
+          {/* العنوان */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">
+            <h3 className="text-lg font-semibold text-[#001f24] mb-4 pb-2 border-b border-[#c0c8c9] flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-[#1a7a8a]" />
               العنوان
             </h3>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="address">العنوان الكامل</Label>
-                <div className="relative">
-                  <MapPin className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
-                  <textarea
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-                    rows={3}
-                    placeholder="العنوان الكامل للطالب"
-                  />
-                </div>
+            <div className="space-y-2">
+              <Label htmlFor="address" className="text-sm font-medium text-gray-700">العنوان الكامل</Label>
+              <div className="relative">
+                <MapPin className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+                <textarea
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="w-full px-3 py-2 pr-10 border border-[#c0c8c9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] resize-none"
+                  rows={3}
+                  placeholder="العنوان الكامل للطالب"
+                />
               </div>
             </div>
           </div>
 
-          {/* Auto-generated Info */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600">
-              <span className="font-medium">ملاحظة:</span> سيتم توليد رقم طالب تلقائياً
+          {/* Info Note */}
+          <div className="bg-[#e0f5f7] rounded-xl p-4">
+            <p className="text-sm text-[#001f24]">
+              <span className="font-medium">📌 ملاحظة:</span> سيتم توليد رقم طالب تلقائياً، وسيتم مراجعة طلبك من قبل الإدارة قبل التفعيل.
             </p>
           </div>
 
-          {/* Submit Error */}
           {errors.submit && (
-            <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">
+            <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
               {errors.submit}
             </div>
           )}
 
-          {/* Modal Footer */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+          <div className="flex justify-end gap-3 pt-4 border-t border-[#c0c8c9]">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={isSubmitting}
+              className="border-[#c0c8c9] hover:bg-gray-50"
             >
               إلغاء
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="min-w-25"
+              className="min-w-30 bg-[#001f24] hover:bg-[#03363d] text-white"
             >
-              {isSubmitting ? "جاري الإضافة..." : "إضافة طالب"}
+              {isSubmitting ? "جاري التسجيل..." : "تسجيل"}
             </Button>
           </div>
         </form>
