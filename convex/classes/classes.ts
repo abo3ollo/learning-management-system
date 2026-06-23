@@ -652,7 +652,17 @@ export const getClassesStats = query({
     const active = allClasses.filter((c) => c.status === "active").length;
     const inactive = allClasses.filter((c) => c.status === "inactive").length;
     const completed = allClasses.filter((c) => c.status === "completed").length;
-    const totalStudents = allClasses.reduce((sum, c) => sum + (c.students?.length || 0), 0);
+    
+    // ✅ حساب الطلاب الصحيحين (الموجودين فعلاً)
+    let totalStudents = 0;
+    for (const cls of allClasses) {
+      for (const studentId of (cls.students || [])) {
+        const student = await ctx.db.get(studentId);
+        if (student) {
+          totalStudents++;
+        }
+      }
+    }
 
     return {
       total: allClasses.length,

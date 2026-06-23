@@ -340,3 +340,90 @@ export const deleteMediaAssignment = mutation({
     return { success: true };
   },
 });
+
+
+// ✅ جلب جميع الوسائط المتاحة للطالب (من فصله وتعييناته الشخصية)
+export const getStudentMedia = query({
+  args: { studentId: v.id("users") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const currentUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!currentUser) throw new Error("المستخدم غير موجود");
+    
+    // التأكد من أن المستخدم يطلب بياناته
+    if (currentUser._id !== args.studentId && currentUser.role !== "admin") {
+      throw new Error("غير مصرح بعرض هذه البيانات");
+    }
+
+    const student = await ctx.db.get(args.studentId);
+    if (!student || student.role !== "student") {
+      throw new Error("الطالب غير موجود");
+    }
+
+    // ✅ 1. جلب جميع التعيينات المنشورة
+    const allAssignments = await ctx.db
+      .query("mediaAssignments")
+      .withIndex("by_status", (q) => q.eq("status", "published"))
+      .collect();
+
+    // ✅ 2. تصفية التعيينات المتاحة للطالب
+    const availableAssignments = allAssignments.filter((assignment) => {
+      // إذا كان التعيين للطالب مباشرة
+      if (assignment.assignTo === "student" && assignment.targetId === student._id) {
+        return true;
+      }
+      
+      // إذا كان التعيين للفصل (class) والطالب في هذا الفصل
+      if (assignment.assignTo === "class" && student.classId && assignment.targetId === student.classId) {
+        return true;
+      }
+      
+      // إذا كان التعيين للشعبة (section) والطالب في هذه الشعبة
+      if (assignment.assignTo === "section" && student.classId && assignment.targetId === student.classId) {
+        return true;
+      }
+      
+      return false;
+    });
+
+    // ✅ 3. جلب الملفات المرتبطة بكل تعيين
+    const mediaFilesMap = new Map();
+    const mediaIds = new Set();
+
+    for (const assignment of availableAssignments) {
+      for (const fileId of assignment.mediaFileIds) {
+        if (!mediaIds.has(fileId)) {
+          mediaIds.add(fileId);
+          const file = await ctx.db.get(fileId);
+          if (file && file.status === "ok") {
+            // إضافة معلومات التعيين للملف
+            mediaFilesMap.set(fileId, {
+              ...file,
+              assignmentTitle: assignment.title,
+              assignmentId: assignment._id,
+              assignmentDescription: assignment.description,
+              dueDate: assignment.dueDate,
+              alwaysAvailable: assignment.alwaysAvailable,
+            });
+          }
+        }
+      }
+    }
+
+    // ✅ 4. ترتيب الملفات حسب تاريخ الرفع (الأحدث أولاً)
+    const mediaFiles = Array.from(mediaFilesMap.values())
+      .sort((a, b) => b.uploadedAt - a.uploadedAt);
+
+    return {
+      mediaFiles,
+      assignments: availableAssignments,
+      total: mediaFiles.length,
+    };
+  },
+});

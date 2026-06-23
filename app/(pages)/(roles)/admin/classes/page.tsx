@@ -52,7 +52,7 @@ export default function AdminClassesPage() {
   const classes = classesData || [];
   const isLoading = classesData === undefined;
 
-  const academicYears = ["2025-2026" ,"2026-2027", "2027-2028", "2028-2029", "2029-2030"];
+  const academicYears = ["2026-2027", "2027-2028", "2028-2029", "2029-2030"];
 
   const getStatusBadge = (status: string) => {
     switch (status) {

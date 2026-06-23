@@ -38,8 +38,6 @@ export function ManageClassStudentsModal({ isOpen, onClose, classId }: ManageCla
     classId ? { classId: classId as any } : "skip"
   );
 
-  console.log("classData students:", classData?.students);
-console.log("Enrolled students count:", classData?.students?.length);
 
   const addStudent = useMutation(api.classes.classes.addStudentToClass);
   const removeStudent = useMutation(api.classes.classes.removeStudentFromClass);

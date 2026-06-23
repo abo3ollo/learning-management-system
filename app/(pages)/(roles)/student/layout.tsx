@@ -61,10 +61,10 @@ export default function StudentLayout({
   const navItems = [
     { label: "اختياراتي", icon: SiWikibooks , href: "/student/my-courses" },
     { label: "فصلي", icon: School , href: "/student/my-classes" },
+    { label: "وسائطي", icon: BarChart3 , href: "/student/my-media" },
     { label: "واجبائي", icon: BsFileCheck , href: "/student/assignments" },
     { label: "حضوري", icon: Circle , href: "/student/attendance" },
     { label: "ChatBox", icon: MessageSquare , href: "/student/chat" },
-    { label: "وسائطي", icon: BarChart3 , href: "/student/media" },
     { label: "شهاداتي", icon: Award , href: "/student/certificates" },
     { label: "المنجر", icon: LayoutDashboard , href: "/student/dashboard" },
     { label: "الإعلانات", icon: Megaphone , href: "/student/announcements" },
