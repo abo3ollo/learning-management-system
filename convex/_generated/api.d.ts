@@ -12,6 +12,7 @@ import type * as classes_classes from "../classes/classes.js";
 import type * as index from "../index.js";
 import type * as media_mediaassignments from "../media/mediaassignments.js";
 import type * as media_mediafiles from "../media/mediafiles.js";
+import type * as questions_questions from "../questions/questions.js";
 import type * as relationships_parentStudent from "../relationships/parentStudent.js";
 import type * as schedules_schedules from "../schedules/schedules.js";
 import type * as user_admin from "../user/admin.js";
@@ -32,6 +33,7 @@ declare const fullApi: ApiFromModules<{
   index: typeof index;
   "media/mediaassignments": typeof media_mediaassignments;
   "media/mediafiles": typeof media_mediafiles;
+  "questions/questions": typeof questions_questions;
   "relationships/parentStudent": typeof relationships_parentStudent;
   "schedules/schedules": typeof schedules_schedules;
   "user/admin": typeof user_admin;

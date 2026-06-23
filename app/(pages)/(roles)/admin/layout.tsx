@@ -28,6 +28,7 @@ import { FaChalkboardTeacher } from "react-icons/fa";
 import { SiGoogleclassroom } from "react-icons/si";
 import { AiOutlineSchedule } from "react-icons/ai";
 import { MdOutlinePermMedia } from "react-icons/md";
+import { FaClipboardQuestion } from "react-icons/fa6";
 
 
 export default function AdminLayout({
@@ -62,25 +63,24 @@ export default function AdminLayout({
   if (currentUser.role !== "admin") return null;
 
   const navItems = [
-    { href: "/admin",          label: "Dashboard",       icon: LayoutDashboard },
-    { href: "/admin/teachers", label: "Teachers",        icon: FaChalkboardTeacher },
-    { href: "/admin/students", label: "Students",        icon: GraduationCap   },
-    { href: "/admin/parents",  label: "Parents",         icon: RiParentFill    },
-    { href: "/admin/classes",  label: "Classes",         icon: SiGoogleclassroom },
-    { href: "/admin/schedules",label: "Schedules",       icon: AiOutlineSchedule  },
-    { href: "/admin/media",    label: "Media",           icon: MdOutlinePermMedia  },
-    { href: "/admin/content",  label: "Content Library", icon: Library         },
-    { href: "/admin/approvals",label: "Approvals",       icon: ClipboardCheck  },
-    { href: "/admin/settings", label: "Settings",        icon: Settings        },
+    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+    { href: "/admin/teachers", label: "Teachers", icon: FaChalkboardTeacher },
+    { href: "/admin/students", label: "Students", icon: GraduationCap },
+    { href: "/admin/parents", label: "Parents", icon: RiParentFill },
+    { href: "/admin/classes", label: "Classes", icon: SiGoogleclassroom },
+    { href: "/admin/schedules", label: "Schedules", icon: AiOutlineSchedule },
+    { href: "/admin/media", label: "Media", icon: MdOutlinePermMedia },
+    { href: "/admin/questions", label: "Question Bank", icon: FaClipboardQuestion  },
+    { href: "/admin/approvals", label: "Approvals", icon: ClipboardCheck },
+    { href: "/admin/settings", label: "Settings", icon: Settings },
   ];
 
   return (
     <div className="flex h-screen bg-[#f7fafa] font-sans">
       {/* Sidebar */}
       <div
-        className={`${
-          sidebarOpen ? "w-64" : "w-20"
-        } bg-[#001f24] text-white transition-all duration-300 flex flex-col shrink-0`}
+        className={`${sidebarOpen ? "w-64" : "w-20"
+          } bg-[#001f24] text-white transition-all duration-300 flex flex-col shrink-0`}
       >
         {/* Logo */}
         <div className="p-5 flex items-center justify-between border-b border-[#03363d]">
@@ -110,11 +110,10 @@ export default function AdminLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                  isActive
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${isActive
                     ? "bg-[#03363d] text-white"
                     : "text-[#a3ced6] hover:bg-[#03363d] hover:text-white"
-                }`}
+                  }`}
               >
                 <Icon size={19} className="shrink-0" />
                 {sidebarOpen && (
