@@ -16,6 +16,9 @@ export * from "./user/helpers";
 export * from "./user/teachers";
 
 export * from "./classes/classes";
+export * from "./classes/classSubjects"; 
+
+export * from "./courses/courses";
 
 // تصدير دوال العلاقات 
 export * from "./relationships/parentStudent";

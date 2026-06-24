@@ -68,6 +68,7 @@ export default function AdminLayout({
     { href: "/admin/students", label: "Students", icon: GraduationCap },
     { href: "/admin/parents", label: "Parents", icon: RiParentFill },
     { href: "/admin/classes", label: "Classes", icon: SiGoogleclassroom },
+    { href: "/admin/courses", label: "Courses", icon: BookOpen },
     { href: "/admin/schedules", label: "Schedules", icon: AiOutlineSchedule },
     { href: "/admin/media", label: "Media", icon: MdOutlinePermMedia },
     { href: "/admin/questions", label: "Question Bank", icon: FaClipboardQuestion  },
@@ -76,7 +77,7 @@ export default function AdminLayout({
   ];
 
   return (
-    <div className="flex h-screen bg-[#f7fafa] font-sans">
+    <div className="flex h-screen bg-[#f7fafa] font-sans" dir="rtl">
       {/* Sidebar */}
       <div
         className={`${sidebarOpen ? "w-64" : "w-20"

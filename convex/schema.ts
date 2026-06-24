@@ -126,7 +126,6 @@ export default defineSchema({
   }),
 
   // classes
-  // convex/schema.ts - تعديل جدول classes
   classes: defineTable({
     classNameEn: v.string(),
     classNameAr: v.string(),
@@ -161,6 +160,27 @@ export default defineSchema({
     .index("by_supervisor", ["supervisorId"])
     .index("by_academicYear", ["academicYear"])
     .index("by_status", ["status"]),
+
+  classSubjects: defineTable({
+    classId: v.id("classes"),
+    subjectId: v.id("courses"), // ربط بالمادة (course)
+    teacherId: v.id("users"), // معلم المادة
+    order: v.number(), // ترتيب المادة في الفصل
+    status: v.union(v.literal("active"), v.literal("inactive")),
+    schedule: v.optional(
+      v.object({
+        days: v.array(v.string()),
+        startTime: v.string(),
+        endTime: v.string(),
+      }),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_class", ["classId"])
+    .index("by_subject", ["subjectId"])
+    .index("by_teacher", ["teacherId"])
+    .index("by_class_status", ["classId", "status"]),
 
   // جدول الحصص الأسبوعي
   schedules: defineTable({

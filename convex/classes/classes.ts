@@ -447,7 +447,7 @@ export const getClasses = query({
       );
     }
 
-    // جلب معلومات المشرف لكل فصل
+    // جلب معلومات المشرف وعدد المواد لكل فصل
     const classesWithSupervisor = await Promise.all(
       classes.map(async (cls) => {
         let supervisor = null;
@@ -464,11 +464,20 @@ export const getClasses = query({
           }
         }
 
+        // ✅ جلب عدد مواد الفصل
+        const classSubjects = await ctx.db
+          .query("classSubjects")
+          .withIndex("by_class", (q) => q.eq("classId", cls._id))
+          .collect();
+
+        const subjectsCount = classSubjects.length;
+
         return {
           ...cls,
           supervisorName: supervisor?.name || "غير محدد",
-          currentStudents: validStudents.length, // ✅ العدد الصحيح
+          currentStudents: validStudents.length,
           teachersCount: (cls.teachers || []).length,
+          subjectsCount, // ✅ إضافة عدد المواد
         };
       })
     );

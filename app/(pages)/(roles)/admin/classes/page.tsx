@@ -27,14 +27,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddClassModal } from "@/app/_components/AddClassModal";
-import { ManageClassStudentsModal } from "@/app/_components/ManageClassStudentsModal";
-import { ManageClassTeachersModal } from "@/app/_components/ManageClassTeachersModal";
+import { SiGoogleclassroom } from "react-icons/si";
+
 
 export default function AdminClassesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isManageStudentsModalOpen, setIsManageStudentsModalOpen] = useState(false);
-  const [isManageTeachersModalOpen, setIsManageTeachersModalOpen] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [selectedYear, setSelectedYear] = useState("all");
@@ -71,7 +69,7 @@ export default function AdminClassesPage() {
     {
       label: "إجمالي الفصول",
       value: classesStats?.total || classes.length,
-      icon: BookOpen,
+      icon: SiGoogleclassroom,
       iconBg: "bg-blue-50",
       iconColor: "text-blue-500",
       trend: "+0%",
@@ -99,7 +97,7 @@ export default function AdminClassesPage() {
 
   const handleDelete = async (classId: string) => {
     if (!confirm("هل أنت متأكد من حذف هذا الفصل؟ لا يمكن التراجع عن هذا الإجراء.")) return;
-    
+
     setDeletingId(classId);
     try {
       await deleteClass({ classId: classId as any });
@@ -111,15 +109,6 @@ export default function AdminClassesPage() {
     }
   };
 
-  const handleManageStudents = (classId: string) => {
-    setSelectedClassId(classId);
-    setIsManageStudentsModalOpen(true);
-  };
-
-  const handleManageTeachers = (classId: string) => {
-    setSelectedClassId(classId);
-    setIsManageTeachersModalOpen(true);
-  };
 
   const handleExportCSV = () => {
     setIsExporting(true);
@@ -141,7 +130,7 @@ export default function AdminClassesPage() {
       const headers = Object.keys(exportData[0] || {});
       const csvRows = [
         headers.join(","),
-        ...exportData.map((row: Record<string, unknown>) => 
+        ...exportData.map((row: Record<string, unknown>) =>
           headers.map(header => {
             const value = row[header as keyof typeof row];
             if (typeof value === "string" && (value.includes(",") || value.includes('"'))) {
@@ -171,7 +160,7 @@ export default function AdminClassesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7fafa]">
+    <div className="min-h-screen bg-[#f7fafa]" dir="rtl">
       {/* Top bar */}
       <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
         <h1 className="text-xl font-semibold text-[#001f24]">إدارة الفصول</h1>
@@ -221,9 +210,8 @@ export default function AdminClassesPage() {
                   <div className={`w-11 h-11 rounded-xl ${stat.iconBg} flex items-center justify-center`}>
                     <Icon className={`h-5 w-5 ${stat.iconColor}`} />
                   </div>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    stat.up ? "text-green-600" : "text-red-500"
-                  }`}>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${stat.up ? "text-green-600" : "text-red-500"
+                    }`}>
                     {stat.trend} {stat.up ? "↗" : "↘"}
                   </span>
                 </div>
@@ -283,29 +271,30 @@ export default function AdminClassesPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-[#f7fafa]">
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الفصل</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الصف / الشعبة</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">مشرف الفصل</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الطلاب</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">المعلمون</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">العام الدراسي</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الحالة</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الإجراءات</th>
+                  <th className="text-center px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الفصل</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الصف / الشعبة</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">مشرف الفصل</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الطلاب</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">المعلمون</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">المواد</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">العام الدراسي</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الحالة</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الإجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-16 text-center">
+                    <td colSpan={9} className="px-6 py-16 text-center">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#001f24]" />
                     </td>
                   </tr>
                 ) : classes.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-6 py-16 text-center">
+                    <td colSpan={9} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center">
-                          <BookOpen className="h-8 w-8 text-blue-400" />
+                          <SiGoogleclassroom className="h-8 w-8 text-blue-400" />
                         </div>
                         <p className="text-gray-500 font-medium">لا توجد فصول دراسية</p>
                         <Button
@@ -327,7 +316,7 @@ export default function AdminClassesPage() {
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
-                              <BookOpen className="h-5 w-5 text-blue-500" />
+                              <SiGoogleclassroom className="h-5 w-5 text-blue-500" />
                             </div>
                             <div>
                               <p className="font-semibold text-[#001f24] text-sm">{cls.classNameAr}</p>
@@ -360,28 +349,32 @@ export default function AdminClassesPage() {
 
                         {/* زر إدارة الطلاب */}
                         <td className="px-6 py-4">
-                          <button
-                            onClick={() => handleManageStudents(cls._id)}
-                            className="flex items-center gap-1.5 text-[#1a7a8a] hover:text-[#001f24] transition-colors group"
+                          <div
+                            className="flex items-center gap-1.5 text-[#1a7a8a] "
                             title="إدارة الطلاب"
                           >
                             <Users className="h-4 w-4" />
                             <span className="text-sm font-semibold">{cls.currentStudents || 0}</span>
                             <span className="text-xs text-gray-400 group-hover:text-gray-500">طالب</span>
-                          </button>
+                          </div>
                         </td>
 
                         {/* زر إدارة المعلمين */}
                         <td className="px-6 py-4">
-                          <button
-                            onClick={() => handleManageTeachers(cls._id)}
-                            className="flex items-center gap-1.5 text-[#1a7a8a] hover:text-[#001f24] transition-colors group"
-                            title="إدارة المعلمين"
-                          >
+                          <div className="flex items-center gap-1.5 text-[#1a7a8a]">
                             <School className="h-4 w-4" />
                             <span className="text-sm font-semibold">{cls.teachers?.length || 0}</span>
                             <span className="text-xs text-gray-400 group-hover:text-gray-500">معلم</span>
-                          </button>
+                          </div>
+                        </td>
+
+                        {/* ✅ عدد المواد */}
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-1.5 text-[#1a7a8a]">
+                            <BookOpen className="h-4 w-4" />
+                            <span className="text-sm font-semibold">{cls.subjectsCount || 0}</span>
+                            <span className="text-xs text-gray-400">مادة</span>
+                          </div>
                         </td>
 
                         <td className="px-6 py-4">
@@ -389,7 +382,7 @@ export default function AdminClassesPage() {
                             <Calendar className="h-3.5 w-3.5 text-gray-400" />
                             <span className="text-sm text-gray-600">{cls.academicYear}</span>
                           </div>
-                        </td>
+                        </td>                
 
                         <td className="px-6 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-full ${statusBadge.className}`}>
@@ -439,22 +432,6 @@ export default function AdminClassesPage() {
 
       {/* Modals */}
       <AddClassModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
-      <ManageClassStudentsModal 
-        isOpen={isManageStudentsModalOpen} 
-        onClose={() => {
-          setIsManageStudentsModalOpen(false);
-          setSelectedClassId(null);
-        }}
-        classId={selectedClassId}
-      />
-      <ManageClassTeachersModal 
-        isOpen={isManageTeachersModalOpen} 
-        onClose={() => {
-          setIsManageTeachersModalOpen(false);
-          setSelectedClassId(null);
-        }}
-        classId={selectedClassId}
-      />
     </div>
   );
 }
