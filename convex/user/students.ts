@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { generateStudentId } from "./helpers";
+import { Id } from "../_generated/dataModel";
 
 
 // إنشاء طالب جديد
@@ -248,7 +249,7 @@ export const getStudents = query({
   },
 });
 
-// convex/user/students.ts
+
 // convex/user/students.ts
 
 export const getStudentWithClass = query({
@@ -274,12 +275,25 @@ export const getStudentWithClass = query({
       throw new Error("الطالب غير موجود");
     }
 
-    // جلب بيانات الفصل
+    // ✅ جلب بيانات الفصل من student.classId
     let classData = null;
     if (student.classId) {
       classData = await ctx.db.get(student.classId);
     }
 
+    // ✅ إذا لم يوجد classId في الطالب، جرب من جدول enrollments
+    if (!classData) {
+      const enrollment = await ctx.db
+        .query("enrollments")
+        .withIndex("by_student", (q) => q.eq("studentId", student._id))
+        .first();
+      
+      if (enrollment) {
+        classData = await ctx.db.get(enrollment.classId);
+      }
+    }
+
+    // ✅ إذا مفيش فصل نهائياً، أرجع بيانات الطالب فقط
     if (!classData) {
       return {
         student,
@@ -291,9 +305,26 @@ export const getStudentWithClass = query({
       };
     }
 
-    // ✅ التحقق من الطلاب الصحيحين في الفصل
-    const validStudentIds = [];
-    for (const studentId of (classData.students || [])) {
+    // ✅ جلب جميع الطلاب المسجلين في الفصل (من classData.students)
+    let studentIdsInClass = classData.students || [];
+    
+    // ✅ جلب الطلاب من enrollments كـ fallback
+    const enrollments = await ctx.db
+      .query("enrollments")
+      .withIndex("by_class", (q) => q.eq("classId", classData._id))
+      .collect();
+    
+    const enrollmentStudentIds = enrollments.map(e => e.studentId);
+    
+    // ✅ دمج المعرفات (مع إزالة التكرار)
+    const allStudentIds = new Set([
+      ...studentIdsInClass,
+      ...enrollmentStudentIds,
+    ]);
+
+    // ✅ فلترة المعرفات الصحيحة
+    const validStudentIds: Id<"users">[] = [];
+    for (const studentId of allStudentIds) {
       const studentCheck = await ctx.db.get(studentId);
       if (studentCheck) {
         validStudentIds.push(studentId);
@@ -307,42 +338,77 @@ export const getStudentWithClass = query({
       currentStudents: validStudentIds.length,
     };
 
-    // جلب المعلمين
-    const teachers = await Promise.all(
-      (classData.teachers || []).map(async (teacherId) => {
-        const teacher = await ctx.db.get(teacherId);
-        return teacher;
-      })
-    );
-
-    // جلب الزملاء (طلاب الفصل)
-    const classmates = await Promise.all(
-      validStudentIds.map(async (studentId) => {
-        const studentData = await ctx.db.get(studentId);
-        return studentData;
-      })
-    );
-
-    // جلب المواد الدراسية (الكورسات)
-    const allCourses = await ctx.db
-      .query("courses")
-      .filter((q) => q.eq(q.field("isPublished"), true))
-      .collect();
-
-    // تصفية المواد التي يدرسها معلمو الفصل
+    // ✅ جلب المعلمين (من classData.teachers)
+    let teachers: any[] = [];
     const teacherIds = new Set(classData.teachers || []);
-    const subjects = allCourses.filter(course => 
-      course.teacherId && teacherIds.has(course.teacherId)
+    
+    // ✅ جلب المشرف أيضاً
+    if (classData.supervisorId) {
+      teacherIds.add(classData.supervisorId);
+    }
+
+    for (const teacherId of teacherIds) {
+      const teacher = await ctx.db.get(teacherId);
+      if (teacher) {
+        teachers.push(teacher);
+      }
+    }
+
+    // ✅ جلب الزملاء (جميع الطلاب ما عدا الطالب نفسه)
+    const classmates = await Promise.all(
+      validStudentIds
+        .filter(id => id !== student._id) // استبعاد الطالب نفسه
+        .map(async (studentId) => {
+          const studentData = await ctx.db.get(studentId);
+          return studentData;
+        })
     );
 
-    // جدول اليوم (يمكن إضافة جدول منفصل في المستقبل)
+    // ✅ جلب المواد الدراسية (الكورسات)
+    // جلب جميع الكورسات
+    const allCourses = await ctx.db.query("courses").collect();
+    
+    // ✅ تصفية المواد التي تخص هذا الفصل
+    let subjects = allCourses.filter(course => {
+      // ✅ التحقق من أن المعلم يدرس هذا الكورس وهو من معلمي الفصل
+      if (course.teacherId && teacherIds.has(course.teacherId)) {
+        return true;
+      }
+      // أو إذا كان المعلم الذي يدرس الكورس من معلمي الفصل
+      if (course.teacherId && teacherIds.has(course.teacherId)) {
+        return true;
+      }
+      return false;
+    });
+
+    // ✅ جلب اسم المعلم لكل مادة
+    subjects = await Promise.all(
+      subjects.map(async (course) => {
+        let teacherName = "معلم غير معروف";
+        if (course.teacherId) {
+          const teacher = await ctx.db.get(course.teacherId);
+          if (teacher) {
+            teacherName = teacher.name;
+          }
+        }
+        return {
+          ...course,
+          teacherName,
+        };
+      })
+    );
+
+    // ✅ جدول اليوم (يمكن إضافة جدول منفصل في المستقبل)
     const schedule = {
       days: ["السبت", "الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس"],
       periods: [
         { time: "8:00 - 8:45", subject: null },
         { time: "8:45 - 9:30", subject: null },
         { time: "9:30 - 10:15", subject: null },
-        // ... إلخ
+        { time: "10:15 - 10:30", subject: null, break: true },
+        { time: "10:30 - 11:15", subject: null },
+        { time: "11:15 - 12:00", subject: null },
+        { time: "12:00 - 12:45", subject: null },
       ],
     };
 

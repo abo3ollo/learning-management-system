@@ -19,6 +19,7 @@ export * from "./classes/classes";
 export * from "./classes/classSubjects"; 
 
 export * from "./courses/courses";
+export * from "./assignments/assignments"; 
 
 // تصدير دوال العلاقات 
 export * from "./relationships/parentStudent";

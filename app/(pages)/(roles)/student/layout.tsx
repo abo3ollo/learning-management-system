@@ -62,7 +62,7 @@ export default function StudentLayout({
     { label: "اختياراتي", icon: SiWikibooks , href: "/student/my-courses" },
     { label: "فصلي", icon: School , href: "/student/my-classes" },
     { label: "وسائطي", icon: BarChart3 , href: "/student/my-media" },
-    { label: "واجبائي", icon: BsFileCheck , href: "/student/assignments" },
+    { label: "واجبائي", icon: BsFileCheck , href: "/student/my-assignments" },
     { label: "حضوري", icon: Circle , href: "/student/attendance" },
     { label: "ChatBox", icon: MessageSquare , href: "/student/chat" },
     { label: "شهاداتي", icon: Award , href: "/student/certificates" },
@@ -74,7 +74,7 @@ export default function StudentLayout({
   ];
 
   return (
-    <div className="flex h-screen bg-[#f7fafa] font-sans">
+    <div className="flex h-screen bg-[#f7fafa] font-sans" dir="rtl">
       {/* Sidebar */}
       <div
         className={`${

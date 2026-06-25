@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as assignments_assignments from "../assignments/assignments.js";
 import type * as classes_classSubjects from "../classes/classSubjects.js";
 import type * as classes_classes from "../classes/classes.js";
 import type * as courses_courses from "../courses/courses.js";
@@ -17,6 +18,7 @@ import type * as media_mediafiles from "../media/mediafiles.js";
 import type * as questions_questions from "../questions/questions.js";
 import type * as relationships_parentStudent from "../relationships/parentStudent.js";
 import type * as schedules_schedules from "../schedules/schedules.js";
+import type * as submissions_submissions from "../submissions/submissions.js";
 import type * as user_admin from "../user/admin.js";
 import type * as user_auth from "../user/auth.js";
 import type * as user_helpers from "../user/helpers.js";
@@ -31,6 +33,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "assignments/assignments": typeof assignments_assignments;
   "classes/classSubjects": typeof classes_classSubjects;
   "classes/classes": typeof classes_classes;
   "courses/courses": typeof courses_courses;
@@ -40,6 +43,7 @@ declare const fullApi: ApiFromModules<{
   "questions/questions": typeof questions_questions;
   "relationships/parentStudent": typeof relationships_parentStudent;
   "schedules/schedules": typeof schedules_schedules;
+  "submissions/submissions": typeof submissions_submissions;
   "user/admin": typeof user_admin;
   "user/auth": typeof user_auth;
   "user/helpers": typeof user_helpers;

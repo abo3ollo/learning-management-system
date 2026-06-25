@@ -319,22 +319,111 @@ export default defineSchema({
     .index("by_published", ["isPublished"])
     .index("by_category", ["category"]),
 
+  assignments: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    classIds: v.array(v.id("classes")), // يمكن اختيار أكثر من فصل
+    type: v.union(
+      v.literal("assignment"),
+      v.literal("quiz"),
+      v.literal("exam"),
+      v.literal("project"),
+    ),
+    fullGrade: v.float64(), // ✅ الدرجة الكاملة
+    courseId: v.id("courses"),
+    maxAttempts: v.optional(v.number()),
+    allowResubmission: v.boolean(),
+    isGroupWork: v.boolean(),
+    maxGroupSize: v.optional(v.number()),
+    showGrade: v.boolean(),
+    location: v.optional(v.string()),
+    logic: v.optional(v.string()),
+
+    // جدول التقييم
+    startDate: v.number(),
+    dueDate: v.number(),
+    weight: v.number(), // الوزن المئوي
+    passingGrade: v.number(), // درجة النجاح
+    allowLateSubmission: v.boolean(),
+    lateSubmissionPenalty: v.optional(v.number()), // خصم التأخير
+
+    // المرفقات
+    attachments: v.array(
+      v.object({
+        name: v.string(),
+        url: v.string(),
+        size: v.number(),
+        type: v.string(),
+      }),
+    ),
+    allowedFileTypes: v.array(v.string()),
+    maxFileSize: v.optional(v.number()),
+
+    status: v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("archived"),
+    ),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    publishedAt: v.optional(v.number()),
+  })
+    .index("by_class", ["classIds"])
+    .index("by_status", ["status"])
+    .index("by_createdBy", ["createdBy"])
+    .index("by_dueDate", ["dueDate"]),
+
+  submissions: defineTable({
+    assignmentId: v.id("assignments"),
+    studentId: v.id("users"),
+    classId: v.id("classes"),
+    submittedAt: v.number(),
+    content: v.optional(v.string()),
+    attachments: v.array(
+      v.object({
+        name: v.string(),
+        url: v.string(),
+        size: v.number(),
+        type: v.string(),
+      }),
+    ),
+    grade: v.optional(v.number()),
+    feedback: v.optional(v.string()),
+    gradedBy: v.optional(v.id("users")),
+    gradedAt: v.optional(v.number()),
+    status: v.union(
+      v.literal("submitted"),
+      v.literal("graded"),
+      v.literal("returned"),
+      v.literal("late"),
+    ),
+    attemptNumber: v.number(),
+    isLate: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_assignment", ["assignmentId"])
+    .index("by_student", ["studentId"])
+    .index("by_class", ["classId"])
+    .index("by_assignment_student", ["assignmentId", "studentId"]),
+
   enrollments: defineTable({
     studentId: v.id("users"),
-    courseId: v.id("courses"),
+    classId: v.id("classes"),
+    courseId: v.id("courses"), // ✅ إذا كان عندك
+    enrolledAt: v.number(),
     status: v.union(
       v.literal("active"),
       v.literal("completed"),
       v.literal("dropped"),
     ),
-    enrolledAt: v.number(),
-    completedAt: v.optional(v.number()),
-    progress: v.number(),
   })
     .index("by_student", ["studentId"])
+    .index("by_class", ["classId"])
     .index("by_course", ["courseId"])
-    .index("by_student_course", ["studentId", "courseId"])
-    .index("by_status", ["status"]),
+    .index("by_student_class", ["studentId", "classId"])
+    .index("by_student_course", ["studentId", "courseId"]),
 
   chapters: defineTable({
     courseId: v.id("courses"),

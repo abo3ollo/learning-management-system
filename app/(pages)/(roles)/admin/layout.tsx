@@ -21,6 +21,7 @@ import {
   X,
   ClipboardCheck,
   BarChart3,
+  FileText,
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { RiParentFill } from "react-icons/ri";
@@ -63,17 +64,18 @@ export default function AdminLayout({
   if (currentUser.role !== "admin") return null;
 
   const navItems = [
-    { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/admin/teachers", label: "Teachers", icon: FaChalkboardTeacher },
-    { href: "/admin/students", label: "Students", icon: GraduationCap },
-    { href: "/admin/parents", label: "Parents", icon: RiParentFill },
-    { href: "/admin/classes", label: "Classes", icon: SiGoogleclassroom },
-    { href: "/admin/courses", label: "Courses", icon: BookOpen },
-    { href: "/admin/schedules", label: "Schedules", icon: AiOutlineSchedule },
-    { href: "/admin/media", label: "Media", icon: MdOutlinePermMedia },
-    { href: "/admin/questions", label: "Question Bank", icon: FaClipboardQuestion  },
-    { href: "/admin/approvals", label: "Approvals", icon: ClipboardCheck },
-    { href: "/admin/settings", label: "Settings", icon: Settings },
+    { href: "/admin", label: "رئيسيه", icon: LayoutDashboard },
+    { href: "/admin/teachers", label: "المعلمين", icon: FaChalkboardTeacher },
+    { href: "/admin/students", label: "الطلاب", icon: GraduationCap },
+    { href: "/admin/parents", label: "أولياء الامور", icon: RiParentFill },
+    { href: "/admin/classes", label: "الفصول", icon: SiGoogleclassroom },
+    { href: "/admin/courses", label: "المواد", icon: BookOpen },
+    { href: "/admin/schedules", label: "الجدول", icon: AiOutlineSchedule },
+    { href: "/admin/media", label: "الوسائط", icon: MdOutlinePermMedia },
+    { href: "/admin/questions", label: "بنك الأسئلة", icon: FaClipboardQuestion  },
+    { href: "/admin/assignments", label: "الواجبات", icon: FileText }, 
+    { href: "/admin/approvals", label: "الموافقة", icon: ClipboardCheck },
+    { href: "/admin/settings", label: "الإعدادات", icon: Settings },
   ];
 
   return (
@@ -130,7 +132,7 @@ export default function AdminLayout({
           {sidebarOpen && (
             <div className="mb-3">
               <p className="text-xs text-[#a3ced6] tracking-widest uppercase font-mono">
-                Logged in as
+                مسجل الدخول كـ
               </p>
               <p className="font-semibold text-sm mt-1 truncate">{currentUser.name}</p>
               <p className="text-xs text-[#759fa7] truncate">{currentUser.email}</p>
@@ -139,7 +141,7 @@ export default function AdminLayout({
           <SignOutButton>
             <button className="flex items-center gap-3 w-full bg-[#03363d] hover:bg-[#032a30] text-white py-2.5 px-3 rounded-lg transition-colors text-sm font-medium">
               <LogOut size={17} />
-              {sidebarOpen && <span>Logout</span>}
+              {sidebarOpen && <span>تسجيل الخروج</span>}
             </button>
           </SignOutButton>
         </div>

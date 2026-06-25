@@ -143,8 +143,6 @@ export const getAvailableCourses = query({
   },
 });
 
-// إحصائيات المواد
-// convex/courses/courses.ts
 
 // إحصائيات المواد
 export const getCoursesStats = query({
@@ -190,6 +188,52 @@ export const getCoursesStats = query({
       totalStudents,
       categories: categoryList, // ✅ إرجاع كـ array بدلاً من object
     };
+  },
+});
+
+// ✅ دالة لجلب الكورسات الخاصة بفصول الطالب
+export const getStudentCourses = query({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const student = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!student || student.role !== "student") {
+      throw new Error("مطلوب صلاحيات طالب");
+    }
+
+    // جلب الفصول المسجل فيها الطالب
+    const enrollments = await ctx.db
+      .query("enrollments")
+      .withIndex("by_student", (q) => q.eq("studentId", student._id))
+      .collect();
+
+    // جلب معرفات الكورسات من الفصول
+    const courseIds = enrollments.map(e => e.courseId);
+
+    // جلب الكورسات
+    let courses = await ctx.db.query("courses").collect();
+    
+    // فلترة الكورسات التي تخص فصول الطالب
+    courses = courses.filter(c => courseIds.includes(c._id));
+
+    // جلب اسم المعلم
+    const coursesWithTeacher = await Promise.all(
+      courses.map(async (course) => {
+        const teacher = await ctx.db.get(course.teacherId);
+        return {
+          ...course,
+          teacherName: teacher?.name || "معلم غير معروف",
+          studentsCount: course.enrolledStudents.length,
+        };
+      })
+    );
+
+    return coursesWithTeacher.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
 
