@@ -32,18 +32,24 @@ export default function AdminAssignmentsPage() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<string>("all");
 
+  // ✅ جلب المواد (الكورسات)
+  const courses = useQuery(api.courses.courses.getCourses, {});
+
+  // ✅ جلب الواجبات مع فلتر المادة
   const assignments = useQuery(api.assignments.assignments.getAssignments, {
     status: selectedStatus !== "all" ? (selectedStatus as any) : undefined,
     search: searchQuery || undefined,
+    courseId: selectedCourse !== "all" ? (selectedCourse as any) : undefined,
   });
-  console.log(assignments)
+
   const stats = useQuery(api.assignments.assignments.getAssignmentsStats);
 
   const deleteAssignment = useMutation(api.assignments.assignments.deleteAssignment);
   const publishAssignment = useMutation(api.assignments.assignments.publishAssignment);
 
-  const isLoading = assignments === undefined;
+  const isLoading = assignments === undefined || stats === undefined || courses === undefined;
 
   const getTypeLabel = (type: string) => {
     const types: Record<string, string> = {
@@ -98,12 +104,39 @@ export default function AdminAssignmentsPage() {
     { value: "archived", label: "مؤرشف" },
   ];
 
+  // ✅ فلترة الواجبات (في حالة الـ filter مش شغال في الـ query)
+  const filteredAssignments = assignments?.filter((assignment: any) => {
+    // فلتر الحالة
+    if (selectedStatus !== "all" && assignment.status !== selectedStatus) {
+      return false;
+    }
+    
+    // ✅ فلتر المادة
+    if (selectedCourse !== "all" && assignment.courseId !== selectedCourse) {
+      return false;
+    }
+    
+    // فلتر البحث
+    if (searchQuery && !assignment.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+      return false;
+    }
+    
+    return true;
+  });
+
   const statsCards = [
     { label: "إجمالي الواجبات", value: stats?.total || 0, icon: FileText },
     { label: "منشورة", value: stats?.published || 0, icon: CheckCircle },
     { label: "قادمة", value: stats?.upcoming || 0, icon: Clock },
     { label: "متأخرة", value: stats?.overdue || 0, icon: Calendar },
   ];
+
+  // ✅ دالة إعادة ضبط الفلاتر
+  const handleResetFilters = () => {
+    setSearchQuery("");
+    setSelectedStatus("all");
+    setSelectedCourse("all");
+  };
 
   return (
     <div className="min-h-screen bg-[#f7fafa]" dir="rtl">
@@ -163,15 +196,29 @@ export default function AdminAssignmentsPage() {
             <select
               value={selectedStatus}
               onChange={(e) => setSelectedStatus(e.target.value)}
-              className="border border-gray-200 rounded-lg px-4 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] bg-white"
+              className="border border-gray-200 rounded-lg px-4 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] bg-white min-w-40"
             >
               {statusOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
+
+            <select
+              value={selectedCourse}
+              onChange={(e) => setSelectedCourse(e.target.value)}
+              className="border border-gray-200 rounded-lg px-4 py-2 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] bg-white min-w-40"
+            >
+              <option value="all">جميع المواد</option>
+              {courses?.map((course: any) => (
+                <option key={course._id} value={course._id}>
+                  {course.title}
+                </option>
+              ))}
+            </select>
+
             <Button
               variant="outline"
-              onClick={() => { setSearchQuery(""); setSelectedStatus("all"); }}
+              onClick={handleResetFilters}
               className="border-gray-200 text-gray-600 hover:bg-gray-50"
             >
               <Filter className="h-4 w-4 ml-2" />
@@ -187,6 +234,7 @@ export default function AdminAssignmentsPage() {
               <thead className="bg-[#f7fafa] border-b border-[#c0c8c9]">
                 <tr>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500">الواجب</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500">المادة</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500">الفصول</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500">النوع</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500">تاريخ التسليم</th>
@@ -197,13 +245,13 @@ export default function AdminAssignmentsPage() {
               <tbody className="divide-y divide-gray-50">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-16 text-center">
+                    <td colSpan={7} className="px-6 py-16 text-center">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#1a7a8a]" />
                     </td>
                   </tr>
-                ) : assignments?.length === 0 ? (
+                ) : filteredAssignments?.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-16 text-center">
+                    <td colSpan={7} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <FileText className="h-12 w-12 text-gray-300" />
                         <p className="text-gray-500 font-medium">لا توجد واجبات</p>
@@ -215,8 +263,11 @@ export default function AdminAssignmentsPage() {
                     </td>
                   </tr>
                 ) : (
-                  assignments?.map((assignment: any) => {
+                  filteredAssignments?.map((assignment: any) => {
                     const statusBadge = getStatusBadge(assignment.status);
+                    // ✅ جلب اسم المادة
+                    const course = courses?.find((c: any) => c._id === assignment.courseId);
+                    
                     return (
                       <tr key={assignment._id} className="hover:bg-[#f7fafa] transition-colors">
                         <td className="px-4 py-3">
@@ -224,6 +275,11 @@ export default function AdminAssignmentsPage() {
                             <p className="font-medium text-[#001f24] text-sm">{assignment.title}</p>
                             <p className="text-xs text-gray-400 line-clamp-1">{assignment.description || "لا يوجد وصف"}</p>
                           </div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="text-sm text-gray-600">
+                            {course?.title || "غير محدد"}
+                          </span>
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
@@ -296,7 +352,7 @@ export default function AdminAssignmentsPage() {
 
         {/* Footer */}
         <div className="mt-4 text-center text-xs text-gray-400">
-          عرض {assignments?.length || 0} واجب
+          عرض {filteredAssignments?.length || 0} واجب
         </div>
       </div>
 

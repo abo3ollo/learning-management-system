@@ -14,6 +14,7 @@ export const getAssignments = query({
     classId: v.optional(v.id("classes")),
     status: v.optional(v.union(v.literal("draft"), v.literal("published"), v.literal("archived"))),
     search: v.optional(v.string()),
+    courseId: v.optional(v.id("courses")), // ✅ إضافة courseId
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -29,6 +30,11 @@ export const getAssignments = query({
     }
 
     let assignments = await ctx.db.query("assignments").collect();
+
+    // ✅ فلترة حسب المادة
+    if (args.courseId) {
+      assignments = assignments.filter((a) => a.courseId === args.courseId);
+    }
 
     if (args.classId) {
       assignments = assignments.filter((a) => 
@@ -46,6 +52,7 @@ export const getAssignments = query({
       );
     }
 
+    // جلب أسماء الفصول لكل واجب
     const assignmentsWithClasses = await Promise.all(
       assignments.map(async (assignment) => {
         const classes = await Promise.all(
@@ -82,14 +89,16 @@ export const getAssignmentById = query({
       assignment.classIds.map(async (classId) => {
         const classData = await ctx.db.get(classId);
         return classData;
-      })
+      }),
     );
 
     const creator = await ctx.db.get(assignment.createdBy);
 
     return {
       ...assignment,
-      classes: classes.filter((c): c is NonNullable<typeof c> => c !== null && c !== undefined),
+      classes: classes.filter(
+        (c): c is NonNullable<typeof c> => c !== null && c !== undefined,
+      ),
       creatorName: creator?.name || "غير معروف",
     };
   },
@@ -97,18 +106,24 @@ export const getAssignmentById = query({
 
 // جلب واجبات الفصل
 export const getClassAssignments = query({
-  args: { 
+  args: {
     classId: v.id("classes"),
-    status: v.optional(v.union(v.literal("draft"), v.literal("published"), v.literal("archived"))),
+    status: v.optional(
+      v.union(
+        v.literal("draft"),
+        v.literal("published"),
+        v.literal("archived"),
+      ),
+    ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
     const allAssignments = await ctx.db.query("assignments").collect();
-    
+
     let assignments = allAssignments.filter((a) =>
-      a.classIds.some(id => id === args.classId)
+      a.classIds.some((id) => id === args.classId),
     );
 
     if (args.status) {
@@ -137,16 +152,20 @@ export const getAssignmentsStats = query({
 
     const allAssignments = await ctx.db.query("assignments").collect();
 
-    const published = allAssignments.filter(a => a.status === "published").length;
-    const draft = allAssignments.filter(a => a.status === "draft").length;
-    const archived = allAssignments.filter(a => a.status === "archived").length;
-
-    const upcoming = allAssignments.filter(a => 
-      a.status === "published" && a.dueDate > Date.now()
+    const published = allAssignments.filter(
+      (a) => a.status === "published",
+    ).length;
+    const draft = allAssignments.filter((a) => a.status === "draft").length;
+    const archived = allAssignments.filter(
+      (a) => a.status === "archived",
     ).length;
 
-    const overdue = allAssignments.filter(a => 
-      a.status === "published" && a.dueDate < Date.now()
+    const upcoming = allAssignments.filter(
+      (a) => a.status === "published" && a.dueDate > Date.now(),
+    ).length;
+
+    const overdue = allAssignments.filter(
+      (a) => a.status === "published" && a.dueDate < Date.now(),
     ).length;
 
     return {
@@ -163,17 +182,16 @@ export const getAssignmentsStats = query({
 // ✅ جلب واجبات الطالب مع حالة التسليم
 export const getStudentAssignments = query({
   args: {
-    status: v.optional(v.union(
-      v.literal("all"),
-      v.literal("pending"),
-      v.literal("submitted"),
-      v.literal("graded")
-    )),
+    status: v.optional(
+      v.union(
+        v.literal("all"),
+        v.literal("pending"),
+        v.literal("submitted"),
+        v.literal("graded"),
+      ),
+    ),
     subjectId: v.optional(v.id("courses")),
-    sortBy: v.optional(v.union(
-      v.literal("dueDate"),
-      v.literal("createdAt")
-    )),
+    sortBy: v.optional(v.union(v.literal("dueDate"), v.literal("createdAt"))),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -198,6 +216,9 @@ export const getStudentAssignments = query({
 
     // جلب كل الواجبات
     let allAssignments = await ctx.db.query("assignments").collect();
+
+    // ✅ فلترة الواجبات المنشورة فقط (published)
+    allAssignments = allAssignments.filter((a) => a.status === "published");
 
     // فلترة الواجبات حسب الكورسات المسجل فيها الطالب
     let assignments = allAssignments.filter(
@@ -310,6 +331,7 @@ export const getStudentAssignmentStats = query({
     const courseIds = enrollments.map((e) => e.courseId);
 
     let allAssignments = await ctx.db.query("assignments").collect();
+    allAssignments = allAssignments.filter((a) => a.status === "published");
 
     let assignments = allAssignments.filter(
       (a) => a.courseId && courseIds.includes(a.courseId),
@@ -335,7 +357,7 @@ export const getStudentAssignmentStats = query({
 
     for (const assignment of assignments) {
       const submission = submissions.find(
-        (s) => s.assignmentId === assignment._id
+        (s) => s.assignmentId === assignment._id,
       );
 
       if (submission) {
@@ -374,7 +396,7 @@ async function enrollStudentsInCourseHelper(
   classIds: Id<"classes">[],
 ) {
   const allStudents: Id<"users">[] = [];
-  
+
   for (const classId of classIds) {
     const classData = await ctx.db.get(classId);
     if (classData) {
@@ -383,7 +405,7 @@ async function enrollStudentsInCourseHelper(
         .query("users")
         .withIndex("by_classId", (q: any) => q.eq("classId", classId))
         .collect();
-      
+
       const studentIds = studentsByClass.map((s: any) => s._id);
       allStudents.push(...students, ...studentIds);
     }
@@ -403,10 +425,10 @@ async function enrollStudentsInCourseHelper(
 
   let enrolledCount = 0;
   let updatedCount = 0;
-  
+
   for (const studentId of uniqueStudentIds) {
     const existing = enrollmentMap.get(studentId);
-    
+
     if (existing) {
       if (existing.courseId !== courseId) {
         await ctx.db.patch(existing._id, {
@@ -416,7 +438,7 @@ async function enrollStudentsInCourseHelper(
       }
       continue;
     }
-    
+
     await ctx.db.insert("enrollments", {
       studentId,
       classId: classIds[0],
@@ -427,8 +449,8 @@ async function enrollStudentsInCourseHelper(
     enrolledCount++;
   }
 
-  return { 
-    success: true, 
+  return {
+    success: true,
     newEnrollments: enrolledCount,
     updatedEnrollments: updatedCount,
     totalStudents: uniqueStudentIds.length,
@@ -532,14 +554,14 @@ export const createAssignment = mutation({
       updatedAt: Date.now(),
       publishedAt: args.status === "published" ? Date.now() : undefined,
     });
-    
+
     // ✅ إذا كان الواجب منشوراً، سجل الطلاب في الكورس
     if (args.status === "published") {
       try {
         const result = await enrollStudentsInCourseHelper(
-          ctx, 
-          args.courseId, 
-          args.classIds
+          ctx,
+          args.courseId,
+          args.classIds,
         );
         console.log("✅ Enrollment result:", result);
       } catch (error) {
@@ -559,12 +581,14 @@ export const updateAssignment = mutation({
     title: v.optional(v.string()),
     description: v.optional(v.string()),
     classIds: v.optional(v.array(v.id("classes"))),
-    type: v.optional(v.union(
-      v.literal("assignment"),
-      v.literal("quiz"),
-      v.literal("exam"),
-      v.literal("project"),
-    )),
+    type: v.optional(
+      v.union(
+        v.literal("assignment"),
+        v.literal("quiz"),
+        v.literal("exam"),
+        v.literal("project"),
+      ),
+    ),
     maxAttempts: v.optional(v.number()),
     allowResubmission: v.optional(v.boolean()),
     isGroupWork: v.optional(v.boolean()),
@@ -580,19 +604,25 @@ export const updateAssignment = mutation({
     passingGrade: v.optional(v.number()),
     allowLateSubmission: v.optional(v.boolean()),
     lateSubmissionPenalty: v.optional(v.number()),
-    attachments: v.optional(v.array(v.object({
-      name: v.string(),
-      url: v.string(),
-      size: v.number(),
-      type: v.string(),
-    }))),
+    attachments: v.optional(
+      v.array(
+        v.object({
+          name: v.string(),
+          url: v.string(),
+          size: v.number(),
+          type: v.string(),
+        }),
+      ),
+    ),
     allowedFileTypes: v.optional(v.array(v.string())),
     maxFileSize: v.optional(v.number()),
-    status: v.optional(v.union(
-      v.literal("draft"),
-      v.literal("published"),
-      v.literal("archived"),
-    )),
+    status: v.optional(
+      v.union(
+        v.literal("draft"),
+        v.literal("published"),
+        v.literal("archived"),
+      ),
+    ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -612,13 +642,18 @@ export const updateAssignment = mutation({
 
     const updateData: any = { updatedAt: Date.now() };
     if (args.title !== undefined) updateData.title = args.title;
-    if (args.description !== undefined) updateData.description = args.description;
+    if (args.description !== undefined)
+      updateData.description = args.description;
     if (args.classIds !== undefined) updateData.classIds = args.classIds;
     if (args.type !== undefined) updateData.type = args.type;
-    if (args.maxAttempts !== undefined) updateData.maxAttempts = args.maxAttempts;
-    if (args.allowResubmission !== undefined) updateData.allowResubmission = args.allowResubmission;
-    if (args.isGroupWork !== undefined) updateData.isGroupWork = args.isGroupWork;
-    if (args.maxGroupSize !== undefined) updateData.maxGroupSize = args.maxGroupSize;
+    if (args.maxAttempts !== undefined)
+      updateData.maxAttempts = args.maxAttempts;
+    if (args.allowResubmission !== undefined)
+      updateData.allowResubmission = args.allowResubmission;
+    if (args.isGroupWork !== undefined)
+      updateData.isGroupWork = args.isGroupWork;
+    if (args.maxGroupSize !== undefined)
+      updateData.maxGroupSize = args.maxGroupSize;
     if (args.showGrade !== undefined) updateData.showGrade = args.showGrade;
     if (args.location !== undefined) updateData.location = args.location;
     if (args.logic !== undefined) updateData.logic = args.logic;
@@ -626,13 +661,19 @@ export const updateAssignment = mutation({
     if (args.dueDate !== undefined) updateData.dueDate = args.dueDate;
     if (args.weight !== undefined) updateData.weight = args.weight;
     if (args.fullGrade !== undefined) updateData.fullGrade = args.fullGrade;
-    if (args.passingGrade !== undefined) updateData.passingGrade = args.passingGrade;
+    if (args.passingGrade !== undefined)
+      updateData.passingGrade = args.passingGrade;
     if (args.courseId !== undefined) updateData.courseId = args.courseId;
-    if (args.allowLateSubmission !== undefined) updateData.allowLateSubmission = args.allowLateSubmission;
-    if (args.lateSubmissionPenalty !== undefined) updateData.lateSubmissionPenalty = args.lateSubmissionPenalty;
-    if (args.attachments !== undefined) updateData.attachments = args.attachments;
-    if (args.allowedFileTypes !== undefined) updateData.allowedFileTypes = args.allowedFileTypes;
-    if (args.maxFileSize !== undefined) updateData.maxFileSize = args.maxFileSize;
+    if (args.allowLateSubmission !== undefined)
+      updateData.allowLateSubmission = args.allowLateSubmission;
+    if (args.lateSubmissionPenalty !== undefined)
+      updateData.lateSubmissionPenalty = args.lateSubmissionPenalty;
+    if (args.attachments !== undefined)
+      updateData.attachments = args.attachments;
+    if (args.allowedFileTypes !== undefined)
+      updateData.allowedFileTypes = args.allowedFileTypes;
+    if (args.maxFileSize !== undefined)
+      updateData.maxFileSize = args.maxFileSize;
     if (args.status !== undefined) {
       updateData.status = args.status;
       if (args.status === "published" && assignment.status !== "published") {
@@ -677,7 +718,9 @@ export const deleteAssignment = mutation({
 
     const submissions = await ctx.db
       .query("submissions")
-      .withIndex("by_assignment", (q) => q.eq("assignmentId", args.assignmentId))
+      .withIndex("by_assignment", (q) =>
+        q.eq("assignmentId", args.assignmentId),
+      )
       .collect();
 
     if (submissions.length > 0) {
@@ -737,7 +780,11 @@ export const enrollStudentsInCourse = mutation({
     classIds: v.array(v.id("classes")),
   },
   handler: async (ctx, args) => {
-    return await enrollStudentsInCourseHelper(ctx, args.courseId, args.classIds);
+    return await enrollStudentsInCourseHelper(
+      ctx,
+      args.courseId,
+      args.classIds,
+    );
   },
 });
 

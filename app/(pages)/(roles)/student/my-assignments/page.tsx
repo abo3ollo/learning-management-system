@@ -62,7 +62,9 @@ export default function MyAssignmentsPage() {
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   // ✅ جلب البيانات - استخدام المسار الصحيح للـ courses
-  const courses = useQuery(api.courses.courses.getStudentCourses, {});  // ✅ api.courses.getStudentCourses
+  const courses = useQuery(api.courses.courses.getStudentCourses, {}); 
+  console.log(courses);
+  
   const assignments = useQuery(api.assignments.assignments.getStudentAssignments, {
     status: statusFilter as any,
     subjectId: subjectFilter !== "all" ? subjectFilter as any : undefined,

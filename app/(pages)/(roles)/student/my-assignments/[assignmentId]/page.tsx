@@ -52,6 +52,8 @@ export default function StudentAssignmentDetailPage() {
     api.assignments.assignments.getAssignmentById,
     assignmentId ? { assignmentId: assignmentId as any } : "skip"
   );
+  console.log(assignment);
+
 
 
   // ✅ جلب بيانات الطالب الحالي
@@ -62,13 +64,13 @@ export default function StudentAssignmentDetailPage() {
     api.submissions.submissions.getStudentSubmissions,
     currentUser?._id && assignmentId
       ? {
-          studentId: currentUser._id as any,
-          assignmentId: assignmentId as any,
-        }
+        studentId: currentUser._id as any,
+        assignmentId: assignmentId as any,
+      }
       : "skip"
   );
-  console.log(studentSubmission);
-  
+
+
 
   // ✅ جلب اسم المادة - استخدم courseId من assignment مباشرة
   // لا تستخدم useQuery منفصل هنا لتجنب المشكلة
@@ -186,17 +188,52 @@ export default function StudentAssignmentDetailPage() {
 
       setSelectedFiles([]);
       setContent("");
-      
+
       setTimeout(() => {
         router.refresh();
       }, 1000);
-      
+
     } catch (error: any) {
       setError(error.message || "حدث خطأ أثناء التسليم");
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const getTimeRemaining = (dueDate: number) => {
+    const now = Date.now();
+    const diff = dueDate - now;
+
+    if (diff <= 0) {
+      return { text: "انتهى الوقت", color: "text-red-500", expired: true };
+    }
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (days > 0) {
+      return {
+        text: `${days} يوم متبقي`,
+        color: "text-green-600",
+        expired: false
+      };
+    } else if (hours > 0) {
+      return {
+        text: `${hours} ساعة متبقي`,
+        color: "text-amber-600",
+        expired: false
+      };
+    } else {
+      return {
+        text: `${minutes} دقيقة متبقي`,
+        color: "text-orange-600",
+        expired: false
+      };
+    }
+  };
+
+  const timeRemaining = getTimeRemaining(assignment.dueDate);
 
   return (
     <div className="container mx-auto p-6 space-y-6" dir="rtl">
@@ -223,7 +260,13 @@ export default function StudentAssignmentDetailPage() {
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Calendar className="h-4 w-4 text-[#1a7a8a]" />
                   <span>
-                    التسليم: {format(new Date(assignment.dueDate), "dd MMMM yyyy", { locale: ar })}
+                    التسليم: {format(new Date(assignment.dueDate), "dd MMMM yyyy - h:mm a", { locale: ar })}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4 text-[#1a7a8a]" />
+                  <span className={timeRemaining.color}>
+                    {timeRemaining.text}
                   </span>
                 </div>
                 {isLate && (
@@ -240,8 +283,8 @@ export default function StudentAssignmentDetailPage() {
                 {isGraded
                   ? `الدرجة: ${submission?.grade || 0} / ${assignment.fullGrade}`
                   : isSubmitted
-                  ? "تم التسليم"
-                  : "في انتظار التسليم"}
+                    ? "تم التسليم"
+                    : "في انتظار التسليم"}
               </span>
             </div>
           </div>
@@ -320,7 +363,7 @@ export default function StudentAssignmentDetailPage() {
                     {error}
                   </div>
                 )}
-                
+
                 {success && (
                   <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700 flex items-center gap-2">
                     <CheckCircle className="h-4 w-4" />
@@ -360,7 +403,7 @@ export default function StudentAssignmentDetailPage() {
                       اسحب الملفات هنا أو اضغط للاختيار
                     </p>
                     <p className="text-xs text-gray-400 mt-1">
-                      {assignment.allowedFileTypes?.join(", ") || "جميع الأنواع"} 
+                      {assignment.allowedFileTypes?.join(", ") || "جميع الأنواع"}
                       (حد أقصى {assignment.maxFileSize || 10}MB)
                     </p>
                     <input
