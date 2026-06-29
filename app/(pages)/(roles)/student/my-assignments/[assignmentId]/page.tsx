@@ -30,6 +30,8 @@ import {
   Send,
   X,
   Eye,
+  ListChecks,
+  FileQuestion,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -46,15 +48,15 @@ export default function StudentAssignmentDetailPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  // ✅ State للإجابات
+  const [answers, setAnswers] = useState<Record<string, any>>({});
 
-  // ✅ جلب بيانات الواجب
+  // ✅ جلب بيانات الواجب (تشمل الأسئلة)
   const assignment = useQuery(
     api.assignments.assignments.getAssignmentById,
     assignmentId ? { assignmentId: assignmentId as any } : "skip"
   );
-  console.log(assignment);
-
-
 
   // ✅ جلب بيانات الطالب الحالي
   const currentUser = useQuery(api.user.auth.getCurrentUser);
@@ -64,16 +66,11 @@ export default function StudentAssignmentDetailPage() {
     api.submissions.submissions.getStudentSubmissions,
     currentUser?._id && assignmentId
       ? {
-        studentId: currentUser._id as any,
-        assignmentId: assignmentId as any,
-      }
+          studentId: currentUser._id as any,
+          assignmentId: assignmentId as any,
+        }
       : "skip"
   );
-
-
-
-  // ✅ جلب اسم المادة - استخدم courseId من assignment مباشرة
-  // لا تستخدم useQuery منفصل هنا لتجنب المشكلة
 
   // ✅ دوال الـ Mutations
   const submitAssignment = useMutation(api.submissions.submissions.submitAssignment);
@@ -118,6 +115,9 @@ export default function StudentAssignmentDetailPage() {
   const isLate = submission?.isLate || false;
   const canSubmit = !isSubmitted || assignment.allowResubmission;
 
+  // ✅ الأسئلة - من assignment.questionDetails
+  const assignmentQuestions = assignment.questionDetails || [];
+
   // ✅ دوال مساعدة
   const getStatusBadge = () => {
     if (isGraded) {
@@ -149,11 +149,62 @@ export default function StudentAssignmentDetailPage() {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // ✅ دوال الأسئلة
+  const handleAnswerChange = (questionId: string, value: any) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: value,
+    }));
+  };
+
+  const handleMCQAnswer = (questionId: string, optionId: string) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: optionId,
+    }));
+  };
+
+  const handleTrueFalseAnswer = (questionId: string, value: boolean) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [questionId]: value,
+    }));
+  };
+
+  const getTypeLabel = (type: string) => {
+    const types: Record<string, string> = {
+      mcq: "اختيار من متعدد",
+      true_false: "صح/خطأ",
+      essay: "مقالي",
+      fill_blank: "ملء الفراغ",
+      matching: "مطابقة",
+    };
+    return types[type] || type;
+  };
+
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty) {
+      case "easy": return "bg-green-100 text-green-700";
+      case "medium": return "bg-amber-100 text-amber-700";
+      case "hard": return "bg-red-100 text-red-700";
+      default: return "bg-gray-100 text-gray-700";
+    }
+  };
+
+  const getDifficultyLabel = (difficulty: string) => {
+    switch (difficulty) {
+      case "easy": return "سهل";
+      case "medium": return "متوسط";
+      case "hard": return "صعب";
+      default: return difficulty;
+    }
+  };
+
   const handleSubmit = async () => {
     if (!currentUser) return;
 
-    if (!content.trim() && selectedFiles.length === 0) {
-      setError("يرجى إضافة محتوى أو رفع ملفات");
+    if (!content.trim() && selectedFiles.length === 0 && Object.keys(answers).length === 0) {
+      setError("يرجى إضافة محتوى أو رفع ملفات أو الإجابة على الأسئلة");
       return;
     }
 
@@ -169,30 +220,34 @@ export default function StudentAssignmentDetailPage() {
         type: file.type,
       }));
 
+      const submissionData = {
+        content: content,
+        attachments: attachments,
+        answers: answers,
+      };
+
       if (isSubmitted && assignment.allowResubmission) {
         await resubmitAssignment({
           submissionId: submission!._id,
-          content: content,
-          attachments: attachments,
+          ...submissionData,
         });
         setSuccess("تم إعادة تسليم الواجب بنجاح");
       } else {
         await submitAssignment({
           assignmentId: assignmentId as any,
           classId: assignment.classIds[0] as any,
-          content: content,
-          attachments: attachments,
+          ...submissionData,
         });
         setSuccess("تم تسليم الواجب بنجاح");
       }
 
       setSelectedFiles([]);
       setContent("");
+      setAnswers({});
 
       setTimeout(() => {
         router.refresh();
       }, 1000);
-
     } catch (error: any) {
       setError(error.message || "حدث خطأ أثناء التسليم");
     } finally {
@@ -216,24 +271,121 @@ export default function StudentAssignmentDetailPage() {
       return {
         text: `${days} يوم متبقي`,
         color: "text-green-600",
-        expired: false
+        expired: false,
       };
     } else if (hours > 0) {
       return {
         text: `${hours} ساعة متبقي`,
         color: "text-amber-600",
-        expired: false
+        expired: false,
       };
     } else {
       return {
         text: `${minutes} دقيقة متبقي`,
         color: "text-orange-600",
-        expired: false
+        expired: false,
       };
     }
   };
 
   const timeRemaining = getTimeRemaining(assignment.dueDate);
+
+  // ✅ دالة عرض السؤال حسب نوعه
+  const renderQuestion = (question: any, index: number) => {
+    const userAnswer = answers[question._id];
+
+    switch (question.type) {
+      case "mcq":
+        return (
+          <div className="space-y-3">
+            {question.options?.map((option: any) => (
+              <label
+                key={option.id}
+                className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                  userAnswer === option.id
+                    ? "border-[#1a7a8a] bg-[#e0f5f7]"
+                    : "border-[#c0c8c9] hover:border-[#1a7a8a]"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={`question-${question._id}`}
+                  value={option.id}
+                  checked={userAnswer === option.id}
+                  onChange={() => handleMCQAnswer(question._id, option.id)}
+                  className="w-4 h-4 text-[#1a7a8a] focus:ring-[#1a7a8a]"
+                />
+                <span className="text-sm text-gray-700">{option.text}</span>
+              </label>
+            ))}
+          </div>
+        );
+
+      case "true_false":
+        return (
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              { value: true, label: "صح ✅" },
+              { value: false, label: "خطأ ❌" },
+            ].map((opt) => (
+              <label
+                key={String(opt.value)}
+                className={`flex items-center justify-center gap-3 p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                  userAnswer === opt.value
+                    ? "border-[#1a7a8a] bg-[#e0f5f7]"
+                    : "border-[#c0c8c9] hover:border-[#1a7a8a]"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={`question-${question._id}`}
+                  value={String(opt.value)}
+                  checked={userAnswer === opt.value}
+                  onChange={() => handleTrueFalseAnswer(question._id, opt.value)}
+                  className="w-4 h-4 text-[#1a7a8a] focus:ring-[#1a7a8a]"
+                />
+                <span className="text-sm font-medium">{opt.label}</span>
+              </label>
+            ))}
+          </div>
+        );
+
+      case "essay":
+        return (
+          <textarea
+            value={userAnswer || ""}
+            onChange={(e) => handleAnswerChange(question._id, e.target.value)}
+            className="w-full px-3 py-2 border border-[#c0c8c9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] resize-none"
+            rows={4}
+            placeholder="أدخل إجابتك هنا..."
+            disabled={isSubmitting}
+          />
+        );
+
+      case "fill_blank":
+        return (
+          <Input
+            value={userAnswer || ""}
+            onChange={(e) => handleAnswerChange(question._id, e.target.value)}
+            className="w-full"
+            placeholder="أدخل الإجابة الصحيحة..."
+            disabled={isSubmitting}
+          />
+        );
+
+      default:
+        return (
+          <textarea
+            value={userAnswer || ""}
+            onChange={(e) => handleAnswerChange(question._id, e.target.value)}
+            className="w-full px-3 py-2 border border-[#c0c8c9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] resize-none"
+            rows={3}
+            placeholder="أدخل إجابتك هنا..."
+            disabled={isSubmitting}
+          />
+        );
+    }
+  };
 
   return (
     <div className="container mx-auto p-6 space-y-6" dir="rtl">
@@ -260,14 +412,15 @@ export default function StudentAssignmentDetailPage() {
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Calendar className="h-4 w-4 text-[#1a7a8a]" />
                   <span>
-                    التسليم: {format(new Date(assignment.dueDate), "dd MMMM yyyy - h:mm a", { locale: ar })}
+                    التسليم:{" "}
+                    {format(new Date(assignment.dueDate), "dd MMMM yyyy - h:mm a", {
+                      locale: ar,
+                    })}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 text-sm">
                   <Clock className="h-4 w-4 text-[#1a7a8a]" />
-                  <span className={timeRemaining.color}>
-                    {timeRemaining.text}
-                  </span>
+                  <span className={timeRemaining.color}>{timeRemaining.text}</span>
                 </div>
                 {isLate && (
                   <div className="flex items-center gap-2 text-sm text-red-500">
@@ -283,8 +436,8 @@ export default function StudentAssignmentDetailPage() {
                 {isGraded
                   ? `الدرجة: ${submission?.grade || 0} / ${assignment.fullGrade}`
                   : isSubmitted
-                    ? "تم التسليم"
-                    : "في انتظار التسليم"}
+                  ? "تم التسليم"
+                  : "في انتظار التسليم"}
               </span>
             </div>
           </div>
@@ -304,6 +457,74 @@ export default function StudentAssignmentDetailPage() {
                 <p className="text-gray-700 whitespace-pre-wrap">
                   {assignment.description}
                 </p>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ✅ Questions Section */}
+          {assignmentQuestions.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <ListChecks className="h-5 w-5 text-[#1a7a8a]" />
+                    أسئلة الواجب
+                  </CardTitle>
+                  <Badge variant="secondary">
+                    {assignmentQuestions.length} سؤال
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {assignmentQuestions.map((question: any, index: number) => (
+                  <div
+                    key={question._id}
+                    className="border border-[#c0c8c9] rounded-lg p-4 hover:border-[#1a7a8a] transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-[#1a7a8a]">
+                          سؤال {index + 1}
+                        </span>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full ${getDifficultyColor(
+                            question.difficulty
+                          )}`}
+                        >
+                          {getDifficultyLabel(question.difficulty)}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {question.points} نقطة
+                        </span>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs ${getDifficultyColor(
+                          question.difficulty
+                        )}`}
+                      >
+                        {getTypeLabel(question.type)}
+                      </Badge>
+                    </div>
+
+                    <div className="space-y-3">
+                      <p className="text-sm font-medium text-[#001f24]">
+                        {question.questionText}
+                      </p>
+
+                      {question.imageUrl && (
+                        <img
+                          src={question.imageUrl}
+                          alt="Question"
+                          className="max-h-48 rounded-lg"
+                        />
+                      )}
+
+                      {/* ✅ Render question based on type */}
+                      {renderQuestion(question, index)}
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           )}
@@ -332,11 +553,7 @@ export default function StudentAssignmentDetailPage() {
                           </p>
                         </div>
                       </div>
-                      <a
-                        href={file.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
+                      <a href={file.url} target="_blank" rel="noopener noreferrer">
                         <Button variant="ghost" size="sm">
                           <Download className="h-4 w-4" />
                         </Button>
@@ -373,9 +590,11 @@ export default function StudentAssignmentDetailPage() {
 
                 {isSubmitted && (
                   <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-                    <p>📝 {assignment.allowResubmission
-                      ? "يمكنك إعادة تسليم الواجب، سيتم استبدال التسليم السابق"
-                      : "لقد قمت بتسليم هذا الواجب بالفعل"}
+                    <p>
+                      📝{" "}
+                      {assignment.allowResubmission
+                        ? "يمكنك إعادة تسليم الواجب، سيتم استبدال التسليم السابق"
+                        : "لقد قمت بتسليم هذا الواجب بالفعل"}
                     </p>
                   </div>
                 )}
@@ -461,7 +680,12 @@ export default function StudentAssignmentDetailPage() {
                 {/* Submit Button */}
                 <Button
                   onClick={handleSubmit}
-                  disabled={isSubmitting || (!content.trim() && selectedFiles.length === 0)}
+                  disabled={
+                    isSubmitting ||
+                    (!content.trim() &&
+                      selectedFiles.length === 0 &&
+                      Object.keys(answers).length === 0)
+                  }
                   className="w-full bg-[#001f24] hover:bg-[#03363d] text-white"
                 >
                   {isSubmitting ? (
@@ -529,7 +753,11 @@ export default function StudentAssignmentDetailPage() {
                 <div>
                   <p className="text-xs text-gray-500">تاريخ التسليم</p>
                   <p className="text-sm font-medium">
-                    {format(new Date(submission.submittedAt), "dd MMMM yyyy - HH:mm", { locale: ar })}
+                    {format(
+                      new Date(submission.submittedAt),
+                      "dd MMMM yyyy - HH:mm",
+                      { locale: ar }
+                    )}
                   </p>
                 </div>
                 <div>
@@ -576,11 +804,7 @@ export default function StudentAssignmentDetailPage() {
                           {file.name}
                         </span>
                       </div>
-                      <a
-                        href={file.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
+                      <a href={file.url} target="_blank" rel="noopener noreferrer">
                         <Button variant="ghost" size="sm">
                           <Eye className="h-4 w-4" />
                         </Button>

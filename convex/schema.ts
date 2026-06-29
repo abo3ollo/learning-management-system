@@ -329,6 +329,7 @@ export default defineSchema({
       v.literal("exam"),
       v.literal("project"),
     ),
+    questions: v.optional(v.array(v.id("questions"))), // ✅ إضافة مصفوفة من معرفات الأسئلة
     fullGrade: v.float64(), // ✅ الدرجة الكاملة
     courseId: v.id("courses"),
     maxAttempts: v.optional(v.number()),

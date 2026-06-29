@@ -1,4 +1,5 @@
 // convex/questions/questions.ts
+
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
@@ -7,7 +8,77 @@ import { Id } from "../_generated/dataModel";
 // QUERIES
 // ============================================
 
-// جلب جميع الأسئلة
+// ✅ جلب الأسئلة حسب المادة (للاستخدام في AddAssignmentModal)
+export const getQuestionsByCourse = query({
+  args: {
+    courseId: v.optional(v.id("courses")),
+    search: v.optional(v.string()),
+    difficulty: v.optional(v.union(
+      v.literal("easy"),
+      v.literal("medium"),
+      v.literal("hard"),
+    )),
+    type: v.optional(v.union(
+      v.literal("mcq"),
+      v.literal("true_false"),
+      v.literal("essay"),
+      v.literal("fill_blank"),
+      v.literal("matching"),
+    )),
+    status: v.optional(v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("archived"),
+    )),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) throw new Error("المستخدم غير موجود");
+
+    let questions = await ctx.db.query("questions").collect();
+
+    // فلترة حسب المادة (subject)
+    if (args.courseId) {
+      const course = await ctx.db.get(args.courseId);
+      if (course) {
+        questions = questions.filter((q) => q.subject === course.title);
+      }
+    }
+
+    // فلترة حسب الحالة
+    if (user.role === "student") {
+      questions = questions.filter((q) => q.status === "published");
+    } else if (args.status) {
+      questions = questions.filter((q) => q.status === args.status);
+    }
+
+    if (args.type) {
+      questions = questions.filter((q) => q.type === args.type);
+    }
+    if (args.difficulty) {
+      questions = questions.filter((q) => q.difficulty === args.difficulty);
+    }
+    if (args.search && args.search.trim() !== "") {
+      const searchLower = args.search.toLowerCase();
+      questions = questions.filter((q) =>
+        q.title.toLowerCase().includes(searchLower) ||
+        q.questionText.toLowerCase().includes(searchLower) ||
+        q.tags.some(tag => tag.toLowerCase().includes(searchLower))
+      );
+    }
+
+    return questions.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
+// ✅ جلب جميع الأسئلة (مع فلاتر)
 export const getQuestions = query({
   args: {
     type: v.optional(v.union(
@@ -78,14 +149,66 @@ export const getQuestions = query({
   },
 });
 
-// جلب سؤال بواسطة ID
+// ✅ دالة جديدة لجلب أسئلة محددة بواسطة المعرفات (للطلاب)
+export const getQuestionsByIds = query({
+  args: {
+    questionIds: v.array(v.id("questions")),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) throw new Error("المستخدم غير موجود");
+
+    // جلب الأسئلة المطلوبة
+    const questions = await Promise.all(
+      args.questionIds.map(async (id) => {
+        const q = await ctx.db.get(id);
+        return q;
+      })
+    );
+
+    // فلترة الأسئلة الموجودة والمنشورة
+    const filteredQuestions = questions.filter((q) => {
+      if (!q) return false;
+      // للطلاب، فقط الأسئلة المنشورة
+      if (user.role === "student" && q.status !== "published") {
+        return false;
+      }
+      return true;
+    });
+
+    return filteredQuestions;
+  },
+});
+
 export const getQuestionById = query({
   args: { questionId: v.id("questions") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    return await ctx.db.get(args.questionId);
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) throw new Error("المستخدم غير موجود");
+
+    const question = await ctx.db.get(args.questionId);
+    if (!question) throw new Error("السؤال غير موجود");
+
+    // ✅ السماح للطلاب بمشاهدة الأسئلة المنشورة فقط
+    if (user.role === "student" && question.status !== "published") {
+      throw new Error("غير مصرح بمشاهدة هذا السؤال");
+    }
+
+    return question;
   },
 });
 
@@ -119,6 +242,7 @@ export const getQuestionsStats = query({
       hard: allQuestions.filter((q) => q.difficulty === "hard").length,
       published: allQuestions.filter((q) => q.status === "published").length,
       draft: allQuestions.filter((q) => q.status === "draft").length,
+      archived: allQuestions.filter((q) => q.status === "archived").length,
     };
   },
 });
@@ -127,7 +251,7 @@ export const getQuestionsStats = query({
 // MUTATIONS
 // ============================================
 
-// إنشاء سؤال جديد
+
 export const createQuestion = mutation({
   args: {
     title: v.string(),
@@ -147,12 +271,14 @@ export const createQuestion = mutation({
       v.literal("hard"),
     ),
     points: v.number(),
-    options: v.array(v.object({
-      id: v.string(),
-      text: v.string(),
-      isCorrect: v.boolean(),
-      imageUrl: v.optional(v.string()),
-    })),
+    options: v.array(
+      v.object({
+        id: v.string(),
+        text: v.string(),
+        isCorrect: v.boolean(),
+        imageUrl: v.optional(v.string()),
+      }),
+    ),
     correctAnswer: v.optional(v.string()),
     subject: v.optional(v.string()),
     lesson: v.optional(v.string()),
@@ -205,7 +331,6 @@ export const createQuestion = mutation({
   },
 });
 
-// تحديث سؤال
 export const updateQuestion = mutation({
   args: {
     questionId: v.id("questions"),
@@ -226,12 +351,14 @@ export const updateQuestion = mutation({
       v.literal("hard"),
     )),
     points: v.optional(v.number()),
-    options: v.optional(v.array(v.object({
-      id: v.string(),
-      text: v.string(),
-      isCorrect: v.boolean(),
-      imageUrl: v.optional(v.string()),
-    }))),
+    options: v.optional(v.array(
+      v.object({
+        id: v.string(),
+        text: v.string(),
+        isCorrect: v.boolean(),
+        imageUrl: v.optional(v.string()),
+      }),
+    )),
     correctAnswer: v.optional(v.string()),
     subject: v.optional(v.string()),
     lesson: v.optional(v.string()),
@@ -283,7 +410,6 @@ export const updateQuestion = mutation({
   },
 });
 
-// حذف سؤال
 export const deleteQuestion = mutation({
   args: { questionId: v.id("questions") },
   handler: async (ctx, args) => {
@@ -302,9 +428,14 @@ export const deleteQuestion = mutation({
     const question = await ctx.db.get(args.questionId);
     if (!question) throw new Error("السؤال غير موجود");
 
-    // التحقق من استخدام السؤال في امتحانات
-    if (question.examUsage && question.examUsage.length > 0) {
-      throw new Error("لا يمكن حذف السؤال لأنه مستخدم في امتحانات");
+    // التحقق من استخدام السؤال في واجبات
+    const assignments = await ctx.db.query("assignments").collect();
+    const isUsed = assignments.some(a => 
+      a.questions && a.questions.some(q => q === args.questionId)
+    );
+
+    if (isUsed) {
+      throw new Error("لا يمكن حذف السؤال لأنه مستخدم في واجبات");
     }
 
     await ctx.db.delete(args.questionId);
@@ -313,7 +444,6 @@ export const deleteQuestion = mutation({
   },
 });
 
-// نشر سؤال (تغيير الحالة إلى published)
 export const publishQuestion = mutation({
   args: { questionId: v.id("questions") },
   handler: async (ctx, args) => {
@@ -337,3 +467,39 @@ export const publishQuestion = mutation({
     return { success: true };
   },
 });
+
+export const archiveQuestion = mutation({
+  args: { questionId: v.id("questions") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
+    }
+
+    await ctx.db.patch(args.questionId, {
+      status: "archived",
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+export const questions = {
+  getQuestions,
+  getQuestionsByCourse,
+  getQuestionsByIds,
+  getQuestionsStats,
+  createQuestion,
+  updateQuestion,
+  deleteQuestion,
+  publishQuestion,
+  archiveQuestion,
+};

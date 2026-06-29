@@ -85,21 +85,41 @@ export const getAssignmentById = query({
     const assignment = await ctx.db.get(args.assignmentId);
     if (!assignment) throw new Error("الواجب غير موجود");
 
+    // ✅ جلب الفصول
     const classes = await Promise.all(
       assignment.classIds.map(async (classId) => {
         const classData = await ctx.db.get(classId);
         return classData;
-      }),
+      })
     );
 
     const creator = await ctx.db.get(assignment.createdBy);
 
+    // ✅ جلب اسم المادة
+    let courseName = null;
+    if (assignment.courseId) {
+      const course = await ctx.db.get(assignment.courseId);
+      courseName = course?.title || null;
+    }
+
+    // ✅ جلب تفاصيل الأسئلة
+    let questionDetails: any[] = [];
+    if (assignment.questions && assignment.questions.length > 0) {
+      questionDetails = await Promise.all(
+        assignment.questions.map(async (qId) => {
+          const q = await ctx.db.get(qId);
+          return q;
+        })
+      );
+      questionDetails = questionDetails.filter((q): q is NonNullable<typeof q> => q !== null && q !== undefined);
+    }
+
     return {
       ...assignment,
-      classes: classes.filter(
-        (c): c is NonNullable<typeof c> => c !== null && c !== undefined,
-      ),
+      classes: classes.filter((c): c is NonNullable<typeof c> => c !== null && c !== undefined),
       creatorName: creator?.name || "غير معروف",
+      courseName: courseName,
+      questionDetails: questionDetails, // ✅ إضافة تفاصيل الأسئلة
     };
   },
 });
@@ -473,6 +493,7 @@ export const createAssignment = mutation({
       v.literal("exam"),
       v.literal("project"),
     ),
+    questions: v.optional(v.array(v.id("questions"))), // ✅ إضافة
     maxAttempts: v.optional(v.number()),
     allowResubmission: v.boolean(),
     isGroupWork: v.boolean(),
@@ -530,6 +551,7 @@ export const createAssignment = mutation({
       description: args.description,
       classIds: args.classIds,
       type: args.type,
+      questions: args.questions || [], // ✅ إضافة
       maxAttempts: args.maxAttempts,
       allowResubmission: args.allowResubmission,
       isGroupWork: args.isGroupWork,
@@ -581,6 +603,7 @@ export const updateAssignment = mutation({
     title: v.optional(v.string()),
     description: v.optional(v.string()),
     classIds: v.optional(v.array(v.id("classes"))),
+    questions: v.optional(v.array(v.id("questions"))), // ✅ إضافة
     type: v.optional(
       v.union(
         v.literal("assignment"),
@@ -645,6 +668,7 @@ export const updateAssignment = mutation({
     if (args.description !== undefined)
       updateData.description = args.description;
     if (args.classIds !== undefined) updateData.classIds = args.classIds;
+    if (args.questions !== undefined) updateData.questions = args.questions;
     if (args.type !== undefined) updateData.type = args.type;
     if (args.maxAttempts !== undefined)
       updateData.maxAttempts = args.maxAttempts;
