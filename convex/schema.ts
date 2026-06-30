@@ -255,8 +255,6 @@ export default defineSchema({
     .index("by_class", ["classId"])
     .index("by_reminderTime", ["reminderTime"]),
 
-  // ─── Add these two tables to your existing convex/schema.ts ─────
-  // Inside the defineSchema({ ... }) object, alongside your other tables
 
   mediaFiles: defineTable({
     name: v.string(),
@@ -426,32 +424,17 @@ export default defineSchema({
     .index("by_student_class", ["studentId", "classId"])
     .index("by_student_course", ["studentId", "courseId"]),
 
-  chapters: defineTable({
-    courseId: v.id("courses"),
-    title: v.string(),
-    description: v.optional(v.string()),
-    order: v.number(),
-    isPublished: v.boolean(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_course", ["courseId"])
-    .index("by_course_order", ["courseId", "order"]),
-
-  lessons: defineTable({
-    chapterId: v.id("chapters"),
-    title: v.string(),
-    description: v.optional(v.string()),
-    content: v.optional(v.string()),
-    videoUrl: v.optional(v.string()),
-    duration: v.optional(v.number()),
-    order: v.number(),
-    isPublished: v.boolean(),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_chapter", ["chapterId"])
-    .index("by_chapter_order", ["chapterId", "order"]),
+  // chapters: defineTable({
+  //   courseId: v.id("courses"),
+  //   title: v.string(),
+  //   description: v.optional(v.string()),
+  //   order: v.number(),
+  //   isPublished: v.boolean(),
+  //   createdAt: v.number(),
+  //   updatedAt: v.number(),
+  // })
+  //   .index("by_course", ["courseId"])
+  //   .index("by_course_order", ["courseId", "order"]),
 
   questions: defineTable({
     title: v.string(), // عنوان السؤال
@@ -508,4 +491,80 @@ export default defineSchema({
     .index("by_grade", ["grade"])
     .index("by_status", ["status"])
     .index("by_createdBy", ["createdBy"]),
+
+  // ✅ جدول الامتحانات (معدل)
+  exams: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    model: v.string(),
+    grade: v.string(),
+    subject: v.string(),
+    courseId: v.optional(v.id("courses")),
+    classIds: v.array(v.id("classes")),
+    totalMarks: v.number(),
+    duration: v.number(),
+    date: v.number(),
+    instructions: v.optional(v.string()),
+    footerText: v.optional(v.string()),
+    headerBorderColor: v.optional(v.string()),
+    showInstructions: v.boolean(),
+    showAnswerSheet: v.boolean(),
+    showQrCode: v.boolean(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("archived"),
+    ),
+    // ✅ الأسئلة من بنك الأسئلة - مخزنة مباشرة
+    questions: v.array(
+      v.object({
+        questionId: v.id("questions"),
+        marks: v.number(),
+        order: v.number(),
+      }),
+    ),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    publishedAt: v.optional(v.number()),
+  })
+    .index("by_course", ["courseId"])
+    .index("by_status", ["status"])
+    .index("by_createdBy", ["createdBy"])
+    .index("by_date", ["date"]),
+
+  // ✅ جدول تسليمات الامتحانات
+  examSubmissions: defineTable({
+    examId: v.id("exams"),
+    studentId: v.id("users"),
+    classId: v.id("classes"),
+    submittedAt: v.number(),
+    answers: v.array(
+      v.object({
+        questionId: v.id("questions"),
+        answer: v.string(),
+        marksObtained: v.optional(v.number()), // ✅ اختياري - يضاف عند التصحيح
+        feedback: v.optional(v.string()), // ✅ ملاحظات المعلم على كل سؤال
+      }),
+    ),
+    totalMarks: v.optional(v.number()), // ✅ اختياري - يضاف عند التصحيح
+    status: v.union(
+      v.literal("submitted"), // ✅ مسلم - بانتظار التصحيح
+      v.literal("graded"), // ✅ تم التصحيح
+      v.literal("returned"), // ✅ أعيد للطالب
+    ),
+    gradedBy: v.optional(v.id("users")),
+    gradedAt: v.optional(v.number()),
+    feedback: v.optional(v.string()), // ✅ ملاحظات عامة
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    locked: v.optional(v.boolean()),
+    lockReason: v.optional(v.string()),
+    lockedAt: v.optional(v.number()),
+  })
+    .index("by_exam", ["examId"])
+    .index("by_student", ["studentId"])
+    .index("by_class", ["classId"])
+    .index("by_exam_student", ["examId", "studentId"])
+    .index("by_status", ["status"]), // ✅ إضافة index للحالة
 });

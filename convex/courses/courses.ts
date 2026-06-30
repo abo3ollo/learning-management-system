@@ -237,6 +237,53 @@ export const getStudentCourses = query({
   },
 });
 
+// convex/courses/courses.ts
+
+// ✅ دالة جديدة لجلب المواد المنشورة للطلاب
+export const getPublishedCourses = query({
+  args: {
+    search: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) throw new Error("المستخدم غير موجود");
+
+    // جلب الكورسات المنشورة فقط
+    let courses = await ctx.db.query("courses").collect();
+    courses = courses.filter((c) => c.isPublished === true);
+
+    // تطبيق البحث
+    if (args.search && args.search.trim() !== "") {
+      const searchLower = args.search.toLowerCase();
+      courses = courses.filter((c) =>
+        c.title.toLowerCase().includes(searchLower) ||
+        c.description.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // جلب اسم المعلم لكل مادة
+    const coursesWithTeacher = await Promise.all(
+      courses.map(async (course) => {
+        const teacher = await ctx.db.get(course.teacherId);
+        return {
+          ...course,
+          teacherName: teacher?.name || "معلم غير معروف",
+          studentsCount: course.enrolledStudents.length,
+        };
+      })
+    );
+
+    return coursesWithTeacher.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
 // ============================================
 // MUTATIONS
 // ============================================

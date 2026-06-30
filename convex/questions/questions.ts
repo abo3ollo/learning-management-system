@@ -247,6 +247,50 @@ export const getQuestionsStats = query({
   },
 });
 
+
+// ✅ جلب أسئلة متعددة بواسطة المعرفات (للامتحانات)
+export const getQuestionsForExam = query({
+  args: {
+    questionIds: v.array(v.object({
+      questionId: v.id("questions"),
+      marks: v.number(),
+      order: v.number(),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) throw new Error("المستخدم غير موجود");
+
+    // جلب كل الأسئلة المطلوبة
+    const questionsWithMarks = await Promise.all(
+      args.questionIds.map(async (item) => {
+        const question = await ctx.db.get(item.questionId);
+        if (!question) return null;
+        
+        // التحقق من صلاحية المشاهدة
+        if (user.role === "student" && question.status !== "published") {
+          return null;
+        }
+
+        return {
+          ...question,
+          marksInExam: item.marks,
+          orderInExam: item.order,
+        };
+      })
+    );
+
+    return questionsWithMarks.filter((q): q is NonNullable<typeof q> => q !== null);
+  },
+});
+
 // ============================================
 // MUTATIONS
 // ============================================

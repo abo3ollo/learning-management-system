@@ -12,6 +12,7 @@ import type * as assignments_assignments from "../assignments/assignments.js";
 import type * as classes_classSubjects from "../classes/classSubjects.js";
 import type * as classes_classes from "../classes/classes.js";
 import type * as courses_courses from "../courses/courses.js";
+import type * as exams_exams from "../exams/exams.js";
 import type * as index from "../index.js";
 import type * as media_mediaassignments from "../media/mediaassignments.js";
 import type * as media_mediafiles from "../media/mediafiles.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   "classes/classSubjects": typeof classes_classSubjects;
   "classes/classes": typeof classes_classes;
   "courses/courses": typeof courses_courses;
+  "exams/exams": typeof exams_exams;
   index: typeof index;
   "media/mediaassignments": typeof media_mediaassignments;
   "media/mediafiles": typeof media_mediafiles;
