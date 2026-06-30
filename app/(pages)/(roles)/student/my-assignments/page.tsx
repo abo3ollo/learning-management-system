@@ -24,6 +24,8 @@ import {
   Loader2,
   AlertCircle,
   Search,
+  Filter,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -60,11 +62,10 @@ export default function MyAssignmentsPage() {
   const [subjectFilter, setSubjectFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("dueDate");
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
 
-  // ✅ جلب البيانات - استخدام المسار الصحيح للـ courses
+  // ✅ جلب البيانات
   const courses = useQuery(api.courses.courses.getStudentCourses, {}); 
-  console.log(courses);
-  
   const assignments = useQuery(api.assignments.assignments.getStudentAssignments, {
     status: statusFilter as any,
     subjectId: subjectFilter !== "all" ? subjectFilter as any : undefined,
@@ -109,6 +110,25 @@ export default function MyAssignmentsPage() {
     }
   };
 
+  // ✅ دوال الترجمة
+  const getStatusLabel = (value: string) => {
+    const map: Record<string, string> = {
+      all: "جميع الحالات",
+      pending: "في الانتظار",
+      submitted: "مسلم",
+      graded: "تم التصحيح",
+    };
+    return map[value] || value;
+  };
+
+  const getSortLabel = (value: string) => {
+    const map: Record<string, string> = {
+      dueDate: "تاريخ التسليم",
+      createdAt: "تاريخ الإنشاء",
+    };
+    return map[value] || value;
+  };
+
   // ✅ فلترة البحث
   const filteredAssignments = assignments.filter((assignment: any) => {
     if (!searchTerm) return true;
@@ -120,7 +140,7 @@ export default function MyAssignmentsPage() {
     );
   });
 
-  // ✅ دوال التعامل مع تغيير القيم - تدعم string | null
+  // ✅ دوال التعامل مع تغيير القيم
   const handleStatusChange = (value: string | null) => {
     setStatusFilter(value || "all");
   };
@@ -133,52 +153,92 @@ export default function MyAssignmentsPage() {
     setSortBy(value || "dueDate");
   };
 
+  // ✅ إعادة ضبط الفلاتر
+  const resetFilters = () => {
+    setStatusFilter("all");
+    setSubjectFilter("all");
+    setSortBy("dueDate");
+    setSearchTerm("");
+  };
+
+  // ✅ عدد الفلاتر النشطة
+  const activeFiltersCount = [
+    statusFilter !== "all",
+    subjectFilter !== "all",
+    sortBy !== "dueDate",
+    searchTerm !== "",
+  ].filter(Boolean).length;
+
   return (
-    <div className="container mx-auto p-6 space-y-6" dir="rtl">
+    <div className="container mx-auto p-4 md:p-6 space-y-6" dir="rtl">
       {/* ✅ Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-[#001f24]">واجباتي</h1>
-          <p className="text-gray-500 mt-1">جميع الواجبات الخاصة بك وحالة التسليم</p>
+          <h1 className="text-2xl md:text-3xl font-bold text-[#001f24]">واجباتي</h1>
+          <p className="text-sm text-gray-500 mt-1">جميع الواجبات الخاصة بك وحالة التسليم</p>
+        </div>
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          <div className="relative flex-1 md:flex-none md:w-64">
+            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="بحث في الواجبات..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pr-10 w-full"
+            />
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFilters(!showFilters)}
+            className="md:hidden relative"
+          >
+            <Filter className="h-4 w-4" />
+            {activeFiltersCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-[#1a7a8a] text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+                {activeFiltersCount}
+              </span>
+            )}
+          </Button>
         </div>
       </div>
 
       {/* ✅ الإحصائيات */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
         <Card>
-          <CardContent className="p-4 flex justify-between items-center">
+          <CardContent className="p-3 md:p-4 flex justify-between items-center">
             <div>
-              <p className="text-sm text-gray-500">الكل</p>
-              <p className="text-2xl font-bold">{stats.total}</p>
+              <p className="text-xs text-gray-500">الكل</p>
+              <p className="text-xl md:text-2xl font-bold">{stats.total}</p>
             </div>
-            <FileText className="h-8 w-8 text-[#1a7a8a]" />
+            <FileText className="h-6 w-6 md:h-8 md:w-8 text-[#1a7a8a]" />
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex justify-between items-center">
+          <CardContent className="p-3 md:p-4 flex justify-between items-center">
             <div>
-              <p className="text-sm text-gray-500">في الانتظار</p>
-              <p className="text-2xl font-bold text-amber-500">{stats.pending}</p>
+              <p className="text-xs text-gray-500">في الانتظار</p>
+              <p className="text-xl md:text-2xl font-bold text-amber-500">{stats.pending}</p>
             </div>
-            <Clock className="h-8 w-8 text-amber-500" />
+            <Clock className="h-6 w-6 md:h-8 md:w-8 text-amber-500" />
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex justify-between items-center">
+          <CardContent className="p-3 md:p-4 flex justify-between items-center">
             <div>
-              <p className="text-sm text-gray-500">مسلم</p>
-              <p className="text-2xl font-bold text-blue-500">{stats.submitted}</p>
+              <p className="text-xs text-gray-500">مسلم</p>
+              <p className="text-xl md:text-2xl font-bold text-blue-500">{stats.submitted}</p>
             </div>
-            <FileText className="h-8 w-8 text-blue-500" />
+            <FileText className="h-6 w-6 md:h-8 md:w-8 text-blue-500" />
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 flex justify-between items-center">
+          <CardContent className="p-3 md:p-4 flex justify-between items-center">
             <div>
-              <p className="text-sm text-gray-500">تم التصحيح</p>
-              <p className="text-2xl font-bold text-green-500">{stats.graded}</p>
+              <p className="text-xs text-gray-500">تم التصحيح</p>
+              <p className="text-xl md:text-2xl font-bold text-green-500">{stats.graded}</p>
             </div>
-            <CheckCircle className="h-8 w-8 text-green-500" />
+            <CheckCircle className="h-6 w-6 md:h-8 md:w-8 text-green-500" />
           </CardContent>
         </Card>
       </div>
@@ -186,70 +246,124 @@ export default function MyAssignmentsPage() {
       {/* ✅ المتوسط */}
       {stats.graded > 0 && (
         <Card className="bg-linear-to-r from-[#001f24] to-[#03363d] text-white">
-          <CardContent className="p-4 flex justify-between items-center">
+          <CardContent className="p-3 md:p-4 flex justify-between items-center">
             <div>
               <p className="text-sm text-[#a3ced6]">متوسط الدرجات</p>
-              <p className="text-3xl font-bold">{stats.averageGrade}%</p>
+              <p className="text-2xl md:text-3xl font-bold">{stats.averageGrade}%</p>
             </div>
-            <TrendingUp className="h-8 w-8 text-[#a3ced6]" />
+            <TrendingUp className="h-6 w-6 md:h-8 md:w-8 text-[#a3ced6]" />
           </CardContent>
         </Card>
       )}
 
-      {/* ✅ الفلاتر والبحث */}
-      <div className="flex flex-wrap gap-4 items-center">
-        {/* بحث */}
-        <div className="flex-1 min-w-50 relative">
-          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="بحث في الواجبات..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pr-10"
-          />
+      {/* ✅ الفلاتر - تصميم محسن */}
+      <div className={`bg-white rounded-lg border border-gray-200 p-4 space-y-4 ${showFilters ? 'block' : 'hidden md:block'}`}>
+        {/* صف الفلاتر الرئيسي */}
+        <div className="flex flex-wrap gap-3 items-center">
+          {/* فلتر الحالة */}
+          <div className="flex-1 min-w-37.5">
+            <Select value={statusFilter} onValueChange={handleStatusChange}>
+              <SelectTrigger className="bg-gray-50 border-gray-200">
+                <SelectValue placeholder="جميع الحالات">
+                  {getStatusLabel(statusFilter)}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع الحالات</SelectItem>
+                <SelectItem value="pending">في الانتظار</SelectItem>
+                <SelectItem value="submitted">مسلم</SelectItem>
+                <SelectItem value="graded">تم التصحيح</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* فلتر المادة */}
+          <div className="flex-1 min-w-37.5">
+            <Select value={subjectFilter} onValueChange={handleSubjectChange}>
+              <SelectTrigger className="bg-gray-50 border-gray-200">
+                <SelectValue placeholder="جميع المواد">
+                  {subjectFilter !== "all" 
+                    ? courses?.find((c: any) => c._id === subjectFilter)?.title 
+                    : "جميع المواد"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">جميع المواد</SelectItem>
+                {courses?.map((course: any) => (
+                  <SelectItem key={course._id} value={course._id}>
+                    {course.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* فلتر الترتيب */}
+          <div className="flex-1 min-w-37.5">
+            <Select value={sortBy} onValueChange={handleSortChange}>
+              <SelectTrigger className="bg-gray-50 border-gray-200">
+                <SelectValue placeholder="ترتيب حسب">
+                  {getSortLabel(sortBy)}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="dueDate">تاريخ التسليم</SelectItem>
+                <SelectItem value="createdAt">تاريخ الإنشاء</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            variant="outline"
+            onClick={resetFilters}
+            className="border-gray-200 text-gray-600 hover:bg-gray-50 gap-2"
+          >
+            <X className="h-4 w-4" />
+            إعادة ضبط
+            {activeFiltersCount > 0 && (
+              <span className="bg-[#1a7a8a] text-white text-xs rounded-full px-2 py-0.5">
+                {activeFiltersCount}
+              </span>
+            )}
+          </Button>
         </div>
 
-        <div className="flex-1 min-w-37.5">
-          <Select value={statusFilter} onValueChange={handleStatusChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="الحالة" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">الكل</SelectItem>
-              <SelectItem value="pending">في الانتظار</SelectItem>
-              <SelectItem value="submitted">مسلم</SelectItem>
-              <SelectItem value="graded">تم التصحيح</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {/* ✅ الفلاتر النشطة - عرض سريع */}
+        {activeFiltersCount > 0 && (
+          <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+            <span className="text-xs text-gray-500">الفلاتر النشطة:</span>
+            {statusFilter !== "all" && (
+              <Badge className="bg-[#e0f5f7] text-[#1a7a8a]">
+                الحالة: {getStatusLabel(statusFilter)}
+              </Badge>
+            )}
+            {subjectFilter !== "all" && (
+              <Badge className="bg-[#e0f5f7] text-[#1a7a8a]">
+                المادة: {courses?.find((c: any) => c._id === subjectFilter)?.title}
+              </Badge>
+            )}
+            {sortBy !== "dueDate" && (
+              <Badge className="bg-[#e0f5f7] text-[#1a7a8a]">
+                الترتيب: {getSortLabel(sortBy)}
+              </Badge>
+            )}
+            {searchTerm && (
+              <Badge className="bg-[#e0f5f7] text-[#1a7a8a]">
+                بحث: "{searchTerm}"
+              </Badge>
+            )}
+          </div>
+        )}
+      </div>
 
-        <div className="flex-1 min-w-37.5">
-          <Select value={subjectFilter} onValueChange={handleSubjectChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="المادة" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">جميع المواد</SelectItem>
-              {courses?.map((course: any) => (
-                <SelectItem key={course._id} value={course._id}>
-                  {course.title}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="flex-1 min-w-37.5">
-          <Select value={sortBy} onValueChange={handleSortChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="ترتيب حسب" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="dueDate">تاريخ التسليم</SelectItem>
-              <SelectItem value="createdAt">تاريخ الإنشاء</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      {/* ✅ عدد النتائج */}
+      <div className="flex justify-between items-center text-sm text-gray-500">
+        <span>عرض {filteredAssignments.length} واجب</span>
+        {activeFiltersCount > 0 && (
+          <span className="text-xs text-gray-400">
+            {activeFiltersCount} فلتر نشط
+          </span>
+        )}
       </div>
 
       {/* ✅ قائمة الواجبات */}
@@ -260,6 +374,15 @@ export default function MyAssignmentsPage() {
           <p className="text-gray-400">
             {searchTerm ? "لا توجد نتائج تطابق بحثك" : "لم يتم العثور على أي واجبات"}
           </p>
+          {activeFiltersCount > 0 && (
+            <Button
+              variant="outline"
+              onClick={resetFilters}
+              className="mt-4"
+            >
+              إزالة جميع الفلاتر
+            </Button>
+          )}
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -320,7 +443,7 @@ export default function MyAssignmentsPage() {
 
                 {/* زر التفاصيل */}
                 <Link href={`/student/my-assignments/${assignment._id}`}>
-                  <Button variant="outline" className="w-full mt-2">
+                  <Button variant="outline" className="w-full mt-2 hover:bg-[#e0f5f7] hover:border-[#1a7a8a] transition-colors">
                     عرض التفاصيل
                   </Button>
                 </Link>
