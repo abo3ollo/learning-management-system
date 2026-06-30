@@ -178,6 +178,14 @@ export const submitAssignment = mutation({
         type: v.string(),
       }),
     ),
+    answers: v.optional(
+      v.array(
+        v.object({
+          questionId: v.id("questions"),
+          answer: v.string(),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -265,6 +273,7 @@ export const submitAssignment = mutation({
       submittedAt: Date.now(),
       content: args.content,
       attachments: args.attachments,
+      answers: args.answers || [], // ✅ تخزين الإجابات
       status: status,
       attemptNumber: attemptNumber,
       isLate: isLate,
@@ -349,6 +358,14 @@ export const resubmitAssignment = mutation({
         type: v.string(),
       }),
     ),
+     answers: v.optional(
+      v.array(
+        v.object({
+          questionId: v.id("questions"),
+          answer: v.string(),
+        })
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -392,6 +409,7 @@ export const resubmitAssignment = mutation({
       submittedAt: Date.now(),
       content: args.content,
       attachments: args.attachments,
+       answers: args.answers || [], // ✅ تخزين الإجابات
       status: "submitted",
       attemptNumber: existingSubmission.attemptNumber + 1,
       isLate: Date.now() > assignment.dueDate,

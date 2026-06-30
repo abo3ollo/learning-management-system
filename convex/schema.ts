@@ -255,7 +255,6 @@ export default defineSchema({
     .index("by_class", ["classId"])
     .index("by_reminderTime", ["reminderTime"]),
 
-
   mediaFiles: defineTable({
     name: v.string(),
     type: v.union(
@@ -386,6 +385,15 @@ export default defineSchema({
         size: v.number(),
         type: v.string(),
       }),
+    ),
+    // ✅ إضافة حقل answers لتخزين إجابات الطالب على الأسئلة
+    answers: v.optional(
+      v.array(
+        v.object({
+          questionId: v.id("questions"),
+          answer: v.string(),
+        }),
+      ),
     ),
     grade: v.optional(v.number()),
     feedback: v.optional(v.string()),

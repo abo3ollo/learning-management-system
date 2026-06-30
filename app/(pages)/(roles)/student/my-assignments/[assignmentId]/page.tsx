@@ -52,7 +52,7 @@ export default function StudentAssignmentDetailPage() {
   // ✅ State للإجابات
   const [answers, setAnswers] = useState<Record<string, any>>({});
 
-  // ✅ جلب بيانات الواجب (تشمل الأسئلة)
+  // ✅ جلب بيانات الواجب
   const assignment = useQuery(
     api.assignments.assignments.getAssignmentById,
     assignmentId ? { assignmentId: assignmentId as any } : "skip"
@@ -115,7 +115,7 @@ export default function StudentAssignmentDetailPage() {
   const isLate = submission?.isLate || false;
   const canSubmit = !isSubmitted || assignment.allowResubmission;
 
-  // ✅ الأسئلة - من assignment.questionDetails
+  // ✅ الأسئلة
   const assignmentQuestions = assignment.questionDetails || [];
 
   // ✅ دوال مساعدة
@@ -200,11 +200,25 @@ export default function StudentAssignmentDetailPage() {
     }
   };
 
+  // ✅ تقديم الواجب - مع إرسال الإجابات
   const handleSubmit = async () => {
     if (!currentUser) return;
 
-    if (!content.trim() && selectedFiles.length === 0 && Object.keys(answers).length === 0) {
-      setError("يرجى إضافة محتوى أو رفع ملفات أو الإجابة على الأسئلة");
+    // ✅ التحقق من الإجابة على جميع الأسئلة
+    if (assignmentQuestions.length > 0) {
+      const unanswered = assignmentQuestions.filter(
+        (q: any) => !answers[q._id] || answers[q._id] === "" || answers[q._id] === undefined
+      );
+
+      if (unanswered.length > 0) {
+        setError(`⚠️ يرجى الإجابة على ${unanswered.length} سؤال غير مجاب`);
+        return;
+      }
+    }
+
+    // ✅ التحقق من وجود محتوى أو ملفات
+    if (!content.trim() && selectedFiles.length === 0) {
+      setError("يرجى إضافة محتوى أو رفع ملفات");
       return;
     }
 
@@ -220,10 +234,16 @@ export default function StudentAssignmentDetailPage() {
         type: file.type,
       }));
 
+      // ✅ تحويل answers إلى الصيغة المطلوبة
+      const answersArray = Object.entries(answers).map(([questionId, answer]) => ({
+        questionId: questionId as any,
+        answer: String(answer),
+      }));
+
       const submissionData = {
         content: content,
         attachments: attachments,
-        answers: answers,
+        answers: answersArray,
       };
 
       if (isSubmitted && assignment.allowResubmission) {
@@ -387,6 +407,11 @@ export default function StudentAssignmentDetailPage() {
     }
   };
 
+  // ✅ عدد الأسئلة المجاب عليها
+  const answeredCount = Object.keys(answers).filter(
+    (qId) => answers[qId] && answers[qId] !== ""
+  ).length;
+
   return (
     <div className="container mx-auto p-6 space-y-6" dir="rtl">
       {/* ✅ Back Button */}
@@ -470,9 +495,18 @@ export default function StudentAssignmentDetailPage() {
                     <ListChecks className="h-5 w-5 text-[#1a7a8a]" />
                     أسئلة الواجب
                   </CardTitle>
-                  <Badge variant="secondary">
-                    {assignmentQuestions.length} سؤال
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary">
+                      {answeredCount}/{assignmentQuestions.length}
+                    </Badge>
+                    {answeredCount === assignmentQuestions.length ? (
+                      <Badge className="bg-green-500 text-white">✓ مكتمل</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-amber-500 border-amber-500">
+                        {assignmentQuestions.length - answeredCount} متبقي
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -565,7 +599,7 @@ export default function StudentAssignmentDetailPage() {
             </Card>
           )}
 
-          {/* Submission Area */}
+          {/* ✅ Submission Area */}
           {canSubmit && !isGraded && (
             <Card>
               <CardHeader>
@@ -677,14 +711,13 @@ export default function StudentAssignmentDetailPage() {
                   </div>
                 )}
 
-                {/* Submit Button */}
+                {/* ✅ Submit Button */}
                 <Button
                   onClick={handleSubmit}
                   disabled={
                     isSubmitting ||
-                    (!content.trim() &&
-                      selectedFiles.length === 0 &&
-                      Object.keys(answers).length === 0)
+                    (!content.trim() && selectedFiles.length === 0) ||
+                    (assignmentQuestions.length > 0 && answeredCount < assignmentQuestions.length)
                   }
                   className="w-full bg-[#001f24] hover:bg-[#03363d] text-white"
                 >
@@ -700,6 +733,22 @@ export default function StudentAssignmentDetailPage() {
                     </>
                   )}
                 </Button>
+
+                {/* ✅ حالة الإجابات */}
+                {assignmentQuestions.length > 0 && (
+                  <div className="text-center text-sm">
+                    {answeredCount === assignmentQuestions.length ? (
+                      <p className="text-green-600">✅ تم الإجابة على جميع الأسئلة</p>
+                    ) : (
+                      <p className="text-amber-600">
+                        ⚠️ تم الإجابة على {answeredCount} من {assignmentQuestions.length} سؤال
+                        <span className="block text-xs text-gray-400 mt-1">
+                          يرجى الإجابة على جميع الأسئلة قبل التسليم
+                        </span>
+                      </p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
