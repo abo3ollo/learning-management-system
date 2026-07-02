@@ -87,6 +87,13 @@ export function ClassInfoTab({ classId }: ClassInfoTabProps) {
       icon: Calendar,
       color: "bg-indigo-50 text-indigo-600",
     },
+    {
+      label: "تم الإنشاء بواسطة",
+      value: classData.createdByName,
+      icon: UserCheck,
+      color: "bg-indigo-50 text-indigo-600",
+    },
+    //createdByName
   ];
 
   const stats = [

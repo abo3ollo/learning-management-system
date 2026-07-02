@@ -430,14 +430,14 @@ export default function StudentMyExamsPage() {
 
                   {/* زر التفاصيل */}
                   {exam.status === "pending" ? (
-                    <Link href={`/student/exam/${exam._id}`}>
+                    <Link href={`/student/my-exams/${exam._id}`}>
                       <Button className="w-full mt-2 bg-[#001f24] hover:bg-[#03363d] text-white">
                         <Eye className="h-4 w-4 ml-2" />
                         دخول الامتحان
                       </Button>
                     </Link>
                   ) : (
-                    <Link href={`/student/exam/${exam._id}`}>
+                    <Link href={`/student/my-exams/${exam._id}`}>
                       <Button variant="outline" className="w-full mt-2">
                         <ArrowRight className="h-4 w-4 ml-2" />
                         عرض النتيجة

@@ -152,6 +152,7 @@ export default defineSchema({
     ),
     students: v.array(v.id("users")),
     teachers: v.optional(v.array(v.id("users"))), // ✅ جعل teachers اختيارياً
+    createdBy: v.optional(v.id("users")),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -159,7 +160,8 @@ export default defineSchema({
     .index("by_grade", ["grade"])
     .index("by_supervisor", ["supervisorId"])
     .index("by_academicYear", ["academicYear"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+     .index("by_createdBy", ["createdBy"]),
 
   classSubjects: defineTable({
     classId: v.id("classes"),

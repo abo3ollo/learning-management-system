@@ -40,10 +40,11 @@ export default function AdminClassesPage() {
   const [isExporting, setIsExporting] = useState(false);
 
   const classesData = useQuery(api.classes.classes.getClasses, {
-    status: selectedFilter !== "all" ? selectedFilter : undefined,
+    status: selectedFilter !== "all" ? (selectedFilter as any) : undefined,
     academicYear: selectedYear !== "all" ? selectedYear : undefined,
     search: searchQuery || undefined,
   });
+  console.log(classesData, "classesData");
   const classesStats = useQuery(api.classes.classes.getClassesStats);
   const deleteClass = useMutation(api.classes.classes.deleteClass);
 
