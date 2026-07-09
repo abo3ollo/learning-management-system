@@ -85,6 +85,7 @@ export default function TeacherLayout({
   const menuItems = [
     { label: "لوحة التحكم", icon: LayoutDashboard, href: "/teacher/dashboard" },
     { label: "فصولي", icon: School, href: "/teacher/classes" },
+    { label: "مجموعاتي", icon: FolderOpen, href: "/teacher/groups" },
     { label: "المواد", icon: BookOpen, href: "/teacher/subjects" },
     { label: "الواجبات", icon: FileText, href: "/teacher/assignments" },
     { label: "الامتحانات", icon: ClipboardList, href: "/teacher/exams" },

@@ -52,19 +52,20 @@ export function ClassScheduleTab({ classId }: ClassScheduleTabProps) {
   });
 
   // جلب الجدول من Convex
-  const scheduleData = useQuery(api.schedules.schedules.getSchedulesByClass, {
+  const scheduleData = useQuery(api.schedules.schedules.getClassSchedule, {
     classId: classId as any,
-    academicYear: academicYear,
   });
 
-  // جلب الجدول النشط (أول جدول في القائمة)
-  const activeSchedule = scheduleData?.[0];
+  // جلب الجدول النشط
+  const activeSchedule = scheduleData && (scheduleData as any).weekDays !== undefined ? (scheduleData as any) : null;
 
   // جلب الجدول الكامل مع التفاصيل
-  const fullSchedule = useQuery(
-    api.schedules.schedules.getScheduleById,
-    activeSchedule?._id ? { scheduleId: activeSchedule._id as any } : "skip"
-  );
+  const fullSchedule = activeSchedule
+    ? useQuery(
+        api.schedules.schedules.getScheduleById,
+        activeSchedule._id ? { scheduleId: activeSchedule._id as any } : "skip"
+      )
+    : null;
 
   const deleteSchedule = useMutation(api.schedules.schedules.deleteSchedule);
 

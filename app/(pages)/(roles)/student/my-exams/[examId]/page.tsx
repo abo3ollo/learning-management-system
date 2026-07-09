@@ -62,9 +62,11 @@ export default function StudentExamPage() {
   const submitExam = useMutation(api.exams.exams.submitExam);
   const lockExam = useMutation(api.exams.exams.lockExamForStudent);
 
+  const studentClassId = currentUser?.classId || currentUser?.groupId || undefined;
+
   // ============ LOCK EXAM FUNCTION ============
   const lockExamForStudent = useCallback(async (reason: string) => {
-    if (isLocking || lockAttemptedRef.current || !currentUser || !exam) return;
+    if (isLocking || lockAttemptedRef.current || !currentUser || !exam || !studentClassId) return;
     
     lockAttemptedRef.current = true;
     setIsLocking(true);
@@ -73,7 +75,7 @@ export default function StudentExamPage() {
       await lockExam({
         examId: examId as any,
         studentId: currentUser._id as any,
-        classId: exam.classIds[0] as any,
+        classId: studentClassId as any,
         reason: reason,
       });
       
@@ -84,7 +86,7 @@ export default function StudentExamPage() {
     } finally {
       setIsLocking(false);
     }
-  }, [currentUser, exam, examId, lockExam, isLocking]);
+  }, [currentUser, exam, examId, lockExam, isLocking, studentClassId]);
 
   // ============ USE EXAM SECURITY ============
   const {
@@ -162,7 +164,7 @@ export default function StudentExamPage() {
 
       await submitExam({
         examId: examId as any,
-        classId: exam.classIds[0] as any,
+        classId: studentClassId as any,
         answers: answersArray as any,
       });
 
@@ -172,7 +174,7 @@ export default function StudentExamPage() {
     } catch (error) {
       console.error("Auto submit failed:", error);
     }
-  }, [answers, exam, examId, submitExam, router]);
+  }, [answers, exam, examId, submitExam, router, studentClassId]);
 
   // ============ HANDLERS ============
   const handleAnswerChange = (questionId: string, value: string) => {
@@ -203,7 +205,7 @@ export default function StudentExamPage() {
 
       await submitExam({
         examId: examId as any,
-        classId: exam.classIds[0] as any,
+        classId: studentClassId as any,
         answers: answersArray as any,
       });
 

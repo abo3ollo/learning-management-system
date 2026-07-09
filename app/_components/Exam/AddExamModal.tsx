@@ -25,6 +25,8 @@ import {
   FileQuestion,
   Calendar,
   Clock,
+  Layers,
+  Users,
 } from "lucide-react";
 import {
   Dialog,
@@ -38,12 +40,13 @@ interface AddExamModalProps {
   isOpen: boolean;
   onClose: () => void;
   editExamId?: string | null;
+  onSuccess?: () => void;
 }
 
-export function AddExamModal({ isOpen, onClose, editExamId }: AddExamModalProps) {
-  // ✅ جلب البيانات
-  const courses = useQuery(api.courses.courses.getCourses, {});
-  const classes = useQuery(api.classes.classes.getClasses, {});
+export function AddExamModal({ isOpen, onClose, editExamId, onSuccess }: AddExamModalProps) {
+  // ✅ جلب البيانات - استخدام grades و groups بدلاً من courses و classes
+  const grades = useQuery(api.grades.grades.getActiveGrades, {});
+  const groups = useQuery(api.groups.groups.getGroups, {});
   
   // ✅ جلب جميع الأسئلة المنشورة
   const questions = useQuery(
@@ -59,8 +62,8 @@ export function AddExamModal({ isOpen, onClose, editExamId }: AddExamModalProps)
     title: "",
     description: "",
     model: "",
-    courseId: "",
-    classIds: [] as string[],
+    gradeId: "",           // ✅ بدلاً من courseId
+    groupIds: [] as string[], // ✅ بدلاً من classIds
     grade: "",
     subject: "",
     totalMarks: 0,
@@ -90,16 +93,32 @@ export function AddExamModal({ isOpen, onClose, editExamId }: AddExamModalProps)
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [activeTab, setActiveTab] = useState<"basic" | "settings" | "questions">("basic");
 
-  // ✅ Reset form when modal opens/closes
+  const normalizeGradeValue = (gradeValue: unknown) => {
+    if (typeof gradeValue === "string") {
+      return gradeValue;
+    }
+
+    if (
+      gradeValue &&
+      typeof gradeValue === "object" &&
+      "name" in gradeValue &&
+      typeof (gradeValue as { name?: unknown }).name === "string"
+    ) {
+      return (gradeValue as { name: string }).name;
+    }
+
+    return "";
+  };
+
+  // ✅ Reset form when modal closes
   useEffect(() => {
     if (!isOpen) {
-      // Reset form when modal closes
       setFormData({
         title: "",
         description: "",
         model: "",
-        courseId: "",
-        classIds: [],
+        gradeId: "",
+        groupIds: [],
         grade: "",
         subject: "",
         totalMarks: 0,
@@ -132,9 +151,9 @@ export function AddExamModal({ isOpen, onClose, editExamId }: AddExamModalProps)
         title: editExam.title || "",
         description: editExam.description || "",
         model: editExam.model || "",
-        courseId: editExam.courseId || "",
-        classIds: editExam.classIds || [],
-        grade: editExam.grade || "",
+        gradeId: editExam.gradeId || "",
+        groupIds: editExam.groupIds || [],
+        grade: normalizeGradeValue(editExam.grade),
         subject: editExam.subject || "",
         totalMarks: editExam.totalMarks || 0,
         duration: editExam.duration || 60,
@@ -194,6 +213,15 @@ export function AddExamModal({ isOpen, onClose, editExamId }: AddExamModalProps)
     );
   };
 
+  const toggleGroup = (groupId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      groupIds: prev.groupIds.includes(groupId)
+        ? prev.groupIds.filter((id) => id !== groupId)
+        : [...prev.groupIds, groupId],
+    }));
+  };
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case "easy": return "bg-green-100 text-green-700";
@@ -230,11 +258,11 @@ export function AddExamModal({ isOpen, onClose, editExamId }: AddExamModalProps)
     if (!formData.title.trim()) {
       newErrors.title = "عنوان الامتحان مطلوب";
     }
-    if (!formData.courseId) {
-      newErrors.courseId = "يرجى اختيار المادة";
+    if (!formData.gradeId) {
+      newErrors.gradeId = "يرجى اختيار الصف";
     }
-    if (formData.classIds.length === 0) {
-      newErrors.classIds = "يرجى اختيار فصل واحد على الأقل";
+    if (formData.groupIds.length === 0) {
+      newErrors.groupIds = "يرجى اختيار مجموعة واحدة على الأقل";
     }
     if (!formData.date) {
       newErrors.date = "تاريخ الامتحان مطلوب";
@@ -250,52 +278,53 @@ export function AddExamModal({ isOpen, onClose, editExamId }: AddExamModalProps)
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = async (status: "draft" | "published") => {
-    if (!validateForm()) return;
 
-    setIsSubmitting(true);
-    try {
-      const data = {
-        title: formData.title,
-        description: formData.description || undefined,
-        model: formData.model || `النموذج ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}`,
-        grade: formData.grade || "غير محدد",
-        subject: formData.subject || "غير محدد",
-        courseId: formData.courseId as any,
-        classIds: formData.classIds as any,
-        totalMarks: getTotalMarks(),
-        duration: formData.duration,
-        date: new Date(formData.date).getTime(),
-        instructions: formData.instructions || undefined,
-        footerText: formData.footerText || undefined,
-        headerBorderColor: formData.headerBorderColor,
-        showInstructions: formData.showInstructions,
-        showAnswerSheet: formData.showAnswerSheet,
-        showQrCode: formData.showQrCode,
-        status: status,
-        questions: selectedQuestions.map(q => ({
-          questionId: q.questionId as any,
-          marks: q.marks,
-          order: q.order,
-        })),
-      };
+// ✅ في handleSubmit
+const handleSubmit = async (status: "draft" | "published") => {
+  if (!validateForm()) return;
 
-      if (editExamId) {
-        await updateExam({ examId: editExamId as any, ...data });
-      } else {
-        await createExam(data);
-      }
+  setIsSubmitting(true);
+  try {
+    const data = {
+      title: formData.title,
+      description: formData.description || undefined,
+      model: formData.model || `النموذج ${String.fromCharCode(65 + Math.floor(Math.random() * 26))}`,
+      grade: formData.grade || "غير محدد",
+      subject: formData.subject || "غير محدد",
+      gradeId: formData.gradeId as any,
+      groupIds: formData.groupIds as any,
+      totalMarks: getTotalMarks(),
+      duration: formData.duration,
+      date: new Date(formData.date).getTime(),
+      instructions: formData.instructions || undefined,
+      footerText: formData.footerText || undefined,
+      headerBorderColor: formData.headerBorderColor,
+      showInstructions: formData.showInstructions,
+      showAnswerSheet: formData.showAnswerSheet,
+      showQrCode: formData.showQrCode,
+      status: status,
+      questions: selectedQuestions.map(q => ({
+        questionId: q.questionId as any,
+        marks: q.marks,
+        order: q.order,
+      })),
+    };
 
-      onClose();
-    } catch (error) {
-      console.error("Error saving exam:", error);
-      setErrors({ submit: "حدث خطأ أثناء حفظ الامتحان" });
-    } finally {
-      setIsSubmitting(false);
+    if (editExamId) {
+      await updateExam({ examId: editExamId as any, ...data });
+    } else {
+      await createExam(data);
     }
-  };
 
-  // ✅ Don't render if not open
+    onClose();
+  } catch (error) {
+    console.error("Error saving exam:", error);
+    setErrors({ submit: "حدث خطأ أثناء حفظ الامتحان" });
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
   if (!isOpen) return null;
 
   return (
@@ -389,68 +418,81 @@ export function AddExamModal({ isOpen, onClose, editExamId }: AddExamModalProps)
                 />
               </div>
 
-              {/* المادة */}
+              {/* ✅ الصف - اختيار منفرد */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1">
-                  <GraduationCap className="h-4 w-4 text-[#1a7a8a]" />
-                  المادة <span className="text-red-500">*</span>
+                  <Layers className="h-4 w-4 text-[#1a7a8a]" />
+                  الصف <span className="text-red-500">*</span>
                 </Label>
                 <select
-                  value={formData.courseId}
-                  onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] bg-white ${errors.courseId ? "border-red-500" : "border-[#c0c8c9]"}`}
+                  value={formData.gradeId}
+                  onChange={(e) => setFormData({ ...formData, gradeId: e.target.value })}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] bg-white ${errors.gradeId ? "border-red-500" : "border-[#c0c8c9]"}`}
                 >
-                  <option value="">اختر المادة</option>
-                  {courses?.map((course: any) => (
-                    <option key={course._id} value={course._id}>
-                      {course.title}
+                  <option value="">اختر الصف</option>
+                  {grades?.map((grade: any) => (
+                    <option key={grade._id} value={grade._id}>
+                      {grade.name}
                     </option>
                   ))}
                 </select>
-                {errors.courseId && (
+                {errors.gradeId && (
                   <p className="text-xs text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.courseId}
+                    <AlertCircle className="h-3 w-3" /> {errors.gradeId}
+                  </p>
+                )}
+                {grades?.length === 0 && (
+                  <p className="text-xs text-amber-600">
+                    ⚠️ لا توجد صفوف متاحة. قم بإنشاء صف أولاً
                   </p>
                 )}
               </div>
 
-              {/* الفصول */}
+              {/* ✅ المجموعات - اختيار متعدد */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1">
-                  <School className="h-4 w-4 text-[#1a7a8a]" />
-                  الفصول <span className="text-red-500">*</span>
-                  <span className="text-xs text-gray-400">(يمكنك اختيار أكثر من فصل)</span>
+                  <Users className="h-4 w-4 text-[#1a7a8a]" />
+                  المجموعات <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-400">(يمكنك اختيار أكثر من مجموعة)</span>
                 </Label>
                 <div className="flex flex-wrap gap-2 p-3 border border-[#c0c8c9] rounded-lg max-h-32 overflow-y-auto bg-white">
-                  {classes?.map((cls: any) => {
-                    const isSelected = formData.classIds.includes(cls._id);
-                    return (
-                      <button
-                        key={cls._id}
-                        onClick={() => {
-                          setFormData(prev => ({
-                            ...prev,
-                            classIds: isSelected
-                              ? prev.classIds.filter(id => id !== cls._id)
-                              : [...prev.classIds, cls._id]
-                          }));
-                        }}
-                        className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                          isSelected
-                            ? "bg-[#1a7a8a] text-white hover:bg-[#15707e]"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
-                      >
-                        {cls.classNameAr || cls.className || cls.name || "فصل"}
-                      </button>
-                    );
-                  })}
+                  {groups?.filter((g: any) => g.gradeId === formData.gradeId).map((group: any) => (
+                    <button
+                      key={group._id}
+                      onClick={() => toggleGroup(group._id)}
+                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                        formData.groupIds.includes(group._id)
+                          ? "bg-[#1a7a8a] text-white hover:bg-[#15707e]"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      {group.name} - {group.subject}
+                    </button>
+                  ))}
+                  {(!groups || groups.length === 0) && (
+                    <p className="text-sm text-gray-500 w-full text-center py-2">
+                      لا توجد مجموعات متاحة. قم بإنشاء مجموعة أولاً
+                    </p>
+                  )}
+                  {formData.gradeId && groups?.filter((g: any) => g.gradeId === formData.gradeId).length === 0 && (
+                    <p className="text-sm text-gray-500 w-full text-center py-2">
+                      لا توجد مجموعات في هذا الصف
+                    </p>
+                  )}
+                  {!formData.gradeId && (
+                    <p className="text-sm text-gray-400 w-full text-center py-2">
+                      يرجى اختيار الصف أولاً لعرض المجموعات المتاحة
+                    </p>
+                  )}
                 </div>
-                {errors.classIds && (
+                {errors.groupIds && (
                   <p className="text-xs text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.classIds}
+                    <AlertCircle className="h-3 w-3" /> {errors.groupIds}
                   </p>
                 )}
+                <p className="text-xs text-gray-400">
+                  اختر المجموعة/المجموعات التي ستقدم هذا الامتحان فيها
+                </p>
               </div>
 
               {/* النموذج والصف والمادة */}
@@ -465,7 +507,7 @@ export function AddExamModal({ isOpen, onClose, editExamId }: AddExamModalProps)
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="grade">الصف الدراسي</Label>
+                  <Label htmlFor="grade">الصف الدراسي (للطباعة)</Label>
                   <Input
                     id="grade"
                     value={formData.grade}

@@ -25,6 +25,8 @@ import {
   Search,
   Check,
   FileQuestion,
+  Layers,
+  Users,
 } from "lucide-react";
 import {
   Dialog,
@@ -63,8 +65,8 @@ interface AssignmentType {
   _id?: string;
   title?: string;
   description?: string;
-  courseId?: string;
-  classIds?: string[];
+  gradeId?: string;        // ✅ بدلاً من courseId
+  groupIds?: string[];     // ✅ بدلاً من classIds
   type?: string;
   maxAttempts?: number;
   allowResubmission?: boolean;
@@ -89,8 +91,8 @@ interface AssignmentType {
 
 export function AddAssignmentModal({ isOpen, onClose, editAssignmentId }: AddAssignmentModalProps) {
   // ✅ جلب البيانات
-  const courses = useQuery(api.courses.courses.getCourses, {});
-  const classes = useQuery(api.classes.classes.getClasses, {});
+  const grades = useQuery(api.grades.grades.getActiveGrades, {});
+  const groups = useQuery(api.groups.groups.getGroups, {});
 
   const editAssignment = useQuery(
     api.assignments.assignments.getAssignmentById,
@@ -104,8 +106,8 @@ export function AddAssignmentModal({ isOpen, onClose, editAssignmentId }: AddAss
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    courseId: "",
-    classIds: [] as string[],
+    gradeId: "",           // ✅ صف واحد
+    groupIds: [] as string[], // ✅ مجموعات متعددة
     type: "assignment",
     maxAttempts: "",
     allowResubmission: true,
@@ -137,7 +139,7 @@ export function AddAssignmentModal({ isOpen, onClose, editAssignmentId }: AddAss
   const [questionDifficulty, setQuestionDifficulty] = useState<string>("all");
   const [questionType, setQuestionType] = useState<string>("all");
 
-  // ✅ جلب جميع الأسئلة المنشورة (بدون الحاجة لاختيار مادة)
+  // ✅ جلب جميع الأسئلة المنشورة
   const questions = useQuery(
     api.questions.questions.getQuestions,
     {
@@ -154,8 +156,8 @@ export function AddAssignmentModal({ isOpen, onClose, editAssignmentId }: AddAss
       setFormData({
         title: editAssignment.title || "",
         description: editAssignment.description || "",
-        courseId: editAssignment.courseId || "",
-        classIds: editAssignment.classIds || [],
+        gradeId: editAssignment.gradeId || "",
+        groupIds: editAssignment.groupIds || [],
         type: editAssignment.type || "assignment",
         maxAttempts: editAssignment.maxAttempts?.toString() || "",
         allowResubmission: editAssignment.allowResubmission ?? true,
@@ -189,12 +191,12 @@ export function AddAssignmentModal({ isOpen, onClose, editAssignmentId }: AddAss
   if (!isOpen) return null;
 
   // ✅ دوال مساعدة
-  const toggleClass = (classId: string) => {
+  const toggleGroup = (groupId: string) => {
     setFormData((prev) => ({
       ...prev,
-      classIds: prev.classIds.includes(classId)
-        ? prev.classIds.filter((id) => id !== classId)
-        : [...prev.classIds, classId],
+      groupIds: prev.groupIds.includes(groupId)
+        ? prev.groupIds.filter((id) => id !== groupId)
+        : [...prev.groupIds, groupId],
     }));
   };
 
@@ -285,11 +287,11 @@ export function AddAssignmentModal({ isOpen, onClose, editAssignmentId }: AddAss
     if (!formData.title.trim()) {
       newErrors.title = "عنوان الواجب مطلوب";
     }
-    if (!formData.courseId) {
-      newErrors.courseId = "يرجى اختيار المادة";
+    if (!formData.gradeId) {
+      newErrors.gradeId = "يرجى اختيار الصف";
     }
-    if (formData.classIds.length === 0) {
-      newErrors.classIds = "يرجى اختيار فصل واحد على الأقل";
+    if (formData.groupIds.length === 0) {
+      newErrors.groupIds = "يرجى اختيار مجموعة واحدة على الأقل";
     }
     if (!formData.startDate) {
       newErrors.startDate = "تاريخ البداية مطلوب";
@@ -323,8 +325,8 @@ export function AddAssignmentModal({ isOpen, onClose, editAssignmentId }: AddAss
       const data = {
         title: formData.title,
         description: formData.description || undefined,
-        courseId: formData.courseId as any,
-        classIds: formData.classIds as any,
+        gradeId: formData.gradeId as any,
+        groupIds: formData.groupIds as any,
         type: formData.type as any,
         maxAttempts: formData.maxAttempts ? parseInt(formData.maxAttempts) : undefined,
         allowResubmission: formData.allowResubmission,
@@ -450,70 +452,80 @@ export function AddAssignmentModal({ isOpen, onClose, editAssignmentId }: AddAss
                 />
               </div>
 
-              {/* المادة */}
+              {/* ✅ الصف - اختيار منفرد */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1">
-                  <GraduationCap className="h-4 w-4 text-[#1a7a8a]" />
-                  المادة <span className="text-red-500">*</span>
+                  <Layers className="h-4 w-4 text-[#1a7a8a]" />
+                  الصف <span className="text-red-500">*</span>
                 </Label>
                 <select
-                  value={formData.courseId}
-                  onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
-                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] bg-white ${errors.courseId ? "border-red-500" : "border-[#c0c8c9]"
+                  value={formData.gradeId}
+                  onChange={(e) => setFormData({ ...formData, gradeId: e.target.value })}
+                  className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] bg-white ${errors.gradeId ? "border-red-500" : "border-[#c0c8c9]"
                     }`}
                 >
-                  <option value="">اختر المادة</option>
-                  {courses?.map((course: any) => (
-                    <option key={course._id} value={course._id}>
-                      {course.title}
+                  <option value="">اختر الصف</option>
+                  {grades?.map((grade: any) => (
+                    <option key={grade._id} value={grade._id}>
+                      {grade.name}
                     </option>
                   ))}
                 </select>
-                {errors.courseId && (
+                {errors.gradeId && (
                   <p className="text-xs text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.courseId}
+                    <AlertCircle className="h-3 w-3" /> {errors.gradeId}
                   </p>
                 )}
-                {courses?.length === 0 && (
+                {grades?.length === 0 && (
                   <p className="text-xs text-amber-600">
-                    ⚠️ لا توجد مواد متاحة. قم بإنشاء مادة أولاً
+                    ⚠️ لا توجد صفوف متاحة. قم بإنشاء صف أولاً
                   </p>
                 )}
               </div>
 
-              {/* الفصول */}
+              {/* ✅ المجموعات - اختيار متعدد */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-1">
-                  <School className="h-4 w-4 text-[#1a7a8a]" />
-                  الفصول <span className="text-red-500">*</span>
-                  <span className="text-xs text-gray-400">(يمكنك اختيار أكثر من فصل)</span>
+                  <Users className="h-4 w-4 text-[#1a7a8a]" />
+                  المجموعات <span className="text-red-500">*</span>
+                  <span className="text-xs text-gray-400">(يمكنك اختيار أكثر من مجموعة)</span>
                 </Label>
-                <div className="flex flex-wrap gap-2 p-3 border border-[#c0c8c9] rounded-lg max-h-32 overflow-y-auto bg-white">
-                  {classes?.map((cls: any) => (
+                <div className="flex flex-wrap gap-2 p-3 border border-[#c0c8c9] rounded-lg max-h-48 overflow-y-auto bg-white">
+                  {groups?.filter((g: any) => g.gradeId === formData.gradeId).map((group: any) => (
                     <button
-                      key={cls._id}
-                      onClick={() => toggleClass(cls._id)}
-                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${formData.classIds.includes(cls._id)
+                      key={group._id}
+                      onClick={() => toggleGroup(group._id)}
+                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${formData.groupIds.includes(group._id)
                           ? "bg-[#1a7a8a] text-white hover:bg-[#15707e]"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                         }`}
                     >
-                      {cls.classNameAr || cls.className || cls.name || "فصل"}
+                      {group.name} - {group.subject}
                     </button>
                   ))}
-                  {classes?.length === 0 && (
+                  {(!groups || groups.length === 0) && (
                     <p className="text-sm text-gray-500 w-full text-center py-2">
-                      لا توجد فصول متاحة. قم بإنشاء فصل أولاً
+                      لا توجد مجموعات متاحة. قم بإنشاء مجموعة أولاً
+                    </p>
+                  )}
+                  {formData.gradeId && groups?.filter((g: any) => g.gradeId === formData.gradeId).length === 0 && (
+                    <p className="text-sm text-gray-500 w-full text-center py-2">
+                      لا توجد مجموعات في هذا الصف
+                    </p>
+                  )}
+                  {!formData.gradeId && (
+                    <p className="text-sm text-gray-400 w-full text-center py-2">
+                      يرجى اختيار الصف أولاً لعرض المجموعات المتاحة
                     </p>
                   )}
                 </div>
-                {errors.classIds && (
+                {errors.groupIds && (
                   <p className="text-xs text-red-500 flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" /> {errors.classIds}
+                    <AlertCircle className="h-3 w-3" /> {errors.groupIds}
                   </p>
                 )}
                 <p className="text-xs text-gray-400">
-                  اختر الفصل/الفصول التي ستقدم هذا الواجب فيها
+                  اختر المجموعة/المجموعات التي ستقدم هذا الواجب فيها
                 </p>
               </div>
 
@@ -533,7 +545,7 @@ export function AddAssignmentModal({ isOpen, onClose, editAssignmentId }: AddAss
                 </select>
               </div>
 
-              {/* ✅ الأسئلة - تظهر دائماً بدون شرط */}
+              {/* ✅ الأسئلة */}
               <div className="space-y-2 border-t pt-4">
                 <div className="flex items-center justify-between">
                   <Label className="flex items-center gap-2">
@@ -559,8 +571,6 @@ export function AddAssignmentModal({ isOpen, onClose, editAssignmentId }: AddAss
                     إضافة من بنك الأسئلة
                   </Button>
                 </div>
-
-                {/* ✅ إزالة الشرط !formData.courseId */}
 
                 {/* قائمة الأسئلة المختارة */}
                 {selectedQuestions.length > 0 ? (

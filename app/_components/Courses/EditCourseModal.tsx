@@ -26,11 +26,11 @@ interface EditCourseModalProps {
 }
 
 export function EditCourseModal({ isOpen, onClose, courseId }: EditCourseModalProps) {
-  const course = useQuery(api.courses.getCourseById,
+  const course = useQuery(api.courses.courses.getCourseById,
     courseId ? { courseId: courseId as any } : "skip"
   );
   const teachers = useQuery(api.user.teachers.getTeachers, {});
-  const updateCourse = useMutation(api.courses.updateCourse);
+  const updateCourse = useMutation(api.courses.courses.updateCourse);
 
   const [formData, setFormData] = useState({
     title: "",

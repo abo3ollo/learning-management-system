@@ -32,12 +32,12 @@ export function ClassTeachersTab({ classId }: ClassTeachersTabProps) {
     classId: classId as any,
   });
 
-  const availableTeachers = useQuery(api.classes.classes.getAvailableTeachers, {
-    classId: classId as any,
+  const availableTeachers = useQuery(api.groups.groups.getAvailableTeachersForGroup, {
+    groupId: classId as any,
   });
 
-  const addTeacher = useMutation(api.classes.classes.addTeacherToClass);
-  const removeTeacher = useMutation(api.classes.classes.removeTeacherFromClass);
+  const addTeacher = useMutation(api.groups.groups.addTeacherToGroup);
+  const removeTeacher = useMutation(api.groups.groups.removeTeacherFromGroup);
 
   const enrolledTeachers = classData?.teachers || [];
   const isLoading = classData === undefined;
@@ -52,7 +52,7 @@ export function ClassTeachersTab({ classId }: ClassTeachersTabProps) {
     setAddingId(teacherId);
     setError(null);
     try {
-      await addTeacher({ classId: classId as any, teacherId: teacherId as any });
+      await addTeacher({ groupId: classId as any, teacherId: teacherId as any });
     } catch (err) {
       setError(err instanceof Error ? err.message : "حدث خطأ");
     } finally {
@@ -66,7 +66,7 @@ export function ClassTeachersTab({ classId }: ClassTeachersTabProps) {
     setRemovingId(teacherId);
     setError(null);
     try {
-      await removeTeacher({ classId: classId as any, teacherId: teacherId as any });
+      await removeTeacher({ groupId: classId as any, teacherId: teacherId as any });
     } catch (err) {
       setError(err instanceof Error ? err.message : "حدث خطأ");
     } finally {

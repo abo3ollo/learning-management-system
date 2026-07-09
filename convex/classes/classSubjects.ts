@@ -241,6 +241,7 @@ export const addSubjectToClass = mutation({
 
     const classSubjectId = await ctx.db.insert("classSubjects", {
       classId: args.classId,
+      gradeId: classData.gradeId || (classData as any).gradeId || (classData as any).grade?._id || (classData as any).gradeId || (classData as any).gradeId || (classData as any).gradeId,
       subjectId: args.subjectId,
       teacherId: args.teacherId,
       order: order,

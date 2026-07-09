@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
@@ -26,16 +27,57 @@ import {
   PlayCircle,
   FileCheck,
   GraduationCap,
+  ChevronDown,
+  ChevronUp,
+  AlertCircle,
+  Ban,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { MdOutlinePermMedia } from "react-icons/md";
 import { SiGoogleclassroom } from "react-icons/si";
 import { FaChalkboardTeacher } from "react-icons/fa";
 import { RiParentFill } from "react-icons/ri";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// أيام الأسبوع
+const DAYS: Record<string, string> = {
+  saturday: "السبت",
+  sunday: "الأحد",
+  monday: "الإثنين",
+  tuesday: "الثلاثاء",
+  wednesday: "الأربعاء",
+  thursday: "الخميس",
+  friday: "الجمعة",
+};
 
 export default function StudentDashboard() {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const currentUser = useQuery(api.user.auth.getCurrentUser);
+  const [showSchedule, setShowSchedule] = useState<string | null>(null);
+  const [activeEventTab, setActiveEventTab] = useState<"all" | "assignments" | "exams">("all");
+
+  // جلب مجموعات الطالب
+  const studentGroups = useQuery(
+    api.groups.groups.getStudentGroups,
+    currentUser?._id ? { studentId: currentUser._id as any } : "skip"
+  );
+
+  // جلب الواجبات القادمة
+  const upcomingAssignments = useQuery(
+    api.assignments.assignments.getUpcomingForStudent,
+    currentUser?._id ? { studentId: currentUser._id as any } : "skip"
+  );
+
+  // جلب الامتحانات القادمة
+  const upcomingExams = useQuery(
+    api.exams.exams.getUpcomingForStudent,
+    currentUser?._id ? { studentId: currentUser._id as any } : "skip"
+  );
 
   useEffect(() => {
     if (!isLoaded || !isSignedIn) {
@@ -56,45 +98,138 @@ export default function StudentDashboard() {
     );
   }
 
-  // بيانات وهمية (سيتم جلبها من Convex لاحقاً)
-  const stats = {
-    enrolledCourses: 4,
-    inProgress: 2,
-    completed: 1,
-    assignments: 3,
-    attendance: 92,
-    walletBalance: 150.00,
-    notifications: 5,
+  // بيانات وهمية للإشعارات (static)
+  const notifications = [
+    {
+      id: 1,
+      title: "تذكير بواجب الرياضيات",
+      description: "موعد التسليم غداً الساعة 11:59 م",
+      time: "منذ ساعتين",
+      type: "assignment",
+      read: false,
+    },
+    {
+      id: 2,
+      title: "نتيجة اختبار اللغة العربية",
+      description: "لقد حصلت على 85% في الاختبار",
+      time: "منذ يوم",
+      type: "exam",
+      read: false,
+    },
+    {
+      id: 3,
+      title: "تم إضافة محتوى جديد",
+      description: "تم إضافة فيديو جديد في مقرر العلوم",
+      time: "منذ يومين",
+      type: "media",
+      read: true,
+    },
+    {
+      id: 4,
+      title: "إجازة رسمية",
+      description: "الخميس القادم إجازة رسمية بمناسبة العيد",
+      time: "منذ 3 أيام",
+      type: "holiday",
+      read: true,
+    },
+  ];
+
+  // الحصول على أيام الأسبوع للعرض
+  const getDayLabel = (day: string) => DAYS[day] || day;
+
+  // عرض الجدول للمجموعة
+  const renderSchedule = (group: any) => {
+    const schedule = group.schedule;
+    if (!schedule || !schedule.weekDays) return null;
+
+    return (
+      <div className="mt-3 space-y-3">
+        <div className="border-t border-gray-200 pt-3">
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {schedule.weekDays.map((day: any) => (
+              <div key={day.day} className="bg-gray-50 rounded-lg p-2">
+                <p className="text-xs font-semibold text-[#1a7a8a] mb-1">
+                  {getDayLabel(day.day)}
+                </p>
+                {day.periods?.length === 0 ? (
+                  <p className="text-xs text-gray-400">لا توجد حصص</p>
+                ) : (
+                  <div className="space-y-1">
+                    {day.periods?.map((period: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <Clock className="h-3 w-3 text-gray-400" />
+                          <span className="text-gray-600">
+                            {period.startTime} - {period.endTime}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-700">
+                            {period.subject}
+                          </span>
+                          {period.teacherName && (
+                            <span className="text-gray-400 text-xs">
+                              👨‍🏫 {period.teacherName}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   };
 
-  const recentActivities = [
-    { title: "Quiz #4 - Biology", time: "منذ 11 دقيقة", date: "الخميس، 11 يونيو 2026، 10:54 م", type: "quiz" },
-    { title: "Assignment: History", time: "منذ ساعتين", date: "الخميس، 11 يونيو 2026، 8:30 م", type: "assignment" },
-    { title: "New Course Available", time: "منذ يوم", date: "الأربعاء، 10 يونيو 2026، 9:00 ص", type: "course" },
-  ];
+  // دمج الأحداث القادمة
+  const allUpcomingEvents = [
+    ...(upcomingAssignments || []).map((a: any) => ({
+      ...a,
+      type: "assignment" as const,
+      date: a.dueDate,
+      label: "واجب",
+      icon: FileCheck,
+      color: "blue",
+      bgColor: "bg-blue-50",
+      borderColor: "border-blue-200",
+      textColor: "text-blue-600",
+      iconBg: "bg-blue-100",
+      dateLabel: "موعد التسليم",
+    })),
+    ...(upcomingExams || []).map((e: any) => ({
+      ...e,
+      type: "exam" as const,
+      date: e.date,
+      label: "امتحان",
+      icon: FileText,
+      color: "purple",
+      bgColor: "bg-purple-50",
+      borderColor: "border-purple-200",
+      textColor: "text-purple-600",
+      iconBg: "bg-purple-100",
+      dateLabel: "تاريخ الامتحان",
+    })),
+  ].sort((a, b) => a.date - b.date);
 
-  const quickActions = [
-    { label: "حذف", icon: "🗑️", href: "/student/delete" },
-    { label: "مسائل", icon: "📝", href: "/student/problems" },
-    { label: "المالية", icon: "💰", href: "/student/finance" },
-    { label: "محفظة", icon: "👛", href: "/student/wallet" },
-    { label: "إرسال", icon: "📤", href: "/student/send" },
-  ];
+  // فلترة الأحداث حسب التاب المحدد
+  const filteredEvents = allUpcomingEvents.filter((event) => {
+    if (activeEventTab === "all") return true;
+    if (activeEventTab === "assignments") return event.type === "assignment";
+    if (activeEventTab === "exams") return event.type === "exam";
+    return true;
+  });
 
-  const menuItems = [
-    { label: "اختياراتي", icon: "📚", href: "/student/my-courses" },
-    { label: "فصلي", icon: "✍️", href: "/student/my-classes" },
-    { label: "واجبائي", icon: "📋", href: "/student/assignments" },
-    { label: "حضوري", icon: "✅", href: "/student/attendance" },
-    { label: "ChatBox", icon: "💬", href: "/student/chat" },
-    { label: "وسائطي", icon: "🎬", href: "/student/media" },
-    { label: "شهاداتي", icon: "🏆", href: "/student/certificates" },
-    { label: "المنجر", icon: "📊", href: "/student/dashboard" },
-    { label: "الإعلانات", icon: "📢", href: "/student/announcements" },
-    { label: "محفظتي", icon: "👛", href: "/student/wallet" },
-    { label: "إشعاراتي", icon: "🔔", href: "/student/notifications" },
-    { label: "ملفي الشخصي", icon: "👤", href: "/student/profile" },
-  ];
+  // إحصائيات
+  const stats = {
+    assignments: upcomingAssignments?.length || 0,
+    exams: upcomingExams?.length || 0,
+    total: allUpcomingEvents.length,
+    groups: studentGroups?.length || 0,
+  };
 
   return (
     <div className="min-h-full bg-[#f7fafa] p-6">
@@ -106,12 +241,19 @@ export default function StudentDashboard() {
             <p className="text-sm text-gray-500 mt-0.5">مرحباً بك، {currentUser.name}</p>
           </div>
           <div className="flex items-center gap-3">
-            <button className="relative p-2 bg-white rounded-xl border border-[#c0c8c9] hover:border-[#1a7a8a] transition-colors">
-              <Bell className="h-5 w-5 text-gray-600" />
-            </button>
+            <Link href="/student/notifications">
+              <button className="relative p-2 bg-white rounded-xl border border-[#c0c8c9] hover:border-[#1a7a8a] transition-colors">
+                <Bell className="h-5 w-5 text-gray-600" />
+                {notifications.filter(n => !n.read).length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                    {notifications.filter(n => !n.read).length}
+                  </span>
+                )}
+              </button>
+            </Link>
             <Link href="/student/profile">
-              <div className="w-10 h-10 rounded-xl bg-[#e0f5f7] flex items-center justify-center cursor-pointer ">
-                <span className="font-bold text-[#1a7a8a] ">
+              <div className="w-10 h-10 rounded-xl bg-[#e0f5f7] flex items-center justify-center cursor-pointer">
+                <span className="font-bold text-[#1a7a8a]">
                   {currentUser.name?.charAt(0)?.toUpperCase() || "S"}
                 </span>
               </div>
@@ -119,174 +261,342 @@ export default function StudentDashboard() {
           </div>
         </div>
 
+        {/* Stats Cards */}
+        <div className="grid grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="p-3 text-center">
+              <p className="text-xl font-bold text-[#1a7a8a]">{stats.groups}</p>
+              <p className="text-xs text-gray-500">مجموعات</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 text-center">
+              <p className="text-xl font-bold text-blue-600">{stats.assignments}</p>
+              <p className="text-xs text-gray-500">واجبات</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 text-center">
+              <p className="text-xl font-bold text-purple-600">{stats.exams}</p>
+              <p className="text-xs text-gray-500">امتحانات</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-3 text-center">
+              <p className="text-xl font-bold text-green-600">{stats.total}</p>
+              <p className="text-xs text-gray-500">إجمالي الأحداث</p>
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Stats & Quick Actions */}
+          {/* Left Column - 2/3 of page */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-xl p-4 border border-[#c0c8c9] hover:shadow-sm transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-[#001f24]">{stats.enrolledCourses}</p>
-                    <p className="text-xs text-gray-500">المقررات المسجلة</p>
-                  </div>
-                  <BookOpen className="h-8 w-8 text-blue-400" />
-                </div>
-              </div>
-              <div className="bg-white rounded-xl p-4 border border-[#c0c8c9] hover:shadow-sm transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-[#001f24]">{stats.inProgress}</p>
-                    <p className="text-xs text-gray-500">قيد التقدم</p>
-                  </div>
-                  <Clock className="h-8 w-8 text-amber-400" />
-                </div>
-              </div>
-              <div className="bg-white rounded-xl p-4 border border-[#c0c8c9] hover:shadow-sm transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-[#001f24]">{stats.completed}</p>
-                    <p className="text-xs text-gray-500">مكتملة</p>
-                  </div>
-                  <CheckCircle className="h-8 w-8 text-green-400" />
-                </div>
-              </div>
-              <div className="bg-white rounded-xl p-4 border border-[#c0c8c9] hover:shadow-sm transition-shadow">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-2xl font-bold text-[#001f24]">{stats.assignments}</p>
-                    <p className="text-xs text-gray-500">الواجبات</p>
-                  </div>
-                  <FileText className="h-8 w-8 text-purple-400" />
-                </div>
-              </div>
-            </div>
+            {/* My Groups */}
+            <div>
+              <h2 className="text-lg font-semibold text-[#001f24] mb-4 flex items-center gap-2">
+                <Users className="h-5 w-5 text-[#1a7a8a]" />
+                مجموعاتي الدراسية
+              </h2>
 
-            {/* Menu Grid - من الصورة */}
-            <div className="bg-white rounded-xl border border-[#c0c8c9] p-4">
-              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                {menuItems.map((item) => (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    className="flex flex-col items-center gap-1 p-3 rounded-xl hover:bg-[#e0f5f7] transition-colors group"
-                  >
-                    <span className="text-2xl group-hover:scale-110 transition-transform">{item.icon}</span>
-                    <span className="text-xs text-gray-600 text-center group-hover:text-[#001f24] leading-tight">
-                      {item.label}
-                    </span>
+              {!studentGroups || studentGroups.length === 0 ? (
+                <Card className="p-8 text-center">
+                  <Users className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+                  <p className="text-gray-500">لم تسجل في أي مجموعة بعد</p>
+                  <Link href="/student/groups">
+                    <Button className="mt-4 bg-[#001f24] hover:bg-[#03363d] text-white">
+                      تصفح المجموعات
+                    </Button>
                   </Link>
-                ))}
-              </div>
-            </div>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {studentGroups.map((group: any) => {
+                    const isScheduleOpen = showSchedule === group._id;
+                    const holidays = group.schedule?.holidays || [];
 
-            {/* Quick Actions */}
-            <div className="bg-white rounded-xl border border-[#c0c8c9] p-4">
-              <h3 className="text-sm font-semibold text-[#001f24] mb-3">إجراءات سريعة</h3>
-              <div className="flex flex-wrap gap-2">
-                {quickActions.map((action) => (
-                  <Link
-                    key={action.label}
-                    href={action.href}
-                    className="flex items-center gap-2 px-4 py-2 bg-[#f7fafa] rounded-lg hover:bg-[#e0f5f7] transition-colors text-sm text-gray-700 hover:text-[#001f24]"
-                  >
-                    <span>{action.icon}</span>
-                    {action.label}
-                  </Link>
-                ))}
-              </div>
+                    return (
+                      <Card key={group._id} className="border border-[#c0c8c9] hover:border-[#1a7a8a] transition-all">
+                        <CardHeader className="pb-2">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <CardTitle className="text-base">{group.name}</CardTitle>
+                              <p className="text-xs text-gray-500">{group.subject}</p>
+                            </div>
+                            <Badge className="bg-green-100 text-green-700">
+                              نشط
+                            </Badge>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Users className="h-4 w-4 text-[#1a7a8a]" />
+                              <span>{group.students?.length || 0} طالب</span>
+                            </div>
+                            {group.supervisorName && (
+                              <div className="flex items-center gap-2 text-gray-600">
+                                <FaChalkboardTeacher className="h-4 w-4 text-[#1a7a8a]" />
+                                <span>المعلم: {group.supervisorName}</span>
+                              </div>
+                            )}
+                            <div className="text-gray-500 text-xs">
+                              {group.gradeName}
+                            </div>
+
+                            {/* الإجازات */}
+                            {holidays.length > 0 && (
+                              <div className="mt-2 p-2 bg-amber-50 rounded-lg border border-amber-200">
+                                <p className="text-xs font-medium text-amber-700 flex items-center gap-1">
+                                  <Ban className="h-3 w-3" />
+                                  الإجازات القادمة:
+                                </p>
+                                <div className="space-y-1 mt-1">
+                                  {holidays.map((holiday: any, idx: number) => (
+                                    <p key={idx} className="text-xs text-amber-600">
+                                      {new Date(holiday.date).toLocaleDateString('ar-EG')} - {holiday.reason}
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* زر عرض الجدول */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full mt-2 gap-2"
+                              onClick={() => setShowSchedule(isScheduleOpen ? null : group._id)}
+                            >
+                              <Calendar className="h-4 w-4" />
+                              {isScheduleOpen ? "إخفاء الجدول" : "عرض الجدول"}
+                              {isScheduleOpen ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
+
+                            {/* عرض الجدول */}
+                            {isScheduleOpen && renderSchedule(group)}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right Column - Recent Activity & Notifications */}
+          {/* Right Column - 1/3 of page */}
           <div className="space-y-6">
-            {/* Notifications */}
-            <div className="bg-white rounded-xl border border-[#c0c8c9] p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-[#001f24]">أحدث الإشعارات</h3>
-                <span className="text-xs text-[#1a7a8a] hover:underline cursor-pointer">عرض الكل</span>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-start gap-3 p-3 bg-[#f7fafa] rounded-lg">
-                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                    <Bell className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-[#001f24]">معلومات النظام</p>
-                    <p className="text-xs text-gray-500">أدوات - طلب</p>
-                    <p className="text-xs text-gray-400 mt-1">منذ 11 دقيقة • الخميس، 11 يونيو 2026، 10:54 م</p>
-                  </div>
+            {/* Upcoming Events */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-[#1a7a8a]" />
+                    الأحداث القادمة
+                  </CardTitle>
+                  <Badge className="bg-[#1a7a8a] text-white">
+                    {stats.total}
+                  </Badge>
                 </div>
+              </CardHeader>
+              <CardContent>
+                {/* Tabs */}
+                <Tabs defaultValue="all" className="w-full" onValueChange={(value) => setActiveEventTab(value as any)}>
+                  <TabsList className="grid grid-cols-3 mb-4">
+                    <TabsTrigger value="all">الكل</TabsTrigger>
+                    <TabsTrigger value="assignments">واجبات</TabsTrigger>
+                    <TabsTrigger value="exams">امتحانات</TabsTrigger>
+                  </TabsList>
 
-                <div className="flex items-start gap-3 p-3 bg-[#f7fafa] rounded-lg">
-                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                    <FileCheck className="h-4 w-4 text-amber-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-[#001f24]">نصوصت الدرجات</p>
-                    <p className="text-xs text-gray-500">0% - واجهات مغلقة</p>
-                    <p className="text-xs text-gray-400 mt-1">اختيارات مكملة • اختيارات قادمة</p>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3 p-3 bg-[#f7fafa] rounded-lg">
-                  <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                    <Wallet className="h-4 w-4 text-green-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-[#001f24]">رصيد المحفظة</p>
-                    <p className="text-xs text-gray-500">0.0% - نصوصت الدرجات</p>
-                    <p className="text-xs text-gray-400 mt-1">اختيارات قادمة • رصيد المحفظة</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="bg-white rounded-xl border border-[#c0c8c9] p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-[#001f24]">النشاط الأخير</h3>
-                <span className="text-xs text-[#1a7a8a] hover:underline cursor-pointer">عرض الكل</span>
-              </div>
-
-              <div className="space-y-3">
-                {recentActivities.map((activity, index) => (
-                  <div key={index} className="flex items-start gap-3 p-3 border-b border-[#c0c8c9] last:border-0">
-                    <div className="w-8 h-8 rounded-full bg-[#e0f5f7] flex items-center justify-center shrink-0">
-                      {activity.type === "quiz" && <FileText className="h-4 w-4 text-[#1a7a8a]" />}
-                      {activity.type === "assignment" && <FileCheck className="h-4 w-4 text-[#1a7a8a]" />}
-                      {activity.type === "course" && <BookOpen className="h-4 w-4 text-[#1a7a8a]" />}
+                  <TabsContent value="all" className="mt-0">
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {filteredEvents.length === 0 ? (
+                        <div className="text-center py-6">
+                          <Calendar className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                          <p className="text-sm text-gray-500">لا توجد أحداث قادمة</p>
+                        </div>
+                      ) : (
+                        filteredEvents.map((event: any) => {
+                          const Icon = event.icon;
+                          return (
+                            <div
+                              key={event._id}
+                              className={`p-3 rounded-lg border ${event.bgColor} ${event.borderColor}`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`w-8 h-8 rounded-full ${event.iconBg} flex items-center justify-center shrink-0`}>
+                                  <Icon className={`h-4 w-4 ${event.textColor}`} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <p className="text-sm font-medium text-[#001f24]">
+                                      {event.title}
+                                    </p>
+                                    <Badge className={`text-[10px] ${event.bgColor} ${event.textColor} border-0`}>
+                                      {event.label}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-gray-500">
+                                    {event.dateLabel}: {new Date(event.date).toLocaleDateString('ar-EG')}
+                                  </p>
+                                  {event.subject && (
+                                    <p className="text-xs text-gray-400">
+                                      المادة: {event.subject}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-[#001f24]">{activity.title}</p>
-                      <p className="text-xs text-gray-500">{activity.time}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">{activity.date}</p>
+                  </TabsContent>
+
+                  <TabsContent value="assignments" className="mt-0">
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {filteredEvents.length === 0 ? (
+                        <div className="text-center py-6">
+                          <FileCheck className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                          <p className="text-sm text-gray-500">لا توجد واجبات قادمة</p>
+                        </div>
+                      ) : (
+                        filteredEvents.map((event: any) => {
+                          const Icon = event.icon;
+                          return (
+                            <div
+                              key={event._id}
+                              className={`p-3 rounded-lg border ${event.bgColor} ${event.borderColor}`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`w-8 h-8 rounded-full ${event.iconBg} flex items-center justify-center shrink-0`}>
+                                  <Icon className={`h-4 w-4 ${event.textColor}`} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-[#001f24]">
+                                    {event.title}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {event.dateLabel}: {new Date(event.date).toLocaleDateString('ar-EG')}
+                                  </p>
+                                  {event.subject && (
+                                    <p className="text-xs text-gray-400">
+                                      المادة: {event.subject}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="exams" className="mt-0">
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {filteredEvents.length === 0 ? (
+                        <div className="text-center py-6">
+                          <FileText className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                          <p className="text-sm text-gray-500">لا توجد امتحانات قادمة</p>
+                        </div>
+                      ) : (
+                        filteredEvents.map((event: any) => {
+                          const Icon = event.icon;
+                          return (
+                            <div
+                              key={event._id}
+                              className={`p-3 rounded-lg border ${event.bgColor} ${event.borderColor}`}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`w-8 h-8 rounded-full ${event.iconBg} flex items-center justify-center shrink-0`}>
+                                  <Icon className={`h-4 w-4 ${event.textColor}`} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-[#001f24]">
+                                    {event.title}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {event.dateLabel}: {new Date(event.date).toLocaleDateString('ar-EG')}
+                                  </p>
+                                  {event.subject && (
+                                    <p className="text-xs text-gray-400">
+                                      المادة: {event.subject}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
+
+            {/* Notifications */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Bell className="h-4 w-4 text-[#1a7a8a]" />
+                    الإشعارات
+                  </CardTitle>
+                  <Link href="/student/notifications">
+                    <span className="text-xs text-[#1a7a8a] hover:underline cursor-pointer">
+                      عرض الكل
+                    </span>
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2 max-h-48 overflow-y-auto">
+                {notifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={`p-2 rounded-lg border ${
+                      notification.read
+                        ? "bg-white border-gray-200"
+                        : "bg-[#e0f5f7] border-[#1a7a8a]/20"
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
+                        notification.type === 'assignment' ? 'bg-blue-100' :
+                        notification.type === 'exam' ? 'bg-purple-100' :
+                        notification.type === 'media' ? 'bg-green-100' :
+                        'bg-amber-100'
+                      }`}>
+                        {notification.type === 'assignment' && <FileCheck className="h-3 w-3 text-blue-600" />}
+                        {notification.type === 'exam' && <FileText className="h-3 w-3 text-purple-600" />}
+                        {notification.type === 'media' && <PlayCircle className="h-3 w-3 text-green-600" />}
+                        {notification.type === 'holiday' && <Calendar className="h-3 w-3 text-amber-600" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-[#001f24]">
+                          {notification.title}
+                          {!notification.read && (
+                            <span className="mr-1 w-1.5 h-1.5 bg-red-500 rounded-full inline-block"></span>
+                          )}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {notification.description}
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          {notification.time}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-
-
-            {/* Attendance */}
-            <div className="bg-white rounded-xl border border-[#c0c8c9] p-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-500">نسبة الحضور</p>
-                  <p className="text-2xl font-bold text-[#001f24]">{stats.attendance}%</p>
-                </div>
-                <div className="w-16 h-16 rounded-full border-4 border-[#1a7a8a] flex items-center justify-center">
-                  <span className="text-lg font-bold text-[#1a7a8a]">{stats.attendance}%</span>
-                </div>
-              </div>
-              <div className="mt-3 w-full bg-gray-200 rounded-full h-2">
-                <div 
-                  className="bg-[#1a7a8a] h-2 rounded-full transition-all"
-                  style={{ width: `${stats.attendance}%` }}
-                />
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>

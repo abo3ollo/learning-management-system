@@ -326,3 +326,43 @@ export const getTeachersStats = query({
     };
   },
 });
+
+
+
+// ✅ دالة جديدة للمعلمين - تجلب المعلمين المتاحين فقط (لا تشمل نفسه)
+export const getAvailableTeachers = query({
+  args: {
+    search: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
+    }
+
+    let teachers = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "teacher"))
+      .collect();
+
+    // ✅ استبعاد المستخدم نفسه
+    teachers = teachers.filter((t) => t._id !== user._id);
+
+    if (args.search) {
+      const searchLower = args.search.toLowerCase();
+      teachers = teachers.filter((t) =>
+        t.name.toLowerCase().includes(searchLower) ||
+        t.email.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return teachers;
+  },
+});

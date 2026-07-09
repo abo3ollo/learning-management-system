@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, ExternalLink, X, Loader2, ChevronDown, Calendar as CalendarIcon, Clock, Users, User, BookOpen } from "lucide-react";
+import { Check, ExternalLink, X, Loader2, ChevronDown, Calendar as CalendarIcon, Clock, Users, User, BookOpen, Layers } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/convex/_generated/api";
 import { useQuery, useMutation } from "convex/react";
@@ -10,16 +10,16 @@ import { useRouter } from "next/navigation";
 import { BsYoutube } from "react-icons/bs";
 import { FaFile, FaImage, FaVideo } from "react-icons/fa";
 
-type AssignType = "class" | "student" | "section";
+type AssignType = "grade" | "student" | "group";
 
 export default function MediaAssignPage() {
     const router = useRouter();
 
     // Form state
-    const [assignTo, setAssignTo] = useState<AssignType>("class");
-    const [selectedClass, setSelectedClass] = useState("");
+    const [assignTo, setAssignTo] = useState<AssignType>("grade");
+    const [selectedGrade, setSelectedGrade] = useState("");
     const [selectedStudent, setSelectedStudent] = useState("");
-    const [selectedSection, setSelectedSection] = useState("");
+    const [selectedGroup, setSelectedGroup] = useState("");
     const [title, setTitle] = useState("");
     const [description, setDescription] = useState("");
     const [dueDate, setDueDate] = useState("");
@@ -27,25 +27,25 @@ export default function MediaAssignPage() {
     const [status, setStatus] = useState<"draft" | "published">("draft");
     const [selectedFiles, setSelectedFiles] = useState<string[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
-    const [showClassDropdown, setShowClassDropdown] = useState(false);
+    const [showGradeDropdown, setShowGradeDropdown] = useState(false);
     const [showStudentDropdown, setShowStudentDropdown] = useState(false);
-    const [showSectionDropdown, setShowSectionDropdown] = useState(false);
+    const [showGroupDropdown, setShowGroupDropdown] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     // Queries
     const files = useQuery(api.media.mediafiles.listMediaFiles, {});
-    console.log("All files:", files);
-    const classes = useQuery(api.classes.classes.getClasses, {});
+    const grades = useQuery(api.grades.grades.getActiveGrades, {});
     const students = useQuery(api.user.students.getStudents, {});
+    const groups = useQuery(api.groups.groups.getGroups, {});
 
     // Mutation
     const createAssignment = useMutation(api.media.mediaassignments.createMediaAssignment);
 
     // Filtered options for dropdowns
-    const filteredClasses = classes?.filter((c: any) =>
-        c.classNameAr.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.classCode.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredGrades = grades?.filter((g: any) =>
+        g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        g.nameEn.toLowerCase().includes(searchQuery.toLowerCase())
     ) || [];
 
     const filteredStudents = students?.filter((s: any) =>
@@ -53,9 +53,10 @@ export default function MediaAssignPage() {
         s.email.toLowerCase().includes(searchQuery.toLowerCase())
     ) || [];
 
-    const filteredSections = classes?.filter((c: any) =>
-        c.classNameAr.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.classCode.toLowerCase().includes(searchQuery.toLowerCase())
+    const filteredGroups = groups?.filter((g: any) =>
+        g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        g.nameEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        g.subject.toLowerCase().includes(searchQuery.toLowerCase())
     ) || [];
 
     const toggleFile = (id: string) => {
@@ -64,9 +65,9 @@ export default function MediaAssignPage() {
         );
     };
 
-    const handleSelectClass = (id: string) => {
-        setSelectedClass(id);
-        setShowClassDropdown(false);
+    const handleSelectGrade = (id: string) => {
+        setSelectedGrade(id);
+        setShowGradeDropdown(false);
         setSearchQuery("");
     };
 
@@ -76,9 +77,9 @@ export default function MediaAssignPage() {
         setSearchQuery("");
     };
 
-    const handleSelectSection = (id: string) => {
-        setSelectedSection(id);
-        setShowSectionDropdown(false);
+    const handleSelectGroup = (id: string) => {
+        setSelectedGroup(id);
+        setShowGroupDropdown(false);
         setSearchQuery("");
     };
 
@@ -87,21 +88,26 @@ export default function MediaAssignPage() {
 
         // Validate based on assignTo type
         let targetId = "";
-        if (assignTo === "class" && !selectedClass) {
+        let assignToType = "";
+
+        if (assignTo === "grade" && !selectedGrade) {
             setError("يرجى اختيار الصف");
             return;
-        } else if (assignTo === "class") {
-            targetId = selectedClass;
+        } else if (assignTo === "grade") {
+            targetId = selectedGrade;
+            assignToType = "grade";
         } else if (assignTo === "student" && !selectedStudent) {
             setError("يرجى اختيار الطالب");
             return;
         } else if (assignTo === "student") {
             targetId = selectedStudent;
-        } else if (assignTo === "section" && !selectedSection) {
-            setError("يرجى اختيار الفصل");
+            assignToType = "student";
+        } else if (assignTo === "group" && !selectedGroup) {
+            setError("يرجى اختيار المجموعة");
             return;
-        } else if (assignTo === "section") {
-            targetId = selectedSection;
+        } else if (assignTo === "group") {
+            targetId = selectedGroup;
+            assignToType = "group";
         }
 
         if (!title.trim()) {
@@ -117,7 +123,7 @@ export default function MediaAssignPage() {
         try {
             await createAssignment({
                 mediaFileIds: selectedFiles as Id<"mediaFiles">[],
-                assignTo,
+                assignTo: assignToType as any,
                 targetId: targetId as any,
                 title: title.trim(),
                 description: description.trim() || undefined,
@@ -137,28 +143,26 @@ export default function MediaAssignPage() {
     };
 
     const getSelectedLabel = () => {
-        if (assignTo === "class") {
-            const found = classes?.find((c: any) => c._id === selectedClass);
-            return found ? `${found.classNameAr} (${found.classCode})` : "اختر الصف";
+        if (assignTo === "grade") {
+            const found = grades?.find((g: any) => g._id === selectedGrade);
+            return found ? found.name : "اختر الصف";
         }
         if (assignTo === "student") {
             const found = students?.find((s: any) => s._id === selectedStudent);
             return found ? found.name : "اختر الطالب";
         }
-        if (assignTo === "section") {
-            const found = classes?.find((c: any) => c._id === selectedSection);
-            return found ? `${found.classNameAr} (${found.classCode})` : "اختر الفصل";
+        if (assignTo === "group") {
+            const found = groups?.find((g: any) => g._id === selectedGroup);
+            return found ? `${found.name} (${found.subject})` : "اختر المجموعة";
         }
         return "اختر";
     };
 
     const assignTypes = [
-        { value: "class", label: "الصف", icon: Users, description: "تعيين لجميع طلاب الصف" },
+        { value: "grade", label: "الصف", icon: Layers, description: "تعيين لجميع طلاب الصف" },
         { value: "student", label: "الطالب", icon: User, description: "تعيين لطالب محدد" },
-        { value: "section", label: "الفصل", icon: BookOpen, description: "تعيين لفصل دراسي محدد" },
+        { value: "group", label: "المجموعة", icon: BookOpen, description: "تعيين لمجموعة محددة" },
     ];
-
-
 
     return (
         <div className="min-h-screen bg-[#f7fafa]" dir="rtl">
@@ -170,7 +174,7 @@ export default function MediaAssignPage() {
                             <ExternalLink className="h-5 w-5" /> تعيينات الوسائط
                         </h1>
                         <p className="text-[#a3ced6] text-sm mt-0.5">
-                            تعيين ملفات الوسائط للصفوف أو الطلاب أو الفصول بشكل فردي
+                            تعيين ملفات الوسائط للصفوف أو الطلاب أو المجموعات
                         </p>
                     </div>
                     <Link href="/admin/media">
@@ -212,12 +216,12 @@ export default function MediaAssignPage() {
                                                 key={type.value}
                                                 onClick={() => {
                                                     setAssignTo(type.value as AssignType);
-                                                    setSelectedClass("");
+                                                    setSelectedGrade("");
                                                     setSelectedStudent("");
-                                                    setSelectedSection("");
-                                                    setShowClassDropdown(false);
+                                                    setSelectedGroup("");
+                                                    setShowGradeDropdown(false);
                                                     setShowStudentDropdown(false);
-                                                    setShowSectionDropdown(false);
+                                                    setShowGroupDropdown(false);
                                                 }}
                                                 className={`p-3 rounded-xl border-2 transition-all text-right ${isSelected
                                                     ? "border-[#1a7a8a] bg-[#e0f5f7]"
@@ -238,23 +242,23 @@ export default function MediaAssignPage() {
                             {/* Target Selector - Dynamic Dropdown */}
                             <div>
                                 <label className="block text-sm font-semibold text-[#001f24] mb-2">
-                                    {assignTo === "class" ? "اختر الصف" : assignTo === "student" ? "اختر الطالب" : "اختر الفصل"}
+                                    {assignTo === "grade" ? "اختر الصف" : assignTo === "student" ? "اختر الطالب" : "اختر المجموعة"}
                                 </label>
 
-                                {/* Class Dropdown */}
-                                {assignTo === "class" && (
+                                {/* Grade Dropdown */}
+                                {assignTo === "grade" && (
                                     <div className="relative">
                                         <button
-                                            onClick={() => setShowClassDropdown(!showClassDropdown)}
+                                            onClick={() => setShowGradeDropdown(!showGradeDropdown)}
                                             className="w-full flex items-center justify-between border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] bg-white"
                                         >
-                                            <span className={selectedClass ? "text-gray-800" : "text-gray-400"}>
+                                            <span className={selectedGrade ? "text-gray-800" : "text-gray-400"}>
                                                 {getSelectedLabel()}
                                             </span>
-                                            <ChevronDown className={`h-4 w-4 transition-transform ${showClassDropdown ? "rotate-180" : ""}`} />
+                                            <ChevronDown className={`h-4 w-4 transition-transform ${showGradeDropdown ? "rotate-180" : ""}`} />
                                         </button>
 
-                                        {showClassDropdown && (
+                                        {showGradeDropdown && (
                                             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-10 max-h-60 overflow-y-auto">
                                                 <div className="p-2 border-b border-gray-100 sticky top-0 bg-white">
                                                     <input
@@ -265,20 +269,20 @@ export default function MediaAssignPage() {
                                                         className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1a7a8a]"
                                                     />
                                                 </div>
-                                                {filteredClasses.map((cls: any) => (
+                                                {filteredGrades.map((grade: any) => (
                                                     <div
-                                                        key={cls._id}
-                                                        onClick={() => handleSelectClass(cls._id)}
+                                                        key={grade._id}
+                                                        onClick={() => handleSelectGrade(grade._id)}
                                                         className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between"
                                                     >
                                                         <div>
-                                                            <p className="text-sm font-medium text-gray-800">{cls.classNameAr}</p>
-                                                            <p className="text-xs text-gray-400">{cls.classCode} - {cls.grade}</p>
+                                                            <p className="text-sm font-medium text-gray-800">{grade.name}</p>
+                                                            <p className="text-xs text-gray-400">{grade.nameEn}</p>
                                                         </div>
-                                                        {selectedClass === cls._id && <Check className="h-4 w-4 text-[#1a7a8a]" />}
+                                                        {selectedGrade === grade._id && <Check className="h-4 w-4 text-[#1a7a8a]" />}
                                                     </div>
                                                 ))}
-                                                {filteredClasses.length === 0 && (
+                                                {filteredGrades.length === 0 && (
                                                     <div className="px-4 py-3 text-sm text-gray-400 text-center">لا توجد نتائج</div>
                                                 )}
                                             </div>
@@ -331,20 +335,20 @@ export default function MediaAssignPage() {
                                     </div>
                                 )}
 
-                                {/* Section Dropdown */}
-                                {assignTo === "section" && (
+                                {/* Group Dropdown */}
+                                {assignTo === "group" && (
                                     <div className="relative">
                                         <button
-                                            onClick={() => setShowSectionDropdown(!showSectionDropdown)}
+                                            onClick={() => setShowGroupDropdown(!showGroupDropdown)}
                                             className="w-full flex items-center justify-between border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] bg-white"
                                         >
-                                            <span className={selectedSection ? "text-gray-800" : "text-gray-400"}>
+                                            <span className={selectedGroup ? "text-gray-800" : "text-gray-400"}>
                                                 {getSelectedLabel()}
                                             </span>
-                                            <ChevronDown className={`h-4 w-4 transition-transform ${showSectionDropdown ? "rotate-180" : ""}`} />
+                                            <ChevronDown className={`h-4 w-4 transition-transform ${showGroupDropdown ? "rotate-180" : ""}`} />
                                         </button>
 
-                                        {showSectionDropdown && (
+                                        {showGroupDropdown && (
                                             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-10 max-h-60 overflow-y-auto">
                                                 <div className="p-2 border-b border-gray-100 sticky top-0 bg-white">
                                                     <input
@@ -355,20 +359,21 @@ export default function MediaAssignPage() {
                                                         className="w-full px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1a7a8a]"
                                                     />
                                                 </div>
-                                                {filteredSections.map((cls: any) => (
+                                                {filteredGroups.map((group: any) => (
                                                     <div
-                                                        key={cls._id}
-                                                        onClick={() => handleSelectSection(cls._id)}
+                                                        key={group._id}
+                                                        onClick={() => handleSelectGroup(group._id)}
                                                         className="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center justify-between"
                                                     >
                                                         <div>
-                                                            <p className="text-sm font-medium text-gray-800">{cls.classNameAr}</p>
-                                                            <p className="text-xs text-gray-400">{cls.classCode} - {cls.grade}</p>
+                                                            <p className="text-sm font-medium text-gray-800">{group.name}</p>
+                                                            <p className="text-xs text-gray-400">{group.subject}</p>
+                                                            <p className="text-xs text-gray-400">الصف: {group.gradeName || "غير معروف"}</p>
                                                         </div>
-                                                        {selectedSection === cls._id && <Check className="h-4 w-4 text-[#1a7a8a]" />}
+                                                        {selectedGroup === group._id && <Check className="h-4 w-4 text-[#1a7a8a]" />}
                                                     </div>
                                                 ))}
-                                                {filteredSections.length === 0 && (
+                                                {filteredGroups.length === 0 && (
                                                     <div className="px-4 py-3 text-sm text-gray-400 text-center">لا توجد نتائج</div>
                                                 )}
                                             </div>

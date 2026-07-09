@@ -7,54 +7,88 @@ import { Id } from "../_generated/dataModel";
 // QUERIES
 // ============================================
 
-// جلب جميع تسليمات واجب معين
+// ✅ جلب تسليمات واجب معين (للمعلم)
 export const getSubmissionsByAssignment = query({
-  args: {
-    assignmentId: v.id("assignments"),
-    studentId: v.optional(v.id("users")),
-  },
+  args: { assignmentId: v.id("assignments") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    // التحقق من صلاحيات المعلم أو الطالب
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .first();
 
-    if (!user) throw new Error("المستخدم غير موجود");
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
+    }
 
-    let submissions = await ctx.db
+    const submissions = await ctx.db
       .query("submissions")
-      .withIndex("by_assignment", (q) =>
-        q.eq("assignmentId", args.assignmentId),
-      )
+      .withIndex("by_assignment", (q) => q.eq("assignmentId", args.assignmentId))
       .collect();
 
-    // إذا كان طالب، جلب تسليماته فقط
-    if (user.role === "student") {
-      submissions = submissions.filter((s) => s.studentId === user._id);
-    }
-
-    // فلترة حسب الطالب إذا تم تحديده
-    if (args.studentId && (user.role === "admin" || user.role === "teacher")) {
-      submissions = submissions.filter((s) => s.studentId === args.studentId);
-    }
-
-    // جلب بيانات الطلاب
+    // جلب أسماء الطلاب
     const submissionsWithStudent = await Promise.all(
       submissions.map(async (submission) => {
         const student = await ctx.db.get(submission.studentId);
         return {
           ...submission,
           studentName: student?.name || "طالب غير معروف",
-          studentId: student?._id,
         };
-      }),
+      })
     );
 
     return submissionsWithStudent.sort((a, b) => b.submittedAt - a.submittedAt);
+  },
+});
+
+// ✅ تصحيح تسليم
+export const gradeSubmission = mutation({
+  args: {
+    submissionId: v.id("submissions"),
+    grade: v.number(),
+    feedback: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
+    }
+
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) throw new Error("التسليم غير موجود");
+
+    // التحقق من أن المعلم لديه صلاحية على هذا التسليم
+    const assignment = await ctx.db.get(submission.assignmentId);
+    if (!assignment) throw new Error("الواجب غير موجود");
+
+    if (user.role === "teacher" && assignment.createdBy !== user._id) {
+      throw new Error("غير مصرح لك بتصحيح هذا التسليم");
+    }
+
+    // التحقق من أن الدرجة لا تتجاوز الدرجة الكاملة
+    if (args.grade > assignment.fullGrade) {
+      throw new Error(`الدرجة لا يمكن أن تتجاوز ${assignment.fullGrade}`);
+    }
+
+    await ctx.db.patch(args.submissionId, {
+      grade: args.grade,
+      feedback: args.feedback,
+      gradedBy: user._id,
+      gradedAt: Date.now(),
+      status: "graded",
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
   },
 });
 
@@ -168,7 +202,8 @@ export const hasSubmitted = query({
 export const submitAssignment = mutation({
   args: {
     assignmentId: v.id("assignments"),
-    classId: v.id("classes"),
+    classId: v.optional(v.id("classes")), // ✅ جعلها اختيارية
+    groupId: v.optional(v.id("groups")), // ✅ إضافة groupId
     content: v.optional(v.string()),
     attachments: v.array(
       v.object({
@@ -204,27 +239,57 @@ export const submitAssignment = mutation({
     const assignment = await ctx.db.get(args.assignmentId);
     if (!assignment) throw new Error("الواجب غير موجود");
 
-    // التحقق من وجود الفصل
-    const classData = await ctx.db.get(args.classId);
-    if (!classData) throw new Error("الفصل غير موجود");
+    // ✅ تحديد الفصل أو المجموعة
+    let classId = args.classId;
+    let groupId = args.groupId;
 
-    // التحقق من أن الطالب مسجل في الفصل
-    if (!classData.students.includes(student._id)) {
-      throw new Error("أنت غير مسجل في هذا الفصل");
+    // ✅ إذا لم يتم إرسال classId أو groupId، نأخذ من الواجب
+    if (!classId && !groupId) {
+      // ✅ استخدام groupIds من الواجب
+      if (assignment.groupIds && assignment.groupIds.length > 0) {
+        groupId = assignment.groupIds[0];
+      }
+      // ✅ إذا لم يوجد groupIds، استخدم classIds (للتوافق القديم)
+      else if (assignment.classIds && assignment.classIds.length > 0) {
+        classId = assignment.classIds[0];
+      } else {
+        throw new Error("لا يوجد فصل أو مجموعة محددة لهذا الواجب");
+      }
     }
 
-    // التحقق من عدم وجود تسليم سابق (إذا كان مسموح بمحاولة واحدة)
+    // ✅ التحقق من أن الطالب مسجل في المجموعة (إذا كان groupId موجود)
+    if (groupId) {
+      const group = await ctx.db.get(groupId);
+      if (!group) throw new Error("المجموعة غير موجودة");
+      
+      // التحقق من أن الطالب في المجموعة
+      if (!group.students.includes(student._id)) {
+        // ✅ التحقق من أن الطالب في نفس الصف
+        if (student.gradeId === group.gradeId) {
+          // يمكن التسجيل تلقائياً في المجموعة
+          await ctx.db.patch(groupId, {
+            students: [...group.students, student._id],
+            currentStudents: group.students.length + 1,
+            updatedAt: Date.now(),
+          });
+        } else {
+          throw new Error("أنت غير مسجل في هذه المجموعة");
+        }
+      }
+    }
+
+    
+
+    // التحقق من عدم وجود تسليم سابق
     const existingSubmissions = await ctx.db
       .query("submissions")
       .withIndex("by_assignment_student", (q) =>
-        q.eq("assignmentId", args.assignmentId).eq("studentId", student._id),
+        q.eq("assignmentId", args.assignmentId).eq("studentId", student._id)
       )
       .collect();
 
     if (existingSubmissions.length > 0 && !assignment.allowResubmission) {
-      throw new Error(
-        "لقد قمت بتسليم هذا الواجب مسبقاً ولا يسمح بإعادة التسليم",
-      );
+      throw new Error("لقد قمت بتسليم هذا الواجب مسبقاً ولا يسمح بإعادة التسليم");
     }
 
     const attemptNumber = existingSubmissions.length + 1;
@@ -232,12 +297,10 @@ export const submitAssignment = mutation({
 
     // التحقق من حجم الملفات
     if (assignment.maxFileSize) {
-      const maxSize = assignment.maxFileSize * 1024 * 1024; // تحويل من MB إلى bytes
+      const maxSize = assignment.maxFileSize * 1024 * 1024;
       for (const attachment of args.attachments) {
         if (attachment.size > maxSize) {
-          throw new Error(
-            `حجم الملف ${attachment.name} يتجاوز الحد الأقصى المسموح به`,
-          );
+          throw new Error(`حجم الملف ${attachment.name} يتجاوز الحد الأقصى المسموح به`);
         }
       }
     }
@@ -249,7 +312,7 @@ export const submitAssignment = mutation({
         const isValid = assignment.allowedFileTypes.some(
           (allowed) =>
             fileType.includes(allowed) ||
-            attachment.name.toLowerCase().endsWith(allowed.toLowerCase()),
+            attachment.name.toLowerCase().endsWith(allowed.toLowerCase())
         );
         if (!isValid) {
           throw new Error(`نوع الملف ${attachment.name} غير مسموح به`);
@@ -257,11 +320,7 @@ export const submitAssignment = mutation({
       }
     }
 
-    // حساب الدرجة النهائية مع خصم التأخير
-    let finalGrade = undefined;
     let status: "submitted" | "late" = isLate ? "late" : "submitted";
-
-    // إذا كان متأخر والسماح بالتسليم المتأخر موجود
     if (isLate && assignment.allowLateSubmission) {
       status = "late";
     }
@@ -269,17 +328,25 @@ export const submitAssignment = mutation({
     const submissionId = await ctx.db.insert("submissions", {
       assignmentId: args.assignmentId,
       studentId: student._id,
-      classId: args.classId,
+      classId: classId || assignment.classIds?.[0], // ✅ للتوافق القديم
+      groupId: groupId || assignment.groupIds?.[0], // ✅ تخزين groupId
       submittedAt: Date.now(),
       content: args.content,
       attachments: args.attachments,
-      answers: args.answers || [], // ✅ تخزين الإجابات
+      answers: args.answers || [],
       status: status,
       attemptNumber: attemptNumber,
       isLate: isLate,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+
+    // ✅ إشعار للمعلم أو مشرف المجموعة
+    try {
+      await notifyTeacher(ctx, assignment, student, submissionId);
+    } catch (error) {
+      console.error("Error sending notification:", error);
+    }
 
     return {
       success: true,
@@ -290,60 +357,31 @@ export const submitAssignment = mutation({
   },
 });
 
-// تصحيح تسليم (للمعلمين)
-export const gradeSubmission = mutation({
-  args: {
-    submissionId: v.id("submissions"),
-    grade: v.number(),
-    feedback: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("غير مصرح");
-
-    const teacher = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!teacher || (teacher.role !== "admin" && teacher.role !== "teacher")) {
-      throw new Error("مطلوب صلاحيات معلم أو مشرف");
+// ✅ دالة إرسال إشعار للمعلم
+async function notifyTeacher(ctx: any, assignment: any, student: any, submissionId: any) {
+  // جلب مشرف المجموعة أو منشئ الواجب
+  let teacherId = assignment.createdBy;
+  
+  // إذا كان هناك مجموعات، جلب مشرف أول مجموعة
+  if (assignment.groupIds && assignment.groupIds.length > 0) {
+    const group = await ctx.db.get(assignment.groupIds[0]);
+    if (group && group.supervisorId) {
+      teacherId = group.supervisorId;
     }
+  }
 
-    const submission = await ctx.db.get(args.submissionId);
-    if (!submission) throw new Error("التسليم غير موجود");
+  // إضافة إشعار للمعلم
+  await ctx.db.insert("notifications", {
+    userId: teacherId,
+    type: "submission",
+    title: "تسليم واجب جديد",
+    message: `قام الطالب ${student.name} بتسليم الواجب "${assignment.title}"`,
+    link: `/teacher/assignments/${assignment._id}/submissions/${submissionId}`,
+    read: false,
+    createdAt: Date.now(),
+  });
+}
 
-    // التحقق من أن المعلم لديه صلاحية على هذا الفصل
-    const classData = await ctx.db.get(submission.classId);
-    if (!classData) throw new Error("الفصل غير موجود");
-
-    if (teacher.role === "teacher") {
-      const isTeacherOfClass =
-        classData.teachers?.includes(teacher._id) ||
-        classData.supervisorId === teacher._id;
-      if (!isTeacherOfClass) {
-        throw new Error("غير مصرح لك بتصحيح هذا التسليم");
-      }
-    }
-
-    // التحقق من أن الدرجة لا تتجاوز الدرجة الكاملة
-    const assignment = await ctx.db.get(submission.assignmentId);
-    if (assignment && args.grade > assignment.fullGrade) {
-      throw new Error(`الدرجة لا يمكن أن تتجاوز ${assignment.fullGrade}`);
-    }
-
-    await ctx.db.patch(args.submissionId, {
-      grade: args.grade,
-      feedback: args.feedback,
-      gradedBy: teacher._id,
-      gradedAt: Date.now(),
-      status: "graded",
-      updatedAt: Date.now(),
-    });
-
-    return { success: true };
-  },
-});
 
 // إعادة تسليم واجب (للطلاب)
 export const resubmitAssignment = mutation({

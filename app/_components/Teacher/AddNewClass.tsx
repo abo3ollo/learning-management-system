@@ -101,8 +101,6 @@ export function AddNewClass({ isOpen, onClose, onSuccess }: AddNewClassProps) {
         academicYear: formData.academicYear,
         maxStudents: Number(formData.maxStudents),
         location: formData.location || undefined,
-        // ✅ supervisorId اختياري
-        // ✅ schedule اختياري
       });
 
       // Reset form
@@ -157,6 +155,7 @@ export function AddNewClass({ isOpen, onClose, onSuccess }: AddNewClassProps) {
   ];
 
   const academicYears = [
+
     "2026-2027",
     "2027-2028",
   ];
@@ -203,7 +202,7 @@ export function AddNewClass({ isOpen, onClose, onSuccess }: AddNewClassProps) {
                 onChange={(e) =>
                   setFormData({ ...formData, classNameAr: e.target.value })
                 }
-                placeholder="مثال: مجموعة حياء رقم 1"
+                placeholder="مثال: مجموعة أحياء رقم 1"
                 className={errors.classNameAr ? "border-red-500" : ""}
               />
               {errors.classNameAr && (

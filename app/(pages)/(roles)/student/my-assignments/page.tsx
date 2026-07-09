@@ -26,6 +26,7 @@ import {
   Search,
   Filter,
   X,
+  GraduationCap,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -59,23 +60,31 @@ const CardContent = ({ children, className = "" }: { children: React.ReactNode; 
 export default function MyAssignmentsPage() {
   // ✅ State للفلاتر
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [subjectFilter, setSubjectFilter] = useState<string>("all");
+  const [groupFilter, setGroupFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("dueDate");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [showFilters, setShowFilters] = useState(false);
 
-  // ✅ جلب البيانات
-  const courses = useQuery(api.courses.courses.getStudentCourses, {}); 
+  // ✅ جلب بيانات المستخدم الحالي
+  const currentUser = useQuery(api.user.auth.getCurrentUser);
+
+  // ✅ جلب المجموعات الخاصة بالطالب
+  const groups = useQuery(
+    api.groups.groups.getStudentGroups,
+    currentUser?._id ? { studentId: currentUser._id as any } : "skip"
+  );
+
+  // ✅ جلب الواجبات
   const assignments = useQuery(api.assignments.assignments.getStudentAssignments, {
     status: statusFilter as any,
-    subjectId: subjectFilter !== "all" ? subjectFilter as any : undefined,
+    groupId: groupFilter !== "all" ? (groupFilter as any) : undefined,
     sortBy: sortBy as any,
   });
 
   const stats = useQuery(api.assignments.assignments.getStudentAssignmentStats);
 
   // حالة التحميل
-  if (assignments === undefined || stats === undefined || courses === undefined) {
+  if (currentUser === undefined || assignments === undefined || stats === undefined || groups === undefined) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
@@ -136,7 +145,8 @@ export default function MyAssignmentsPage() {
     return (
       assignment.title?.toLowerCase().includes(search) ||
       assignment.description?.toLowerCase().includes(search) ||
-      assignment.course?.title?.toLowerCase().includes(search)
+      assignment.gradeName?.toLowerCase().includes(search) ||
+      assignment.groupNames?.some((g: string) => g.toLowerCase().includes(search))
     );
   });
 
@@ -145,8 +155,8 @@ export default function MyAssignmentsPage() {
     setStatusFilter(value || "all");
   };
 
-  const handleSubjectChange = (value: string | null) => {
-    setSubjectFilter(value || "all");
+  const handleGroupChange = (value: string | null) => {
+    setGroupFilter(value || "all");
   };
 
   const handleSortChange = (value: string | null) => {
@@ -156,7 +166,7 @@ export default function MyAssignmentsPage() {
   // ✅ إعادة ضبط الفلاتر
   const resetFilters = () => {
     setStatusFilter("all");
-    setSubjectFilter("all");
+    setGroupFilter("all");
     setSortBy("dueDate");
     setSearchTerm("");
   };
@@ -164,10 +174,28 @@ export default function MyAssignmentsPage() {
   // ✅ عدد الفلاتر النشطة
   const activeFiltersCount = [
     statusFilter !== "all",
-    subjectFilter !== "all",
+    groupFilter !== "all",
     sortBy !== "dueDate",
     searchTerm !== "",
   ].filter(Boolean).length;
+
+  // ✅ الحصول على اسم المجموعة من المعرفات
+  const getGroupName = (groupId: string) => {
+    const group = groups?.find((g: any) => g._id === groupId);
+    return group?.name || "مجموعة غير معروفة";
+  };
+
+  // ✅ فلترة الواجبات حسب المجموعة
+  const getFilteredAssignments = () => {
+    if (groupFilter === "all") {
+      return filteredAssignments;
+    }
+    return filteredAssignments.filter((assignment: any) =>
+      assignment.groupIds?.includes(groupFilter)
+    );
+  };
+
+  const displayAssignments = getFilteredAssignments();
 
   return (
     <div className="container mx-auto p-4 md:p-6 space-y-6" dir="rtl">
@@ -277,21 +305,21 @@ export default function MyAssignmentsPage() {
             </Select>
           </div>
 
-          {/* فلتر المادة */}
+          {/* ✅ فلتر المجموعة */}
           <div className="flex-1 min-w-37.5">
-            <Select value={subjectFilter} onValueChange={handleSubjectChange}>
+            <Select value={groupFilter} onValueChange={handleGroupChange}>
               <SelectTrigger className="bg-gray-50 border-gray-200">
-                <SelectValue placeholder="جميع المواد">
-                  {subjectFilter !== "all" 
-                    ? courses?.find((c: any) => c._id === subjectFilter)?.title 
-                    : "جميع المواد"}
+                <SelectValue placeholder="جميع المجموعات">
+                  {groupFilter !== "all" 
+                    ? getGroupName(groupFilter)
+                    : "جميع المجموعات"}
                 </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">جميع المواد</SelectItem>
-                {courses?.map((course: any) => (
-                  <SelectItem key={course._id} value={course._id}>
-                    {course.title}
+                <SelectItem value="all">جميع المجموعات</SelectItem>
+                {groups?.map((group: any) => (
+                  <SelectItem key={group._id} value={group._id}>
+                    {group.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -337,9 +365,9 @@ export default function MyAssignmentsPage() {
                 الحالة: {getStatusLabel(statusFilter)}
               </Badge>
             )}
-            {subjectFilter !== "all" && (
+            {groupFilter !== "all" && (
               <Badge className="bg-[#e0f5f7] text-[#1a7a8a]">
-                المادة: {courses?.find((c: any) => c._id === subjectFilter)?.title}
+                المجموعة: {getGroupName(groupFilter)}
               </Badge>
             )}
             {sortBy !== "dueDate" && (
@@ -358,7 +386,7 @@ export default function MyAssignmentsPage() {
 
       {/* ✅ عدد النتائج */}
       <div className="flex justify-between items-center text-sm text-gray-500">
-        <span>عرض {filteredAssignments.length} واجب</span>
+        <span>عرض {displayAssignments.length} واجب</span>
         {activeFiltersCount > 0 && (
           <span className="text-xs text-gray-400">
             {activeFiltersCount} فلتر نشط
@@ -367,7 +395,7 @@ export default function MyAssignmentsPage() {
       </div>
 
       {/* ✅ قائمة الواجبات */}
-      {filteredAssignments.length === 0 ? (
+      {displayAssignments.length === 0 ? (
         <Card className="p-12 text-center">
           <FileText className="h-12 w-12 mx-auto text-gray-400 mb-4" />
           <h3 className="text-lg font-semibold text-gray-600">لا توجد واجبات</h3>
@@ -386,7 +414,7 @@ export default function MyAssignmentsPage() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredAssignments.map((assignment: any) => (
+          {displayAssignments.map((assignment: any) => (
             <Card key={assignment._id} className="hover:shadow-lg transition-shadow">
               <CardHeader className="pb-2">
                 <div className="flex justify-between items-start gap-2">
@@ -397,21 +425,29 @@ export default function MyAssignmentsPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                {/* المادة */}
-                {assignment.course && (
+                {/* الصف */}
+                {assignment.gradeName && (
                   <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <BookOpen className="h-4 w-4 text-[#1a7a8a] shrink-0" />
-                    <span className="truncate">{assignment.course.title}</span>
+                    <GraduationCap className="h-4 w-4 text-[#1a7a8a] shrink-0" />
+                    <span className="truncate">{assignment.gradeName}</span>
                   </div>
                 )}
 
-                {/* الفصول */}
-                {assignment.classes && assignment.classes.length > 0 && (
+                {/* المجموعة */}
+                {assignment.groupNames && assignment.groupNames.length > 0 && (
                   <div className="flex items-center gap-2 text-sm text-gray-600">
                     <Users className="h-4 w-4 text-[#1a7a8a] shrink-0" />
                     <span className="truncate">
-                      {assignment.classes.map((c: any) => c.classNameAr).join(", ")}
+                      {assignment.groupNames.join(", ")}
                     </span>
+                  </div>
+                )}
+
+                {/* المادة من المجموعة الأولى */}
+                {assignment.groups && assignment.groups.length > 0 && assignment.groups[0]?.subject && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <BookOpen className="h-4 w-4 text-[#1a7a8a] shrink-0" />
+                    <span className="truncate">{assignment.groups[0].subject}</span>
                   </div>
                 )}
 

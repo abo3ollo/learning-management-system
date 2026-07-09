@@ -66,11 +66,10 @@ export default function StudentLayout({
     { label: "واجبائي", icon: BsFileCheck , href: "/student/my-assignments" },
     { label: "امتحاناتي", icon: PiExam , href: "/student/my-exams" },
     { label: "حضوري", icon: Circle , href: "/student/attendance" },
-    { label: "ChatBox", icon: MessageSquare , href: "/student/chat" },
+    { label: "مجموعاتي", icon: Circle , href: "/student/groups" },
     { label: "شهاداتي", icon: Award , href: "/student/certificates" },
     // { label: "المنجر", icon: LayoutDashboard , href: "/student/dashboard" },
     { label: "الإعلانات", icon: Megaphone , href: "/student/announcements" },
-    { label: "محفظتي", icon: Wallet , href: "/student/wallet" },
     { label: "إشعاراتي", icon: Bell , href: "/student/notifications" },
     { label: "ملفي الشخصي", icon: User , href: "/student/profile" },
   ];

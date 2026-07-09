@@ -29,13 +29,15 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
     birthDate: "",
     gender: "",
     address: "",
-    classId: "",
+    gradeId: "",
+    groupId: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const createStudent = useMutation(api.user.students.createStudent);
-  const classes = useQuery(api.classes.classes.getClasses, {});
+  const grades = useQuery(api.grades.grades.getActiveGrades, {});
+  const groups = useQuery(api.groups.groups.getGroups, {});
 
   if (!isOpen) return null;
 
@@ -80,7 +82,8 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
         birthDate: convertDateToTimestamp(formData.birthDate), // Convert string to number
         gender: formData.gender as "male" | "female", // Type assertion
         address: formData.address || undefined,
-        classId: formData.classId  as any|| undefined, // ✅ إضافة classId
+        gradeId: formData.gradeId ? (formData.gradeId as any) : undefined,
+        groupId: formData.groupId ? (formData.groupId as any) : undefined,
       });
 
       // Reset form and close
@@ -91,7 +94,8 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
         birthDate: "",
         gender: "",
         address: "",
-         classId: "", // ✅ إعادة تعيين classId
+         gradeId: "",
+         groupId: "",
       });
       onClose();
     } catch (error) {
@@ -237,19 +241,36 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
                 <p className="text-xs text-gray-400">سيتم التوليد تلقائياً إذا ترك فارغاً</p>
               </div>
 
-              {/* Class */}
+              {/* Grade / Group */}
               <div className="space-y-2">
-                <Label htmlFor="classId">الفصل الدراسي</Label>
+                <Label htmlFor="gradeId">الصف الدراسي</Label>
                 <select
-                  id="classId"
-                  value={formData.classId}
-                  onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
+                  id="gradeId"
+                  value={formData.gradeId}
+                  onChange={(e) => setFormData({ ...formData, gradeId: e.target.value, groupId: "" })}
                   className="w-full px-3 py-2 border rounded-lg"
                 >
-                  <option value="">-- اختر الفصل --</option>
-                  {classes?.map((cls: any) => (
-                    <option key={cls._id} value={cls._id}>
-                      {cls.classNameAr} ({cls.classCode})
+                  <option value="">-- اختر الصف --</option>
+                  {grades?.map((grade: any) => (
+                    <option key={grade._id} value={grade._id}>
+                      {grade.name} ({grade.nameEn})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="groupId">المجموعة</Label>
+                <select
+                  id="groupId"
+                  value={formData.groupId}
+                  onChange={(e) => setFormData({ ...formData, groupId: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg"
+                  disabled={!formData.gradeId}
+                >
+                  <option value="">-- اختر المجموعة --</option>
+                  {(groups || []).filter((group: any) => group.gradeId === formData.gradeId).map((group: any) => (
+                    <option key={group._id} value={group._id}>
+                      {group.name} - {group.subject}
                     </option>
                   ))}
                 </select>

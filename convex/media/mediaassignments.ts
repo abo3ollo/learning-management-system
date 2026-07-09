@@ -158,7 +158,13 @@ export const getStudentAssignments = query({
 export const createMediaAssignment = mutation({
   args: {
     mediaFileIds:    v.array(v.id("mediaFiles")),
-    assignTo:        v.union(v.literal("class"), v.literal("student"), v.literal("section")),
+    assignTo:        v.union(
+      v.literal("class"),
+      v.literal("student"),
+      v.literal("section"),
+      v.literal("grade"), // ✅ إضافة
+      v.literal("group"), // ✅ إضافة
+    ),
     targetId:        v.string(),
     title:           v.string(),
     description:     v.optional(v.string()),
@@ -343,6 +349,7 @@ export const deleteMediaAssignment = mutation({
 
 
 // ✅ جلب جميع الوسائط المتاحة للطالب (من فصله وتعييناته الشخصية)
+// ✅ جلب جميع الوسائط المتاحة للطالب
 export const getStudentMedia = query({
   args: { studentId: v.id("users") },
   handler: async (ctx, args) => {
@@ -372,27 +379,38 @@ export const getStudentMedia = query({
       .withIndex("by_status", (q) => q.eq("status", "published"))
       .collect();
 
-    // ✅ 2. تصفية التعيينات المتاحة للطالب
+    // ✅ 2. جلب المجموعات التي فيها الطالب
+    const allGroups = await ctx.db.query("groups").collect();
+    const studentGroupIds = allGroups
+      .filter((g) => g.students && g.students.includes(student._id))
+      .map((g) => g._id);
+
+    // ✅ 3. تصفية التعيينات المتاحة للطالب
     const availableAssignments = allAssignments.filter((assignment) => {
-      // إذا كان التعيين للطالب مباشرة
+      // للطالب مباشرة
       if (assignment.assignTo === "student" && assignment.targetId === student._id) {
         return true;
       }
       
-      // إذا كان التعيين للفصل (class) والطالب في هذا الفصل
+      // ✅ للصف (grade) - الطالب في نفس الصف
+      if (assignment.assignTo === "grade" && student.gradeId && assignment.targetId === student.gradeId) {
+        return true;
+      }
+      
+      // للفصل (class) - الطالب في نفس الفصل
       if (assignment.assignTo === "class" && student.classId && assignment.targetId === student.classId) {
         return true;
       }
       
-      // إذا كان التعيين للشعبة (section) والطالب في هذه الشعبة
-      if (assignment.assignTo === "section" && student.classId && assignment.targetId === student.classId) {
+      // للمجموعة (group) - الطالب في المجموعة
+      if (assignment.assignTo === "group" && studentGroupIds.includes(assignment.targetId as Id<"groups">)) {
         return true;
       }
       
       return false;
     });
 
-    // ✅ 3. جلب الملفات المرتبطة بكل تعيين
+    // ✅ 4. جلب الملفات المرتبطة بكل تعيين
     const mediaFilesMap = new Map();
     const mediaIds = new Set();
 
@@ -410,13 +428,15 @@ export const getStudentMedia = query({
               assignmentDescription: assignment.description,
               dueDate: assignment.dueDate,
               alwaysAvailable: assignment.alwaysAvailable,
+              assignTo: assignment.assignTo,
+              targetId: assignment.targetId,
             });
           }
         }
       }
     }
 
-    // ✅ 4. ترتيب الملفات حسب تاريخ الرفع (الأحدث أولاً)
+    // ✅ 5. ترتيب الملفات حسب تاريخ الرفع (الأحدث أولاً)
     const mediaFiles = Array.from(mediaFilesMap.values())
       .sort((a, b) => b.uploadedAt - a.uploadedAt);
 

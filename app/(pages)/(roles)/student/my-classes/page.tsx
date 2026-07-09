@@ -99,10 +99,10 @@ export default function StudentMyClassesPage() {
                             <div className="flex items-start justify-between">
                                 <div>
                                     <h2 className="text-2xl font-bold text-[#001f24]">
-                                        {classData?.classNameAr || "لم يتم تعيين فصل"}
+                                        {classData?.grade || "لم يتم تعيين الصف"}
                                     </h2>
                                     <p className="text-sm text-gray-500 mt-1">
-                                        {classData?.classCode || "-"} • {classData?.grade || ""} - شعبة {classData?.section || ""}
+                                         - شعبة {classData?.section || ""}
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2">

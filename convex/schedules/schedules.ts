@@ -1,101 +1,56 @@
 // convex/schedules/schedules.ts
+
 import { v } from "convex/values";
-import { mutation, query, internalMutation } from "../_generated/server";
+import { mutation, query } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
 
-// ============ إدارة الجدول ============
+// ============================================
+// QUERIES
+// ============================================
 
-// إنشاء جدول أسبوعي لفصل
-export const createSchedule = mutation({
-  args: {
-    classId: v.id("classes"),
-    academicYear: v.string(),
-    term: v.union(v.literal("first"), v.literal("second")),
-    weekDays: v.array(v.object({
-      day: v.union(
-        v.literal("sunday"),
-        v.literal("monday"),
-        v.literal("tuesday"),
-        v.literal("wednesday"),
-        v.literal("thursday"),
-        v.literal("friday"),
-        v.literal("saturday")
-      ),
-      periods: v.array(v.object({
-        periodNumber: v.number(),
-        startTime: v.string(),
-        endTime: v.string(),
-        subject: v.string(),
-        teacherId: v.optional(v.id("users")),
-        room: v.optional(v.string()),
-        isBreak: v.boolean(),
-        notes: v.optional(v.string()),
-      })),
-    })),
-  },
+// ✅ جلب جدول المجموعة
+export const getGroupSchedule = query({
+  args: { groupId: v.id("groups") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    const admin = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!admin || admin.role !== "admin") {
-      throw new Error("مطلوب صلاحيات مشرف");
-    }
-
-    // التحقق من وجود جدول سابق
-    const existing = await ctx.db
+    const schedule = await ctx.db
       .query("schedules")
-      .withIndex("by_class", (q) => q.eq("classId", args.classId))
-      .filter((q) => 
-        q.eq(q.field("academicYear"), args.academicYear) &&
-        q.eq(q.field("term"), args.term)
-      )
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
       .first();
 
-    if (existing) {
-      throw new Error("يوجد جدول بالفعل لهذا الفصل في هذا العام الدراسي والفصل");
+    // ✅ إرجاع كائن افتراضي إذا لم يكن موجوداً
+    if (!schedule) {
+      return {
+        weekDays: [],
+        holidays: [],
+        groupId: args.groupId,
+      };
     }
 
-    const scheduleId = await ctx.db.insert("schedules", {
-      classId: args.classId,
-      academicYear: args.academicYear,
-      term: args.term,
-      weekDays: args.weekDays,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-
-    // إنشاء إشعارات تذكير للحصص
-    for (const day of args.weekDays) {
-      for (const period of day.periods) {
-        if (!period.isBreak) {
-          await ctx.db.insert("scheduleReminders", {
-            scheduleId,
-            classId: args.classId,
-            periodNumber: period.periodNumber,
-            reminderTime: Date.now(), // سيتم تحديثه لاحقاً
-            sent: false,
-            createdAt: Date.now(),
-          });
+    // جلب أسماء المعلمين
+    const enrichedSchedule = { ...schedule };
+    if (enrichedSchedule.weekDays) {
+      for (const day of enrichedSchedule.weekDays) {
+        if (day.periods) {
+          for (const period of day.periods) {
+            if (period.teacherId) {
+              const teacher = await ctx.db.get(period.teacherId);
+              period.teacherName = teacher?.name || "غير محدد";
+            }
+          }
         }
       }
     }
 
-    return { success: true, scheduleId };
+    return enrichedSchedule;
   },
 });
 
-// جلب جدول فصل
+// ✅ جلب جدول الفصل (للتوافق القديم)
 export const getClassSchedule = query({
-  args: {
-    classId: v.id("classes"),
-    academicYear: v.string(),
-    term: v.union(v.literal("first"), v.literal("second")),
-  },
+  args: { classId: v.id("classes") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
@@ -103,78 +58,258 @@ export const getClassSchedule = query({
     const schedule = await ctx.db
       .query("schedules")
       .withIndex("by_class", (q) => q.eq("classId", args.classId))
-      .filter((q) => 
-        q.eq(q.field("academicYear"), args.academicYear) &&
-        q.eq(q.field("term"), args.term)
-      )
       .first();
 
-    if (!schedule) return null;
+    if (!schedule) {
+      return {
+        weekDays: [],
+        holidays: [],
+      };
+    }
 
-    // جلب أسماء المعلمين لكل حصة
-    const enrichedSchedule = await Promise.all(
-      schedule.weekDays.map(async (day) => {
-        const enrichedPeriods = await Promise.all(
-          day.periods.map(async (period) => {
-            if (!period.isBreak && period.teacherId) {
-              const teacher = await ctx.db.get(period.teacherId);
-              return {
-                ...period,
-                teacherName: teacher?.name || "غير محدد",
-              };
-            }
-            return period;
-          })
-        );
-        return { ...day, periods: enrichedPeriods };
-      })
-    );
-
-    return { ...schedule, weekDays: enrichedSchedule };
+    return schedule;
   },
 });
 
-// تحديث جدول
-export const updateSchedule = mutation({
+// ✅ جلب الجدول حسب المجموعة (اسم بديل) - تم إزالة الاستدعاء المباشر
+export const getScheduleByGroup = query({
+  args: { groupId: v.id("groups") },
+  handler: async (ctx, args) => {
+    // ✅ لا تستدعي getGroupSchedule مباشرة، انسخ المنطق هنا
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const schedule = await ctx.db
+      .query("schedules")
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .first();
+
+    if (!schedule) {
+      return {
+        weekDays: [],
+        holidays: [],
+        groupId: args.groupId,
+      };
+    }
+
+    // جلب أسماء المعلمين
+    const enrichedSchedule = { ...schedule };
+    if (enrichedSchedule.weekDays) {
+      for (const day of enrichedSchedule.weekDays) {
+        if (day.periods) {
+          for (const period of day.periods) {
+            if (period.teacherId) {
+              const teacher = await ctx.db.get(period.teacherId);
+              period.teacherName = teacher?.name || "غير محدد";
+            }
+          }
+        }
+      }
+    }
+
+    return enrichedSchedule;
+  },
+});
+
+export const getSchedulesByYearAndTerm = query({
   args: {
-    scheduleId: v.id("schedules"),
-    weekDays: v.array(v.object({
-      day: v.union(
-        v.literal("sunday"),
-        v.literal("monday"),
-        v.literal("tuesday"),
-        v.literal("wednesday"),
-        v.literal("thursday"),
-        v.literal("friday"),
-        v.literal("saturday")
-      ),
-      periods: v.array(v.object({
-        periodNumber: v.number(),
-        startTime: v.string(),
-        endTime: v.string(),
-        subject: v.string(),
-        teacherId: v.id("users"),
-        room: v.optional(v.string()),
-        isBreak: v.boolean(),
-        notes: v.optional(v.string()),
-      })),
-    })),
+    academicYear: v.string(),
+    term: v.optional(v.union(v.literal("first"), v.literal("second"))),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    const admin = await ctx.db
+    const schedules = await ctx.db
+      .query("schedules")
+      .withIndex("by_academicYear", (q) => q.eq("academicYear", args.academicYear))
+      .collect();
+
+    const filtered = schedules.filter((schedule) => !args.term || schedule.term === args.term);
+
+    const enriched = await Promise.all(
+      filtered.map(async (schedule) => {
+        let name = "غير معروف";
+        if (schedule.classId) {
+          const classData = await ctx.db.get(schedule.classId);
+          name = (classData as any)?.classNameAr || (classData as any)?.name || "غير معروف";
+        } else if (schedule.groupId) {
+          const groupData = await ctx.db.get(schedule.groupId);
+          name = groupData?.name || "غير معروف";
+        }
+        return {
+          ...schedule,
+          className: name,
+        };
+      })
+    );
+
+    return enriched.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
+export const getScheduleById = query({
+  args: { scheduleId: v.id("schedules") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.scheduleId);
+  },
+});
+
+// ============================================
+// MUTATIONS
+// ============================================
+
+// ✅ إنشاء جدول جديد للمجموعة
+export const createGroupSchedule = mutation({
+  args: {
+    groupId: v.id("groups"),
+    academicYear: v.string(),
+    term: v.union(v.literal("first"), v.literal("second")),
+    weekDays: v.array(
+      v.object({
+        day: v.string(),
+        periods: v.array(
+          v.object({
+            periodNumber: v.number(),
+            startTime: v.string(),
+            endTime: v.string(),
+            subject: v.string(),
+            teacherId: v.optional(v.id("users")),
+            room: v.optional(v.string()),
+            isBreak: v.boolean(),
+            notes: v.optional(v.string()),
+          })
+        ),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .first();
 
-    if (!admin || admin.role !== "admin") {
-      throw new Error("مطلوب صلاحيات مشرف");
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
     }
 
-    await ctx.db.patch(args.scheduleId, {
+    // التحقق من وجود المجموعة
+    const group = await ctx.db.get(args.groupId);
+    if (!group) throw new Error("المجموعة غير موجودة");
+
+    // التحقق من عدم وجود جدول مسبق
+    const existing = await ctx.db
+      .query("schedules")
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .first();
+
+    if (existing) {
+      throw new Error("يوجد جدول لهذه المجموعة بالفعل");
+    }
+
+    const scheduleId = await ctx.db.insert("schedules", {
+      groupId: args.groupId,
+      academicYear: args.academicYear,
+      term: args.term,
       weekDays: args.weekDays,
+      holidays: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return { success: true, scheduleId };
+  },
+});
+
+// ✅ إضافة حصة للمجموعة
+export const addScheduleSlot = mutation({
+  args: {
+    groupId: v.id("groups"),
+    day: v.string(),
+    startTime: v.string(),
+    endTime: v.string(),
+    subject: v.optional(v.string()),
+    teacherId: v.optional(v.id("users")),
+    room: v.optional(v.string()),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
+    }
+
+    const group = await ctx.db.get(args.groupId);
+    if (!group) throw new Error("المجموعة غير موجودة");
+
+    // جلب الجدول الحالي أو إنشاء جديد
+    let schedule = await ctx.db
+      .query("schedules")
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .first();
+
+    const newPeriod = {
+      periodNumber: 0,
+      startTime: args.startTime,
+      endTime: args.endTime,
+      subject: args.subject || group.subject || "غير محدد",
+      teacherId: args.teacherId,
+      room: args.room,
+      isBreak: false,
+      notes: args.notes,
+    };
+
+    if (!schedule) {
+      // إنشاء جدول جديد
+      const scheduleId = await ctx.db.insert("schedules", {
+        groupId: args.groupId,
+        academicYear: new Date().getFullYear().toString(),
+        term: "first",
+        weekDays: [
+          {
+            day: args.day,
+            periods: [{ ...newPeriod, periodNumber: 1 }],
+          },
+        ],
+        holidays: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      return { success: true, scheduleId };
+    }
+
+    // تحديث الجدول الحالي
+    const weekDays = schedule.weekDays || [];
+    const dayIndex = weekDays.findIndex((d: any) => d.day === args.day);
+
+    if (dayIndex === -1) {
+      // إضافة يوم جديد
+      weekDays.push({
+        day: args.day,
+        periods: [{ ...newPeriod, periodNumber: 1 }],
+      });
+    } else {
+      // إضافة حصة لليوم الموجود
+      const periods = weekDays[dayIndex].periods || [];
+      weekDays[dayIndex].periods = [
+        ...periods,
+        { ...newPeriod, periodNumber: periods.length + 1 },
+      ];
+    }
+
+    await ctx.db.patch(schedule._id, {
+      weekDays: weekDays,
       updatedAt: Date.now(),
     });
 
@@ -182,343 +317,358 @@ export const updateSchedule = mutation({
   },
 });
 
-// حذف جدول
-export const deleteSchedule = mutation({
-  args: { scheduleId: v.id("schedules") },
+// ✅ إزالة حصة من المجموعة
+export const removeScheduleSlot = mutation({
+  args: {
+    groupId: v.id("groups"),
+    day: v.string(),
+    periodIndex: v.number(),
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    const admin = await ctx.db
+    const user = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .first();
 
-    if (!admin || admin.role !== "admin") {
-      throw new Error("مطلوب صلاحيات مشرف");
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
     }
 
-    // حذف الإشعارات المرتبطة
-    const reminders = await ctx.db
-      .query("scheduleReminders")
-      .withIndex("by_schedule", (q) => q.eq("scheduleId", args.scheduleId))
-      .collect();
+    const schedule = await ctx.db
+      .query("schedules")
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .first();
 
-    for (const reminder of reminders) {
-      await ctx.db.delete(reminder._id);
-    }
+    if (!schedule) throw new Error("الجدول غير موجود");
 
-    await ctx.db.delete(args.scheduleId);
+    const weekDays = schedule.weekDays || [];
+    const dayIndex = weekDays.findIndex((d: any) => d.day === args.day);
+
+    if (dayIndex === -1) throw new Error("اليوم غير موجود في الجدول");
+
+    const periods = weekDays[dayIndex].periods || [];
+    if (args.periodIndex >= periods.length) throw new Error("الحصة غير موجودة");
+
+    // إزالة الحصة
+    periods.splice(args.periodIndex, 1);
+
+    // إعادة ترتيب الأرقام
+    periods.forEach((p: any, index: number) => {
+      p.periodNumber = index + 1;
+    });
+
+    // تحديث الجدول
+    weekDays[dayIndex].periods = periods;
+    await ctx.db.patch(schedule._id, {
+      weekDays: weekDays,
+      updatedAt: Date.now(),
+    });
 
     return { success: true };
   },
 });
 
-
-// جلب الجداول حسب العام الدراسي والفصل الدراسي
-export const getSchedulesByYearAndTerm = query({
+// ✅ تحديث حصة
+export const updateScheduleSlot = mutation({
   args: {
-    academicYear: v.string(),
-    term: v.union(v.literal("first"), v.literal("second")),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("غير مصرح");
-
-    const admin = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!admin || admin.role !== "admin") {
-      throw new Error("مطلوب صلاحيات مشرف");
-    }
-
-    const schedules = await ctx.db
-      .query("schedules")
-      .withIndex("by_academicYear", (q) => q.eq("academicYear", args.academicYear))
-      .filter((q) => q.eq(q.field("term"), args.term))
-      .collect();
-
-    // إضافة اسم الفصل وأسماء المعلمين لكل جدول
-    const schedulesWithDetails = await Promise.all(
-      schedules.map(async (schedule) => {
-        const classData = await ctx.db.get(schedule.classId);
-        
-        // إضافة أسماء المعلمين لكل حصة
-        const enrichedWeekDays = await Promise.all(
-          schedule.weekDays.map(async (day) => {
-            const enrichedPeriods = await Promise.all(
-              day.periods.map(async (period) => {
-                if (!period.isBreak && period.teacherId) {
-                  const teacher = await ctx.db.get(period.teacherId);
-                  return {
-                    ...period,
-                    teacherName: teacher?.name || "غير محدد",
-                  };
-                }
-                return period;
-              })
-            );
-            return { ...day, periods: enrichedPeriods };
-          })
-        );
-
-        return {
-          ...schedule,
-          className: classData?.classNameAr || "غير محدد",
-          classCode: classData?.classCode || "",
-          weekDays: enrichedWeekDays,
-        };
-      })
-    );
-
-    return schedulesWithDetails;
-  },
-});
-
-// جلب جدول بواسطة ID (للتعديل)
-export const getScheduleById = query({
-  args: { scheduleId: v.id("schedules") },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("غير مصرح");
-
-    const schedule = await ctx.db.get(args.scheduleId);
-    if (!schedule) throw new Error("الجدول غير موجود");
-
-    // جلب معلومات الفصل
-    const classData = await ctx.db.get(schedule.classId);
-
-    // جلب أسماء المعلمين لكل حصة
-    const enrichedWeekDays = await Promise.all(
-      schedule.weekDays.map(async (day) => {
-        const enrichedPeriods = await Promise.all(
-          day.periods.map(async (period) => {
-            if (!period.isBreak && period.teacherId) {
-              const teacher = await ctx.db.get(period.teacherId);
-              return {
-                ...period,
-                teacherName: teacher?.name || "غير محدد",
-              };
-            }
-            return period;
-          })
-        );
-        return { ...day, periods: enrichedPeriods };
-      })
-    );
-
-    return {
-      ...schedule,
-      className: classData?.classNameAr || "غير محدد",
-      classCode: classData?.classCode || "",
-      weekDays: enrichedWeekDays,
-    };
-  },
-});
-
-// جلب الجداول لفصل معين
-export const getSchedulesByClass = query({
-  args: {
-    classId: v.id("classes"),
-    academicYear: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("غير مصرح");
-
-    let schedulesQuery = ctx.db
-      .query("schedules")
-      .withIndex("by_class", (q) => q.eq("classId", args.classId));
-
-    let schedules = await schedulesQuery.collect();
-
-    if (args.academicYear) {
-      schedules = schedules.filter(s => s.academicYear === args.academicYear);
-    }
-
-    return schedules;
-  },
-});
-
-// جلب إحصائيات الجداول
-export const getSchedulesStats = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("غير مصرح");
-
-    const admin = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!admin || admin.role !== "admin") {
-      throw new Error("مطلوب صلاحيات مشرف");
-    }
-
-    const allSchedules = await ctx.db.query("schedules").collect();
-    const totalClasses = new Set(allSchedules.map(s => s.classId)).size;
-
-    // حساب إجمالي الحصص
-    let totalPeriods = 0;
-    for (const schedule of allSchedules) {
-      for (const day of schedule.weekDays) {
-        totalPeriods += day.periods.filter(p => !p.isBreak).length;
-      }
-    }
-
-    return {
-      totalSchedules: allSchedules.length,
-      totalClasses,
-      totalPeriods,
-      activeSchedules: allSchedules.filter(s => {
-        const today = new Date().toISOString().split('T')[0];
-        return s.updatedAt > Date.now() - 30 * 24 * 60 * 60 * 1000;
-      }).length,
-    };
-  },
-});
-
-// ============ تسجيل الحضور ============
-
-// تسجيل حضور طالب
-export const recordAttendance = mutation({
-  args: {
-    classId: v.id("classes"),
-    studentId: v.id("users"),
-    date: v.string(),
-    periodNumber: v.number(),
-    status: v.union(
-      v.literal("present"),
-      v.literal("absent"),
-      v.literal("late"),
-      v.literal("excused")
-    ),
+    groupId: v.id("groups"),
+    day: v.string(),
+    periodIndex: v.number(),
+    startTime: v.optional(v.string()),
+    endTime: v.optional(v.string()),
+    subject: v.optional(v.string()),
+    teacherId: v.optional(v.id("users")),
+    room: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    const teacher = await ctx.db
+    const user = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .first();
 
-    if (!teacher || (teacher.role !== "teacher" && teacher.role !== "admin")) {
-      throw new Error("غير مصرح");
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
     }
 
-    // التحقق من وجود تسجيل سابق
-    const existing = await ctx.db
-      .query("attendance")
-      .withIndex("by_class_date", (q) => q.eq("classId", args.classId))
-      .filter((q) =>
-        q.eq(q.field("date"), args.date) &&
-        q.eq(q.field("periodNumber"), args.periodNumber) &&
-        q.eq(q.field("studentId"), args.studentId)
-      )
+    const schedule = await ctx.db
+      .query("schedules")
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
       .first();
 
-    if (existing) {
-      await ctx.db.patch(existing._id, {
-        status: args.status,
-        notes: args.notes,
-        updatedAt: Date.now(),
-      });
-    } else {
-      await ctx.db.insert("attendance", {
-        classId: args.classId,
-        studentId: args.studentId,
-        date: args.date,
-        periodNumber: args.periodNumber,
-        status: args.status,
-        notes: args.notes,
-        recordedBy: teacher._id,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-      });
+    if (!schedule) throw new Error("الجدول غير موجود");
+
+    const weekDays = schedule.weekDays || [];
+    const dayIndex = weekDays.findIndex((d: any) => d.day === args.day);
+
+    if (dayIndex === -1) throw new Error("اليوم غير موجود");
+
+    if (args.periodIndex >= weekDays[dayIndex].periods.length) {
+      throw new Error("الحصة غير موجودة");
     }
 
-    // إرسال إشعار لولي الأمر عند الغياب
-    if (args.status === "absent") {
-      // يمكن إضافة منطق إرسال إشعار هنا
-    }
+    const period = weekDays[dayIndex].periods[args.periodIndex];
+    if (args.startTime !== undefined) period.startTime = args.startTime;
+    if (args.endTime !== undefined) period.endTime = args.endTime;
+    if (args.subject !== undefined) period.subject = args.subject;
+    if (args.teacherId !== undefined) period.teacherId = args.teacherId;
+    if (args.room !== undefined) period.room = args.room;
+    if (args.notes !== undefined) period.notes = args.notes;
+
+    await ctx.db.patch(schedule._id, {
+      weekDays: weekDays,
+      updatedAt: Date.now(),
+    });
 
     return { success: true };
   },
 });
 
-// جلب حضور طالب
-export const getStudentAttendance = query({
+// ✅ إضافة إجازة للمجموعة
+export const addGroupHoliday = mutation({
   args: {
-    studentId: v.id("users"),
-    startDate: v.string(),
-    endDate: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const attendance = await ctx.db
-      .query("attendance")
-      .withIndex("by_student", (q) => q.eq("studentId", args.studentId))
-      .filter((q) =>
-        q.gte(q.field("date"), args.startDate) &&
-        q.lte(q.field("date"), args.endDate)
-      )
-      .collect();
-
-    const stats = {
-      total: attendance.length,
-      present: attendance.filter(a => a.status === "present").length,
-      absent: attendance.filter(a => a.status === "absent").length,
-      late: attendance.filter(a => a.status === "late").length,
-      excused: attendance.filter(a => a.status === "excused").length,
-      percentage: 0,
-    };
-
-    stats.percentage = stats.total > 0 
-      ? (stats.present / stats.total) * 100 
-      : 0;
-
-    return { attendance, stats };
-  },
-});
-
-// جلب حضور فصل في يوم محدد
-export const getClassAttendanceByDate = query({
-  args: {
-    classId: v.id("classes"),
-    date: v.string(),
-    periodNumber: v.number(),
+    groupId: v.id("groups"),
+    date: v.number(),
+    reason: v.string(),
+    type: v.union(v.literal("holiday"), v.literal("exception")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    const attendance = await ctx.db
-      .query("attendance")
-      .withIndex("by_class_date", (q) => q.eq("classId", args.classId))
-      .filter((q) =>
-        q.eq(q.field("date"), args.date) &&
-        q.eq(q.field("periodNumber"), args.periodNumber)
-      )
-      .collect();
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
 
-    // جلب جميع طلاب الفصل
-    const classData = await ctx.db.get(args.classId);
-    const allStudents = await Promise.all(
-      (classData?.students || []).map(async (studentId) => {
-        const student = await ctx.db.get(studentId);
-        const record = attendance.find(a => a.studentId === studentId);
-        return {
-          student,
-          status: record?.status || "not_recorded",
-          notes: record?.notes,
-        };
-      })
-    );
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
+    }
 
-    return allStudents;
+    let schedule = await ctx.db
+      .query("schedules")
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .first();
+
+    if (!schedule) {
+      // إنشاء جدول جديد بالإجازة
+      const scheduleId = await ctx.db.insert("schedules", {
+        groupId: args.groupId,
+        academicYear: new Date().getFullYear().toString(),
+        term: "first",
+        weekDays: [],
+        holidays: [
+          {
+            date: args.date,
+            reason: args.reason,
+            type: args.type,
+          },
+        ],
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+      return { success: true, scheduleId };
+    }
+
+    const holidays = schedule.holidays || [];
+    holidays.push({
+      date: args.date,
+      reason: args.reason,
+      type: args.type,
+    });
+
+    await ctx.db.patch(schedule._id, {
+      holidays: holidays,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
   },
 });
+
+// ✅ إزالة إجازة
+export const removeHoliday = mutation({
+  args: {
+    groupId: v.id("groups"),
+    holidayIndex: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
+    }
+
+    const schedule = await ctx.db
+      .query("schedules")
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .first();
+
+    if (!schedule) throw new Error("الجدول غير موجود");
+
+    const holidays = schedule.holidays || [];
+    if (args.holidayIndex >= holidays.length) {
+      throw new Error("الإجازة غير موجودة");
+    }
+
+    holidays.splice(args.holidayIndex, 1);
+
+    await ctx.db.patch(schedule._id, {
+      holidays: holidays,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ توليد جدول تلقائي
+export const generateSchedule = mutation({
+  args: {
+    groupId: v.id("groups"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
+    }
+
+    const group = await ctx.db.get(args.groupId);
+    if (!group) throw new Error("المجموعة غير موجودة");
+
+    // أيام الدراسة (السبت - الخميس)
+    const studyDays = ["saturday", "sunday", "monday", "tuesday", "wednesday", "thursday"];
+    
+    // توليد حصص لكل يوم (افتراضي)
+    const weekDays = studyDays.map((day, index) => {
+      // أيام مختلفة: الأحد والثلاثاء والخميس 4 حصص، الباقي 3 حصص
+      const numPeriods = [0, 2, 4].includes(index) ? 4 : 3;
+      const periods = [];
+      let startHour = 8; // تبدأ من 8 صباحاً
+
+      for (let i = 0; i < numPeriods; i++) {
+        const startTime = `${String(startHour).padStart(2, '0')}:00`;
+        const endHour = startHour + 1;
+        const endTime = `${String(endHour).padStart(2, '0')}:00`;
+        
+        periods.push({
+          periodNumber: i + 1,
+          startTime: startTime,
+          endTime: endTime,
+          subject: group.subject || "غير محدد",
+          teacherId: group.supervisorId,
+          room: group.location || "",
+          isBreak: false,
+          notes: "",
+        });
+        
+        startHour = endHour;
+      }
+
+      return {
+        day: day,
+        periods: periods,
+      };
+    });
+
+    // حذف الجدول القديم إذا وجد
+    const existing = await ctx.db
+      .query("schedules")
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .first();
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+    }
+
+    // إنشاء جدول جديد
+    await ctx.db.insert("schedules", {
+      groupId: args.groupId,
+      academicYear: new Date().getFullYear().toString(),
+      term: "first",
+      weekDays: weekDays,
+      holidays: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ حذف جدول
+export const deleteGroupSchedule = mutation({
+  args: { groupId: v.id("groups") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
+    }
+
+    const schedule = await ctx.db
+      .query("schedules")
+      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
+      .first();
+
+    if (!schedule) throw new Error("الجدول غير موجود");
+
+    await ctx.db.delete(schedule._id);
+    return { success: true };
+  },
+});
+
+// ✅ دوال التوافق القديم (classId) - محذوفة لتجنب الأخطاء
+
+// ============================================
+// EXPORTS
+// ============================================
+
+export const schedules = {
+  // دوال المجموعة
+  getGroupSchedule,
+  getScheduleByGroup,
+  createGroupSchedule,
+  addScheduleSlot,
+  removeScheduleSlot,
+  updateScheduleSlot,
+  addGroupHoliday,
+  removeHoliday,
+  generateSchedule,
+  deleteGroupSchedule,
+  
+  // دوال الفصل (للتوافق القديم)
+  getClassSchedule,
+  getSchedulesByYearAndTerm,
+  getScheduleById,
+  createSchedule: createGroupSchedule,
+  deleteSchedule: deleteGroupSchedule,
+  addPeriod: addScheduleSlot,
+  updatePeriod: updateScheduleSlot,
+  deletePeriod: removeScheduleSlot,
+};

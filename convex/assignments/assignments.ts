@@ -1,5 +1,3 @@
-// convex/assignments/assignments.ts
-
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
@@ -9,12 +7,15 @@ import { Id } from "../_generated/dataModel";
 // ============================================
 
 // جلب جميع الواجبات
+// convex/assignments/assignments.ts
+
 export const getAssignments = query({
   args: {
     classId: v.optional(v.id("classes")),
     status: v.optional(v.union(v.literal("draft"), v.literal("published"), v.literal("archived"))),
     search: v.optional(v.string()),
-    courseId: v.optional(v.id("courses")), // ✅ إضافة courseId
+    gradeId: v.optional(v.id("grades")),
+    groupId: v.optional(v.id("groups")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -31,14 +32,21 @@ export const getAssignments = query({
 
     let assignments = await ctx.db.query("assignments").collect();
 
-    // ✅ فلترة حسب المادة
-    if (args.courseId) {
-      assignments = assignments.filter((a) => a.courseId === args.courseId);
+    // ✅ فلترة حسب الصف
+    if (args.gradeId) {
+      assignments = assignments.filter((a) => a.gradeId === args.gradeId);
+    }
+
+    // ✅ فلترة حسب المجموعة - التحقق من وجود args.groupId
+    if (args.groupId) {
+      assignments = assignments.filter((a) => 
+        a.groupIds && a.groupIds.some(id => id === args.groupId)
+      );
     }
 
     if (args.classId) {
       assignments = assignments.filter((a) => 
-        a.classIds.some(id => id === args.classId)
+        a.classIds && a.classIds.some(id => id === args.classId)
       );
     }
     if (args.status) {
@@ -52,26 +60,124 @@ export const getAssignments = query({
       );
     }
 
-    // جلب أسماء الفصول لكل واجب
-    const assignmentsWithClasses = await Promise.all(
+    // جلب أسماء الفصول والمجموعات والصف لكل واجب
+    const assignmentsWithDetails = await Promise.all(
       assignments.map(async (assignment) => {
+        // جلب أسماء الفصول (للتوافق القديم)
         const classes = await Promise.all(
-          assignment.classIds.map(async (classId) => {
+          (assignment.classIds || []).map(async (classId) => {
             const classData = await ctx.db.get(classId);
             return classData?.classNameAr || "فصل غير معروف";
           })
         );
+
+        // جلب أسماء المجموعات
+        const groupNames = await Promise.all(
+          (assignment.groupIds || []).map(async (groupId) => {
+            const group = await ctx.db.get(groupId);
+            return group?.name || "مجموعة غير معروفة";
+          })
+        );
+
+        // جلب اسم الصف
+        let gradeName = "غير محدد";
+        if (assignment.gradeId) {
+          const grade = await ctx.db.get(assignment.gradeId);
+          if (grade) {
+            gradeName = grade.name;
+          }
+        }
+
         const creator = await ctx.db.get(assignment.createdBy);
+        
         return {
           ...assignment,
           classNames: classes,
+          groupNames: groupNames,
+          gradeName: gradeName,
           creatorName: creator?.name || "غير معروف",
           submissionsCount: 0,
         };
       })
     );
 
-    return assignmentsWithClasses.sort((a, b) => b.createdAt - a.createdAt);
+    return assignmentsWithDetails.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
+
+// ✅ دالة جديدة للفلترة المتقدمة
+export const getFilteredAssignments = query({
+  args: {
+    status: v.optional(v.union(v.literal("draft"), v.literal("published"), v.literal("archived"))),
+    search: v.optional(v.string()),
+    gradeId: v.optional(v.id("grades")),
+    groupId: v.optional(v.id("groups")),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
+    }
+
+    let assignments = await ctx.db.query("assignments").collect();
+
+    if (args.gradeId) {
+      assignments = assignments.filter((a) => a.gradeId === args.gradeId);
+    }
+
+    if (args.groupId) {
+      assignments = assignments.filter((a) => 
+        a.groupIds && a.groupIds.some(id => id === args.groupId)
+      );
+    }
+
+    if (args.status) {
+      assignments = assignments.filter((a) => a.status === args.status);
+    }
+
+    if (args.search && args.search.trim() !== "") {
+      const searchLower = args.search.toLowerCase();
+      assignments = assignments.filter((a) =>
+        a.title.toLowerCase().includes(searchLower) ||
+        a.description?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // جلب بيانات إضافية
+    const assignmentsWithDetails = await Promise.all(
+      assignments.map(async (assignment) => {
+        const groupNames = await Promise.all(
+          (assignment.groupIds || []).map(async (groupId) => {
+            const group = await ctx.db.get(groupId);
+            return group?.name || "مجموعة غير معروفة";
+          })
+        );
+
+        let gradeName = "غير محدد";
+        if (assignment.gradeId) {
+          const grade = await ctx.db.get(assignment.gradeId);
+          if (grade) {
+            gradeName = grade.name;
+          }
+        }
+
+        return {
+          ...assignment,
+          groupNames: groupNames,
+          gradeName: gradeName,
+        };
+      })
+    );
+
+    return assignmentsWithDetails.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
 
@@ -87,11 +193,22 @@ export const getAssignmentById = query({
 
     // ✅ جلب الفصول
     const classes = await Promise.all(
-      assignment.classIds.map(async (classId) => {
+      (assignment.classIds || []).map(async (classId) => {
         const classData = await ctx.db.get(classId);
         return classData;
       })
     );
+
+    // ✅ جلب المجموعات
+    const groups = await Promise.all(
+      (assignment.groupIds || []).map(async (groupId: Id<"groups">) => {
+        const group = await ctx.db.get(groupId);
+        return group;
+      })
+    );
+
+    // ✅ جلب الصف
+    const grade = assignment.gradeId ? await ctx.db.get(assignment.gradeId) : null;
 
     const creator = await ctx.db.get(assignment.createdBy);
 
@@ -117,9 +234,11 @@ export const getAssignmentById = query({
     return {
       ...assignment,
       classes: classes.filter((c): c is NonNullable<typeof c> => c !== null && c !== undefined),
+      groups: groups.filter((g): g is NonNullable<typeof g> => g !== null && g !== undefined),
+      grade: grade,
       creatorName: creator?.name || "غير معروف",
       courseName: courseName,
-      questionDetails: questionDetails, // ✅ إضافة تفاصيل الأسئلة
+      questionDetails: questionDetails,
     };
   },
 });
@@ -143,7 +262,7 @@ export const getClassAssignments = query({
     const allAssignments = await ctx.db.query("assignments").collect();
 
     let assignments = allAssignments.filter((a) =>
-      a.classIds.some((id) => id === args.classId),
+      a.classIds && a.classIds.some((id) => id === args.classId)
     );
 
     if (args.status) {
@@ -199,7 +318,7 @@ export const getAssignmentsStats = query({
   },
 });
 
-// ✅ جلب واجبات الطالب مع حالة التسليم
+
 export const getStudentAssignments = query({
   args: {
     status: v.optional(
@@ -210,7 +329,7 @@ export const getStudentAssignments = query({
         v.literal("graded"),
       ),
     ),
-    subjectId: v.optional(v.id("courses")),
+    groupId: v.optional(v.id("groups")), // ✅ إضافة فلتر المجموعة (بدلاً من subjectId)
     sortBy: v.optional(v.union(v.literal("dueDate"), v.literal("createdAt"))),
   },
   handler: async (ctx, args) => {
@@ -226,29 +345,39 @@ export const getStudentAssignments = query({
       throw new Error("مطلوب صلاحيات طالب");
     }
 
-    // جلب الفصول المسجل فيها الطالب
-    const enrollments = await ctx.db
-      .query("enrollments")
-      .withIndex("by_student", (q) => q.eq("studentId", student._id))
-      .collect();
-
-    const courseIds = enrollments.map((e) => e.courseId);
+    // جلب المجموعات المسجل فيها الطالب
+    const allGroups = await ctx.db.query("groups").collect();
+    const studentGroupIds = allGroups
+      .filter((g) => g.students && g.students.includes(student._id))
+      .map((g) => g._id);
 
     // جلب كل الواجبات
     let allAssignments = await ctx.db.query("assignments").collect();
 
-    // ✅ فلترة الواجبات المنشورة فقط (published)
+    // فلترة الواجبات المنشورة فقط
     allAssignments = allAssignments.filter((a) => a.status === "published");
 
-    // فلترة الواجبات حسب الكورسات المسجل فيها الطالب
-    let assignments = allAssignments.filter(
-      (a) => a.courseId && courseIds.includes(a.courseId),
-    );
+    // فلترة الواجبات حسب المجموعات والصف
+    let assignments = allAssignments.filter((a) => {
+      // إذا كان الواجب له مجموعات محددة
+      if (a.groupIds && a.groupIds.length > 0) {
+        return a.groupIds.some(id => studentGroupIds.includes(id));
+      }
+      // إذا كان الواجب للصف كامل
+      if (a.gradeId && student.gradeId && a.gradeId === student.gradeId) {
+        return true;
+      }
+      // للتوافق القديم - classIds
+      if (a.classIds && a.classIds.length > 0) {
+        return a.classIds.some(id => student.classId === id);
+      }
+      return false;
+    });
 
-    // إذا لم يجد واجبات، حاول جلب الواجبات حسب الفصل
-    if (assignments.length === 0 && student.classId) {
-      assignments = allAssignments.filter(
-        (a) => a.classIds && a.classIds.includes(student.classId!),
+    // ✅ فلترة حسب المجموعة المحددة (إذا وجدت)
+    if (args.groupId) {
+      assignments = assignments.filter((a) => 
+        a.groupIds && a.groupIds.some(id => id === args.groupId)
       );
     }
 
@@ -258,11 +387,36 @@ export const getStudentAssignments = query({
       .withIndex("by_student", (q) => q.eq("studentId", student._id))
       .collect();
 
-    // تجميع البيانات
+    // تجميع البيانات مع تفاصيل إضافية
     const assignmentsWithStatus = await Promise.all(
       assignments.map(async (assignment) => {
         const submission = submissions.find(
           (s) => s.assignmentId === assignment._id,
+        );
+
+        // ✅ جلب اسم الصف
+        let gradeName = "غير محدد";
+        if (assignment.gradeId) {
+          const grade = await ctx.db.get(assignment.gradeId);
+          if (grade) {
+            gradeName = grade.name;
+          }
+        }
+
+        // ✅ جلب أسماء المجموعات
+        const groupNames = await Promise.all(
+          (assignment.groupIds || []).map(async (groupId) => {
+            const group = await ctx.db.get(groupId);
+            return group?.name || "مجموعة غير معروفة";
+          })
+        );
+
+        // ✅ جلب تفاصيل المجموعات (للمادة)
+        const groups = await Promise.all(
+          (assignment.groupIds || []).map(async (groupId) => {
+            const group = await ctx.db.get(groupId);
+            return group;
+          })
         );
 
         const course = assignment.courseId
@@ -270,7 +424,7 @@ export const getStudentAssignments = query({
           : null;
 
         const classData = await Promise.all(
-          assignment.classIds?.map((id) => ctx.db.get(id)) || [],
+          (assignment.classIds || []).map((id) => ctx.db.get(id)) || [],
         );
 
         let status: "pending" | "submitted" | "graded" = "pending";
@@ -286,6 +440,9 @@ export const getStudentAssignments = query({
           ...assignment,
           submission,
           status,
+          gradeName, // ✅ اسم الصف
+          groupNames, // ✅ أسماء المجموعات
+          groups: groups.filter(Boolean), // ✅ تفاصيل المجموعات
           course: course
             ? {
                 _id: course._id,
@@ -313,10 +470,6 @@ export const getStudentAssignments = query({
       filtered = filtered.filter((a) => a.status === args.status);
     }
 
-    if (args.subjectId) {
-      filtered = filtered.filter((a) => a.course?._id === args.subjectId);
-    }
-
     if (args.sortBy === "dueDate") {
       filtered.sort((a, b) => a.dueDate - b.dueDate);
     } else {
@@ -324,6 +477,44 @@ export const getStudentAssignments = query({
     }
 
     return filtered;
+  },
+});
+
+
+// ✅ جلب الواجبات القادمة للطالب
+export const getUpcomingForStudent = query({
+  args: { studentId: v.id("users") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const student = await ctx.db.get(args.studentId);
+    if (!student || student.role !== "student") {
+      throw new Error("الطالب غير موجود");
+    }
+
+    // جلب جميع الواجبات المنشورة
+    const allAssignments = await ctx.db
+      .query("assignments")
+      .withIndex("by_status", (q) => q.eq("status", "published"))
+      .collect();
+
+    // فلترة الواجبات التي تخص الطالب (حسب المجموعة أو الصف)
+    const studentAssignments = allAssignments.filter((assignment) => {
+      // التحقق من أن الواجب للصف الخاص بالطالب
+      if (assignment.gradeId && student.gradeId) {
+        return assignment.gradeId === student.gradeId;
+      }
+      return false;
+    });
+
+    // فلترة الواجبات القادمة (تاريخ التسليم في المستقبل)
+    const now = Date.now();
+    const upcoming = studentAssignments
+      .filter((a) => a.dueDate > now)
+      .sort((a, b) => a.dueDate - b.dueDate);
+
+    return upcoming;
   },
 });
 
@@ -342,26 +533,27 @@ export const getStudentAssignmentStats = query({
       throw new Error("مطلوب صلاحيات طالب");
     }
 
-    // جلب الفصول المسجل فيها الطالب
-    const enrollments = await ctx.db
-      .query("enrollments")
-      .withIndex("by_student", (q) => q.eq("studentId", student._id))
-      .collect();
-
-    const courseIds = enrollments.map((e) => e.courseId);
+    // جلب المجموعات المسجل فيها الطالب
+    const allGroups = await ctx.db.query("groups").collect();
+    const studentGroupIds = allGroups
+      .filter((g) => g.students && g.students.includes(student._id))
+      .map((g) => g._id);
 
     let allAssignments = await ctx.db.query("assignments").collect();
     allAssignments = allAssignments.filter((a) => a.status === "published");
 
-    let assignments = allAssignments.filter(
-      (a) => a.courseId && courseIds.includes(a.courseId),
-    );
-
-    if (assignments.length === 0 && student.classId) {
-      assignments = allAssignments.filter(
-        (a) => a.classIds && a.classIds.includes(student.classId!),
-      );
-    }
+    let assignments = allAssignments.filter((a) => {
+      if (a.groupIds && a.groupIds.length > 0) {
+        return a.groupIds.some(id => studentGroupIds.includes(id));
+      }
+      if (a.gradeId && student.gradeId && a.gradeId === student.gradeId) {
+        return true;
+      }
+      if (a.classIds && a.classIds.length > 0) {
+        return a.classIds.some(id => student.classId === id);
+      }
+      return false;
+    });
 
     const submissions = await ctx.db
       .query("submissions")
@@ -409,70 +601,54 @@ export const getStudentAssignmentStats = query({
 // HELPER FUNCTIONS
 // ============================================
 
-// ✅ دالة مساعدة لتسجيل الطلاب في الكورسات (تُستخدم داخلياً فقط)
-async function enrollStudentsInCourseHelper(
+// ✅ دالة مساعدة لتسجيل الطلاب في المجموعات
+async function enrollStudentsInGroupHelper(
   ctx: any,
-  courseId: Id<"courses">,
-  classIds: Id<"classes">[],
+  groupIds: Id<"groups">[],
 ) {
+  if (!groupIds || groupIds.length === 0) {
+    console.log("⚠️ No groupIds provided, skipping enrollment");
+    return {
+      success: true,
+      enrolledCount: 0,
+      totalStudents: 0,
+    };
+  }
+
   const allStudents: Id<"users">[] = [];
 
-  for (const classId of classIds) {
-    const classData = await ctx.db.get(classId);
-    if (classData) {
-      const students = classData.students || [];
-      const studentsByClass = await ctx.db
-        .query("users")
-        .withIndex("by_classId", (q: any) => q.eq("classId", classId))
-        .collect();
-
-      const studentIds = studentsByClass.map((s: any) => s._id);
-      allStudents.push(...students, ...studentIds);
+  for (const groupId of groupIds) {
+    const group = await ctx.db.get(groupId);
+    if (group) {
+      const students = group.students || [];
+      allStudents.push(...students);
     }
   }
 
   const uniqueStudentIds = [...new Set(allStudents)];
 
-  const existingEnrollments = await ctx.db
-    .query("enrollments")
-    .withIndex("by_class", (q: any) => q.eq("classId", classIds[0]))
-    .collect();
-
-  const enrollmentMap = new Map();
-  for (const enrollment of existingEnrollments) {
-    enrollmentMap.set(enrollment.studentId, enrollment);
-  }
-
-  let enrolledCount = 0;
-  let updatedCount = 0;
-
+  // تسجيل الطلاب في enrollments (إذا لزم الأمر)
   for (const studentId of uniqueStudentIds) {
-    const existing = enrollmentMap.get(studentId);
+    // التحقق من وجود enrollment
+    const existing = await ctx.db
+      .query("enrollments")
+      .withIndex("by_student", (q: any) => q.eq("studentId", studentId))
+      .first();
 
-    if (existing) {
-      if (existing.courseId !== courseId) {
-        await ctx.db.patch(existing._id, {
-          courseId: courseId,
-        });
-        updatedCount++;
-      }
-      continue;
+    if (!existing) {
+      await ctx.db.insert("enrollments", {
+        studentId,
+        classId: groupIds[0],
+        courseId: undefined,
+        enrolledAt: Date.now(),
+        status: "active",
+      });
     }
-
-    await ctx.db.insert("enrollments", {
-      studentId,
-      classId: classIds[0],
-      courseId: courseId,
-      enrolledAt: Date.now(),
-      status: "active",
-    });
-    enrolledCount++;
   }
 
   return {
     success: true,
-    newEnrollments: enrolledCount,
-    updatedEnrollments: updatedCount,
+    enrolledCount: uniqueStudentIds.length,
     totalStudents: uniqueStudentIds.length,
   };
 }
@@ -486,14 +662,15 @@ export const createAssignment = mutation({
   args: {
     title: v.string(),
     description: v.optional(v.string()),
-    classIds: v.array(v.id("classes")),
+    gradeId: v.id("grades"),
+    groupIds: v.array(v.id("groups")),
     type: v.union(
       v.literal("assignment"),
       v.literal("quiz"),
       v.literal("exam"),
       v.literal("project"),
     ),
-    questions: v.optional(v.array(v.id("questions"))), // ✅ إضافة
+    questions: v.optional(v.array(v.id("questions"))),
     maxAttempts: v.optional(v.number()),
     allowResubmission: v.boolean(),
     isGroupWork: v.boolean(),
@@ -523,7 +700,6 @@ export const createAssignment = mutation({
       v.literal("published"),
       v.literal("archived"),
     ),
-    courseId: v.id("courses"),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -538,20 +714,32 @@ export const createAssignment = mutation({
       throw new Error("مطلوب صلاحيات مشرف أو معلم");
     }
 
-    // التحقق من وجود الفصول
-    for (const classId of args.classIds) {
-      const classData = await ctx.db.get(classId);
-      if (!classData) {
-        throw new Error(`الفصل غير موجود: ${classId}`);
+    // ✅ التحقق من وجود الصف
+    const grade = await ctx.db.get(args.gradeId);
+    if (!grade) {
+      throw new Error(`الصف غير موجود: ${args.gradeId}`);
+    }
+
+    // ✅ التحقق من وجود المجموعات
+    for (const groupId of args.groupIds) {
+      const group = await ctx.db.get(groupId);
+      if (!group) {
+        throw new Error(`المجموعة غير موجودة: ${groupId}`);
+      }
+      if (group.gradeId !== args.gradeId) {
+        throw new Error(`المجموعة ${group.name} ليست تابعة للصف ${grade.name}`);
       }
     }
 
     const assignmentId = await ctx.db.insert("assignments", {
       title: args.title,
       description: args.description,
-      classIds: args.classIds,
+      gradeId: args.gradeId,
+      groupIds: args.groupIds,
+      // Note: do not map group IDs into `classIds` - they are different tables.
+      // `classIds` should only contain IDs from the `classes` table.
       type: args.type,
-      questions: args.questions || [], // ✅ إضافة
+      questions: args.questions || [],
       maxAttempts: args.maxAttempts,
       allowResubmission: args.allowResubmission,
       isGroupWork: args.isGroupWork,
@@ -570,25 +758,19 @@ export const createAssignment = mutation({
       allowedFileTypes: args.allowedFileTypes,
       maxFileSize: args.maxFileSize,
       status: args.status,
-      courseId: args.courseId,
+      courseId: undefined,
       createdBy: user._id,
       createdAt: Date.now(),
       updatedAt: Date.now(),
       publishedAt: args.status === "published" ? Date.now() : undefined,
     });
 
-    // ✅ إذا كان الواجب منشوراً، سجل الطلاب في الكورس
+    // ✅ إذا كان الواجب منشوراً، سجل الطلاب
     if (args.status === "published") {
       try {
-        const result = await enrollStudentsInCourseHelper(
-          ctx,
-          args.courseId,
-          args.classIds,
-        );
-        console.log("✅ Enrollment result:", result);
+        await enrollStudentsInGroupHelper(ctx, args.groupIds);
       } catch (error) {
         console.error("❌ Error enrolling students:", error);
-        // لا نمنع إنشاء الواجب إذا فشل التسجيل
       }
     }
 
@@ -602,8 +784,9 @@ export const updateAssignment = mutation({
     assignmentId: v.id("assignments"),
     title: v.optional(v.string()),
     description: v.optional(v.string()),
-    classIds: v.optional(v.array(v.id("classes"))),
-    questions: v.optional(v.array(v.id("questions"))), // ✅ إضافة
+    gradeId: v.optional(v.id("grades")),
+    groupIds: v.optional(v.array(v.id("groups"))),
+    questions: v.optional(v.array(v.id("questions"))),
     type: v.optional(
       v.union(
         v.literal("assignment"),
@@ -623,7 +806,6 @@ export const updateAssignment = mutation({
     dueDate: v.optional(v.number()),
     weight: v.optional(v.number()),
     fullGrade: v.optional(v.float64()),
-    courseId: v.optional(v.id("courses")),
     passingGrade: v.optional(v.number()),
     allowLateSubmission: v.optional(v.boolean()),
     lateSubmissionPenalty: v.optional(v.number()),
@@ -665,19 +847,19 @@ export const updateAssignment = mutation({
 
     const updateData: any = { updatedAt: Date.now() };
     if (args.title !== undefined) updateData.title = args.title;
-    if (args.description !== undefined)
-      updateData.description = args.description;
-    if (args.classIds !== undefined) updateData.classIds = args.classIds;
+    if (args.description !== undefined) updateData.description = args.description;
+    if (args.gradeId !== undefined) updateData.gradeId = args.gradeId;
+    if (args.groupIds !== undefined) {
+      updateData.groupIds = args.groupIds;
+      // Do NOT set `classIds` from `groupIds` — they reference different tables.
+      // Leave `classIds` unchanged to respect the schema (ids must be from `classes`).
+    }
     if (args.questions !== undefined) updateData.questions = args.questions;
     if (args.type !== undefined) updateData.type = args.type;
-    if (args.maxAttempts !== undefined)
-      updateData.maxAttempts = args.maxAttempts;
-    if (args.allowResubmission !== undefined)
-      updateData.allowResubmission = args.allowResubmission;
-    if (args.isGroupWork !== undefined)
-      updateData.isGroupWork = args.isGroupWork;
-    if (args.maxGroupSize !== undefined)
-      updateData.maxGroupSize = args.maxGroupSize;
+    if (args.maxAttempts !== undefined) updateData.maxAttempts = args.maxAttempts;
+    if (args.allowResubmission !== undefined) updateData.allowResubmission = args.allowResubmission;
+    if (args.isGroupWork !== undefined) updateData.isGroupWork = args.isGroupWork;
+    if (args.maxGroupSize !== undefined) updateData.maxGroupSize = args.maxGroupSize;
     if (args.showGrade !== undefined) updateData.showGrade = args.showGrade;
     if (args.location !== undefined) updateData.location = args.location;
     if (args.logic !== undefined) updateData.logic = args.logic;
@@ -685,33 +867,16 @@ export const updateAssignment = mutation({
     if (args.dueDate !== undefined) updateData.dueDate = args.dueDate;
     if (args.weight !== undefined) updateData.weight = args.weight;
     if (args.fullGrade !== undefined) updateData.fullGrade = args.fullGrade;
-    if (args.passingGrade !== undefined)
-      updateData.passingGrade = args.passingGrade;
-    if (args.courseId !== undefined) updateData.courseId = args.courseId;
-    if (args.allowLateSubmission !== undefined)
-      updateData.allowLateSubmission = args.allowLateSubmission;
-    if (args.lateSubmissionPenalty !== undefined)
-      updateData.lateSubmissionPenalty = args.lateSubmissionPenalty;
-    if (args.attachments !== undefined)
-      updateData.attachments = args.attachments;
-    if (args.allowedFileTypes !== undefined)
-      updateData.allowedFileTypes = args.allowedFileTypes;
-    if (args.maxFileSize !== undefined)
-      updateData.maxFileSize = args.maxFileSize;
+    if (args.passingGrade !== undefined) updateData.passingGrade = args.passingGrade;
+    if (args.allowLateSubmission !== undefined) updateData.allowLateSubmission = args.allowLateSubmission;
+    if (args.lateSubmissionPenalty !== undefined) updateData.lateSubmissionPenalty = args.lateSubmissionPenalty;
+    if (args.attachments !== undefined) updateData.attachments = args.attachments;
+    if (args.allowedFileTypes !== undefined) updateData.allowedFileTypes = args.allowedFileTypes;
+    if (args.maxFileSize !== undefined) updateData.maxFileSize = args.maxFileSize;
     if (args.status !== undefined) {
       updateData.status = args.status;
       if (args.status === "published" && assignment.status !== "published") {
         updateData.publishedAt = Date.now();
-        // ✅ إذا تم النشر، سجل الطلاب في الكورس
-        try {
-          await enrollStudentsInCourseHelper(
-            ctx,
-            args.courseId || assignment.courseId,
-            args.classIds || assignment.classIds,
-          );
-        } catch (error) {
-          console.error("Error enrolling students on publish:", error);
-        }
       }
     }
 
@@ -776,39 +941,32 @@ export const publishAssignment = mutation({
     const assignment = await ctx.db.get(args.assignmentId);
     if (!assignment) throw new Error("الواجب غير موجود");
 
+    // ✅ تسجيل الطلاب في المجموعات قبل النشر
+    if (assignment.groupIds && assignment.groupIds.length > 0) {
+      try {
+        await enrollStudentsInGroupHelper(ctx, assignment.groupIds);
+      } catch (error) {
+        console.error("Error enrolling students on publish:", error);
+      }
+    }
+
     await ctx.db.patch(args.assignmentId, {
       status: "published",
       publishedAt: Date.now(),
       updatedAt: Date.now(),
     });
 
-    // ✅ تسجيل الطلاب في الكورس عند النشر
-    try {
-      await enrollStudentsInCourseHelper(
-        ctx,
-        assignment.courseId,
-        assignment.classIds,
-      );
-    } catch (error) {
-      console.error("Error enrolling students on publish:", error);
-    }
-
     return { success: true };
   },
 });
 
-// ✅ دالة لتسجيل الطلاب في الكورسات (للاستخدام من الـ frontend)
-export const enrollStudentsInCourse = mutation({
+// ✅ دالة لتسجيل الطلاب في المجموعات (للاستخدام من الـ frontend)
+export const enrollStudentsInGroups = mutation({
   args: {
-    courseId: v.id("courses"),
-    classIds: v.array(v.id("classes")),
+    groupIds: v.array(v.id("groups")),
   },
   handler: async (ctx, args) => {
-    return await enrollStudentsInCourseHelper(
-      ctx,
-      args.courseId,
-      args.classIds,
-    );
+    return await enrollStudentsInGroupHelper(ctx, args.groupIds);
   },
 });
 
@@ -824,5 +982,6 @@ export const assignments = {
   updateAssignment,
   deleteAssignment,
   publishAssignment,
-  enrollStudentsInCourse,
+  enrollStudentsInGroups,
+   getUpcomingForStudent,
 };

@@ -1,7 +1,7 @@
 // app/_components/StudentRegistrationModal.tsx
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -17,9 +17,9 @@ import {
   MapPin,
   Mail,
   AlertCircle,
-  GraduationCap,
   School,
   ChevronDown,
+  Loader2,
 } from "lucide-react";
 
 interface StudentRegistrationModalProps {
@@ -38,15 +38,28 @@ export function StudentRegistrationModal({ isOpen, onClose }: StudentRegistratio
     birthDate: "",
     gender: "",
     address: "",
-    classId: "",
-   
+    gradeId: "",
+    groupId: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ✅ استخدام registerStudent (للتسجيل الذاتي)
+  // ✅ جلب الصفوف النشطة فقط (متاحة للجميع)
+  const grades = useQuery(api.grades.grades.getActiveGrades, {});
+
+  // ✅ جلب المجموعات حسب الصف المختار (بدلاً من getGroups)
+  const groups = useQuery(
+    api.groups.groups.getGroupsByGrade,
+    formData.gradeId ? { gradeId: formData.gradeId as any, status: "active" } : "skip"
+  );
+
+  // ✅ تسجيل طالب
   const registerStudent = useMutation(api.user.students.registerStudent);
-  const classes = useQuery(api.classes.classes.getActiveClasses, {});
+
+  // ✅ عند اختيار الصف، نمسح المجموعة المختارة
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, groupId: "" }));
+  }, [formData.gradeId]);
 
   if (!isOpen) return null;
 
@@ -67,6 +80,9 @@ export function StudentRegistrationModal({ isOpen, onClose }: StudentRegistratio
     if (!formData.gender) {
       newErrors.gender = "يرجى اختيار الجنس";
     }
+    if (!formData.gradeId) {
+      newErrors.gradeId = "يرجى اختيار الصف";
+    }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -83,7 +99,6 @@ export function StudentRegistrationModal({ isOpen, onClose }: StudentRegistratio
 
     setIsSubmitting(true);
     try {
-      // ✅ تسجيل الطالب بحالة pending
       await registerStudent({
         name: formData.fullName,
         email: formData.email || user?.emailAddresses?.[0]?.emailAddress || undefined,
@@ -91,10 +106,10 @@ export function StudentRegistrationModal({ isOpen, onClose }: StudentRegistratio
         birthDate: convertDateToTimestamp(formData.birthDate),
         gender: formData.gender as "male" | "female",
         address: formData.address || undefined,
-        classId: formData.classId as any || undefined,
+        gradeId: formData.gradeId as any,
+        groupId: formData.groupId ? (formData.groupId as any) : undefined,
       });
 
-      // ✅ نروح pending-approval
       router.push("/pending-approval");
       onClose();
     } catch (error) {
@@ -244,32 +259,69 @@ export function StudentRegistrationModal({ isOpen, onClose }: StudentRegistratio
               <School className="h-5 w-5 text-[#1a7a8a]" />
               الفصل الدراسي
             </h3>
-            <div className="space-y-2">
-              <Label htmlFor="classId" className="text-sm font-medium text-gray-700">اختر فصلك</Label>
-              <div className="relative">
-                <select
-                  id="classId"
-                  value={formData.classId}
-                  onChange={(e) => setFormData({ ...formData, classId: e.target.value })}
-                  className="w-full px-3 py-2 border border-[#c0c8c9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] bg-white appearance-none"
-                >
-                  <option value="">-- اختر الفصل --</option>
-                  {classes?.map((cls: any) => (
-                    <option key={cls._id} value={cls._id}>
-                      {cls.classNameAr} ({cls.classCode}) - {cls.grade}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            <div className="space-y-4">
+              {/* اختيار الصف */}
+              <div className="space-y-2">
+                <Label htmlFor="gradeId" className="text-sm font-medium text-gray-700">
+                  الصف <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <select
+                    id="gradeId"
+                    value={formData.gradeId}
+                    onChange={(e) => setFormData({ ...formData, gradeId: e.target.value })}
+                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] bg-white appearance-none ${
+                      errors.gradeId ? 'border-red-500' : 'border-[#c0c8c9]'
+                    }`}
+                  >
+                    <option value="">-- اختر الصف --</option>
+                    {grades?.map((grade: any) => (
+                      <option key={grade._id} value={grade._id}>
+                        {grade.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
+                {errors.gradeId && (
+                  <p className="text-xs text-red-500 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" /> {errors.gradeId}
+                  </p>
+                )}
+                {grades?.length === 0 && (
+                  <p className="text-xs text-amber-600">⚠️ لا توجد صفوف نشطة حالياً. يرجى التواصل مع الإدارة.</p>
+                )}
               </div>
-              {classes?.length === 0 && (
-                <p className="text-xs text-amber-600">لا توجد فصول نشطة حالياً. يرجى التواصل مع الإدارة.</p>
+
+              {/* اختيار المجموعة - يظهر فقط عند اختيار الصف */}
+              {formData.gradeId && (
+                <div className="space-y-2">
+                  <Label htmlFor="groupId" className="text-sm font-medium text-gray-700">
+                    المجموعة <span className="text-gray-400 text-xs">(اختياري)</span>
+                  </Label>
+                  <div className="relative">
+                    <select
+                      id="groupId"
+                      value={formData.groupId}
+                      onChange={(e) => setFormData({ ...formData, groupId: e.target.value })}
+                      className="w-full px-3 py-2 border border-[#c0c8c9] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a7a8a] bg-white appearance-none"
+                    >
+                      <option value="">-- بدون مجموعة --</option>
+                      {groups?.map((group: any) => (
+                        <option key={group._id} value={group._id}>
+                          {group.name} - {group.subject}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  </div>
+                  {groups?.length === 0 && (
+                    <p className="text-xs text-gray-400">لا توجد مجموعات متاحة في هذا الصف</p>
+                  )}
+                </div>
               )}
             </div>
           </div>
-
-          {/* معلومات ولي الأمر */}
-          
 
           {/* العنوان */}
           <div>
@@ -322,7 +374,14 @@ export function StudentRegistrationModal({ isOpen, onClose }: StudentRegistratio
               disabled={isSubmitting}
               className="min-w-30 bg-[#001f24] hover:bg-[#03363d] text-white"
             >
-              {isSubmitting ? "جاري التسجيل..." : "تسجيل"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin ml-2" />
+                  جاري التسجيل...
+                </>
+              ) : (
+                "تسجيل"
+              )}
             </Button>
           </div>
         </form>

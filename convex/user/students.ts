@@ -14,7 +14,8 @@ export const createStudent = mutation({
     gender: v.optional(v.union(v.literal("male"), v.literal("female"))),
     address: v.optional(v.string()),
     grade: v.optional(v.string()),
-    classId: v.optional(v.id("classes")),
+    gradeId: v.optional(v.id("grades")),
+    groupId: v.optional(v.id("groups")),
     parentId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
@@ -52,7 +53,8 @@ export const createStudent = mutation({
       email: args.email && args.email.trim() !== "" ? args.email : `${studentId}@system.local`,
       phoneNumber: args.phoneNumber,
       role: "student",
-      classId: args.classId,
+      gradeId: args.gradeId,
+      groupId: args.groupId,
       status: "active",
       studentId,
       birthDate: args.birthDate,
@@ -84,13 +86,13 @@ export const createStudent = mutation({
       }
     }
     
-    // ✅ إضافة الطالب إلى الفصل إذا تم تحديده
-    if (args.classId) {
-      const classData = await ctx.db.get(args.classId);
-      if (classData) {
-        await ctx.db.patch(args.classId, {
-          students: [...classData.students, student],
-          currentStudents: classData.currentStudents + 1,
+    // ✅ إضافة الطالب إلى المجموعة إذا تم تحديدها
+    if (args.groupId) {
+      const groupData = await ctx.db.get(args.groupId);
+      if (groupData) {
+        await ctx.db.patch(args.groupId, {
+          students: [...(groupData.students || []), student],
+          currentStudents: (groupData.currentStudents || 0) + 1,
           updatedAt: Date.now(),
         });
       }
@@ -116,6 +118,47 @@ export const createStudent = mutation({
 });
 
 // جلب جميع الطلاب
+export const getAvailableStudentsForGroup = query({
+  args: {
+    groupId: v.id("groups"),
+    search: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const currentUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
+    }
+
+    const group = await ctx.db.get(args.groupId);
+    if (!group) throw new Error("المجموعة غير موجودة");
+
+    let students = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "student"))
+      .collect();
+
+    students = students.filter((student) => student.status === "active" && student.gradeId === group.gradeId && !group.students.includes(student._id));
+
+    if (args.search && args.search.trim() !== "") {
+      const searchLower = args.search.toLowerCase();
+      students = students.filter((student) =>
+        student.name.toLowerCase().includes(searchLower) ||
+        student.email.toLowerCase().includes(searchLower) ||
+        student.studentId?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return students.sort((a, b) => a.name.localeCompare(b.name));
+  },
+});
+
 export const getStudents = query({
   args: {
     status: v.optional(v.string()),
@@ -275,25 +318,29 @@ export const getStudentWithClass = query({
       throw new Error("الطالب غير موجود");
     }
 
-    // ✅ جلب بيانات الفصل من student.classId
+    // ✅ جلب بيانات المجموعة/الصف من الطالب
     let classData = null;
-    if (student.classId) {
-      classData = await ctx.db.get(student.classId);
+    const studentGroup = student.groupId
+      ? await ctx.db.get(student.groupId)
+      : null;
+
+    if (studentGroup) {
+      classData = {
+        ...studentGroup,
+        _id: studentGroup._id,
+        classNameAr: studentGroup.name,
+        classNameEn: studentGroup.nameEn,
+        classCode: studentGroup._id,
+        grade: student.gradeId ? (await ctx.db.get(student.gradeId))?.name : "",
+        section: studentGroup.subject,
+        status: studentGroup.status,
+        academicYear: student.gradeId ? (await ctx.db.get(student.gradeId))?.academicYear : "",
+        location: studentGroup.location,
+        currentStudents: studentGroup.currentStudents || studentGroup.students?.length || 0,
+      };
     }
 
-    // ✅ إذا لم يوجد classId في الطالب، جرب من جدول enrollments
-    if (!classData) {
-      const enrollment = await ctx.db
-        .query("enrollments")
-        .withIndex("by_student", (q) => q.eq("studentId", student._id))
-        .first();
-      
-      if (enrollment) {
-        classData = await ctx.db.get(enrollment.classId);
-      }
-    }
-
-    // ✅ إذا مفيش فصل نهائياً، أرجع بيانات الطالب فقط
+    // ✅ إذا مفيش مجموعة نهائياً، أرجع بيانات الطالب فقط
     if (!classData) {
       return {
         student,
@@ -305,22 +352,11 @@ export const getStudentWithClass = query({
       };
     }
 
-    // ✅ جلب جميع الطلاب المسجلين في الفصل (من classData.students)
+    // ✅ جلب جميع الطلاب المسجلين في المجموعة
     let studentIdsInClass = classData.students || [];
     
-    // ✅ جلب الطلاب من enrollments كـ fallback
-    const enrollments = await ctx.db
-      .query("enrollments")
-      .withIndex("by_class", (q) => q.eq("classId", classData._id))
-      .collect();
-    
-    const enrollmentStudentIds = enrollments.map(e => e.studentId);
-    
     // ✅ دمج المعرفات (مع إزالة التكرار)
-    const allStudentIds = new Set([
-      ...studentIdsInClass,
-      ...enrollmentStudentIds,
-    ]);
+    const allStudentIds = new Set(studentIdsInClass);
 
     // ✅ فلترة المعرفات الصحيحة
     const validStudentIds: Id<"users">[] = [];
@@ -431,7 +467,8 @@ export const registerStudent = mutation({
     birthDate: v.optional(v.number()),
     gender: v.optional(v.union(v.literal("male"), v.literal("female"))),
     address: v.optional(v.string()),
-    classId: v.optional(v.id("classes")),
+    gradeId: v.optional(v.id("grades")),
+    groupId: v.optional(v.id("groups")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -484,7 +521,8 @@ export const registerStudent = mutation({
       role: "student",
       status: "pending", // ✅ pending مش active
       studentId,
-      classId: args.classId,
+      gradeId: args.gradeId,
+      groupId: args.groupId,
       birthDate: args.birthDate,
       gender: args.gender,
       address: args.address,
@@ -494,13 +532,13 @@ export const registerStudent = mutation({
       updatedAt: Date.now(),
     });
 
-    // إذا تم تحديد فصل، أضف الطالب إلى الفصل
-    if (args.classId) {
-      const classData = await ctx.db.get(args.classId);
-      if (classData) {
-        await ctx.db.patch(args.classId, {
-          students: [...classData.students, student],
-          currentStudents: classData.currentStudents + 1,
+    // إذا تم تحديد مجموعة، أضف الطالب إلى المجموعة
+    if (args.groupId) {
+      const groupData = await ctx.db.get(args.groupId);
+      if (groupData) {
+        await ctx.db.patch(args.groupId, {
+          students: [...(groupData.students || []), student],
+          currentStudents: (groupData.currentStudents || 0) + 1,
           updatedAt: Date.now(),
         });
       }
@@ -620,11 +658,11 @@ export const deleteStudent = mutation({
       throw new Error("Student not found");
     }
 
-    if (student.classId) {
-      const classData = await ctx.db.get(student.classId);
-      if (classData) {
-        const updatedStudents = classData.students.filter(id => id !== student._id);
-        await ctx.db.patch(student.classId, {
+    if (student.groupId) {
+      const groupData = await ctx.db.get(student.groupId);
+      if (groupData) {
+        const updatedStudents = (groupData.students || []).filter((id: Id<"users">) => id !== student._id);
+        await ctx.db.patch(student.groupId, {
           students: updatedStudents,
           currentStudents: updatedStudents.length,
           updatedAt: Date.now(),

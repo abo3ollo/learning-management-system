@@ -82,13 +82,25 @@ export const getExamById = query({
     const exam = await ctx.db.get(args.examId);
     if (!exam) throw new Error("الامتحان غير موجود");
 
-    // جلب تفاصيل الأسئلة من بنك الأسئلة
-    const questionsWithDetails = await Promise.all(
-      exam.questions.map(async (item) => {
-        const question = await ctx.db.get(item.questionId);
+    // ✅ جلب المجموعات
+    const groups = await Promise.all(
+      (exam.groupIds || []).map(async (groupId: Id<"groups">) => {
+        const group = await ctx.db.get(groupId);
+        return group;
+      })
+    );
+
+    // ✅ جلب الصف
+    const grade = exam.gradeId ? await ctx.db.get(exam.gradeId) : null;
+
+    // جلب الأسئلة
+    const examQuestions = exam.questions || [];
+    const questions = await Promise.all(
+      examQuestions.map(async (eq) => {
+        const q = await ctx.db.get(eq.questionId);
         return {
-          ...item,
-          question: question || null,
+          ...eq,
+          question: q,
         };
       })
     );
@@ -97,7 +109,9 @@ export const getExamById = query({
 
     return {
       ...exam,
-      questions: questionsWithDetails.filter((q) => q.question !== null),
+      groups: groups.filter(Boolean),
+      grade: grade,
+      questions: questions.filter((q) => q.question !== null),
       creatorName: creator?.name || "غير معروف",
     };
   },
@@ -126,20 +140,39 @@ export const getStudentExams = query({
       throw new Error("مطلوب صلاحيات طالب");
     }
 
-    // جلب الفصول المسجل فيها الطالب
-    const enrollments = await ctx.db
-      .query("enrollments")
-      .withIndex("by_student", (q) => q.eq("studentId", student._id))
-      .collect();
+    // ✅ جلب المجموعات المسجل فيها الطالب
+    const allGroups = await ctx.db.query("groups").collect();
+    const studentGroupIds = allGroups
+      .filter((g) => g.students && g.students.includes(student._id))
+      .map((g) => g._id);
 
-    const classIds = enrollments.map(e => e.classId);
+    // ✅ جلب صف الطالب
+    const studentGradeId = student.gradeId;
 
-    // جلب الامتحانات المنشورة للفصول
+    // جلب الامتحانات المنشورة
     let exams = await ctx.db.query("exams").collect();
-    exams = exams.filter((e) => 
-      e.status === "published" &&
-      e.classIds.some(id => classIds.includes(id))
-    );
+    
+    // ✅ فلترة الامتحانات المتاحة للطالب
+    exams = exams.filter((e) => {
+      if (e.status !== "published") return false;
+      
+      // ✅ إذا كان الامتحان له مجموعات محددة
+      if (e.groupIds && e.groupIds.length > 0) {
+        return e.groupIds.some(id => studentGroupIds.includes(id));
+      }
+      
+      // ✅ إذا كان الامتحان للصف كامل
+      if (e.gradeId && studentGradeId && e.gradeId === studentGradeId) {
+        return true;
+      }
+      
+      // ✅ للتوافق القديم - classIds
+      if (e.classIds && e.classIds.length > 0) {
+        return e.classIds.some(id => student.classId === id);
+      }
+      
+      return false;
+    });
 
     // جلب تسليمات الطالب
     const submissions = await ctx.db
@@ -151,6 +184,22 @@ export const getStudentExams = query({
       exams.map(async (exam) => {
         const submission = submissions.find(
           (s) => s.examId === exam._id
+        );
+
+        // ✅ جلب اسم الصف والمجموعات للعرض
+        let gradeName = "غير محدد";
+        if (exam.gradeId) {
+          const grade = await ctx.db.get(exam.gradeId);
+          if (grade) {
+            gradeName = grade.name;
+          }
+        }
+
+        const groupNames = await Promise.all(
+          (exam.groupIds || []).map(async (groupId) => {
+            const group = await ctx.db.get(groupId);
+            return group?.name || "مجموعة غير معروفة";
+          })
         );
 
         let status = "pending";
@@ -166,6 +215,8 @@ export const getStudentExams = query({
           ...exam,
           submission,
           status,
+          gradeName,
+          groupNames: groupNames.join(", "),
         };
       })
     );
@@ -177,6 +228,44 @@ export const getStudentExams = query({
     }
 
     return filtered.sort((a, b) => a.date - b.date);
+  },
+});
+// convex/exams/exams.ts
+
+// ✅ جلب الامتحانات القادمة للطالب
+export const getUpcomingForStudent = query({
+  args: { studentId: v.id("users") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const student = await ctx.db.get(args.studentId);
+    if (!student || student.role !== "student") {
+      throw new Error("الطالب غير موجود");
+    }
+
+    // جلب جميع الامتحانات المنشورة
+    const allExams = await ctx.db
+      .query("exams")
+      .withIndex("by_status", (q) => q.eq("status", "published"))
+      .collect();
+
+    // فلترة الامتحانات التي تخص الطالب
+    const studentExams = allExams.filter((exam) => {
+      // التحقق من أن الامتحان للصف الخاص بالطالب
+      if (exam.gradeId && student.gradeId) {
+        return exam.gradeId === student.gradeId;
+      }
+      return false;
+    });
+
+    // فلترة الامتحانات القادمة (التاريخ في المستقبل)
+    const now = Date.now();
+    const upcoming = studentExams
+      .filter((e) => e.date > now)
+      .sort((a, b) => a.date - b.date);
+
+    return upcoming;
   },
 });
 
@@ -192,8 +281,8 @@ export const createExam = mutation({
     model: v.string(),
     grade: v.string(),
     subject: v.string(),
-    courseId: v.optional(v.id("courses")),
-    classIds: v.array(v.id("classes")),
+    gradeId: v.id("grades"), // ✅ بدلاً من courseId
+    groupIds: v.array(v.id("groups")), // ✅ بدلاً من classIds
     totalMarks: v.number(),
     duration: v.number(),
     date: v.number(),
@@ -229,14 +318,33 @@ export const createExam = mutation({
       throw new Error("مطلوب صلاحيات مشرف أو معلم");
     }
 
+    // ✅ التحقق من وجود الصف
+    const grade = await ctx.db.get(args.gradeId);
+    if (!grade) {
+      throw new Error(`الصف غير موجود: ${args.gradeId}`);
+    }
+
+    // ✅ التحقق من وجود المجموعات
+    for (const groupId of args.groupIds) {
+      const group = await ctx.db.get(groupId);
+      if (!group) {
+        throw new Error(`المجموعة غير موجودة: ${groupId}`);
+      }
+      if (group.gradeId !== args.gradeId) {
+        throw new Error(`المجموعة ${group.name} ليست تابعة للصف ${grade.name}`);
+      }
+    }
+
     const examId = await ctx.db.insert("exams", {
       title: args.title,
       description: args.description,
       model: args.model,
       grade: args.grade,
       subject: args.subject,
-      courseId: args.courseId,
-      classIds: args.classIds,
+      gradeId: args.gradeId,
+      groupIds: args.groupIds,
+      // ✅ للتوافق القديم
+      courseId: undefined,
       totalMarks: args.totalMarks,
       duration: args.duration,
       date: args.date,
@@ -267,8 +375,8 @@ export const updateExam = mutation({
     model: v.optional(v.string()),
     grade: v.optional(v.string()),
     subject: v.optional(v.string()),
-    courseId: v.optional(v.id("courses")),
-    classIds: v.optional(v.array(v.id("classes"))),
+    gradeId: v.optional(v.id("grades")), // ✅ بدلاً من courseId
+    groupIds: v.optional(v.array(v.id("groups"))), // ✅ بدلاً من classIds
     totalMarks: v.optional(v.number()),
     duration: v.optional(v.number()),
     date: v.optional(v.number()),
@@ -385,10 +493,6 @@ export const publishExam = mutation({
   },
 });
 
-
-// ✅ جلب تسليم الطالب لامتحان معين
-// convex/exams/exams.ts
-
 // ✅ جلب تسليم الطالب مع التحقق من القفل
 export const getStudentExamSubmission = query({
   args: {
@@ -407,13 +511,11 @@ export const getStudentExamSubmission = query({
   },
 });
 
-// convex/exams/exams.ts
-
 // ✅ تسليم امتحان (بدون حساب درجات)
 export const submitExam = mutation({
   args: {
     examId: v.id("exams"),
-    classId: v.id("classes"),
+    classId: v.union(v.id("classes"), v.id("groups")),
     answers: v.array(
       v.object({
         questionId: v.id("questions"),
@@ -460,13 +562,12 @@ export const submitExam = mutation({
   },
 });
 
-
 // ✅ قفل الامتحان للطالب (عند تجاوز محاولات الخروج)
 export const lockExamForStudent = mutation({
   args: {
     examId: v.id("exams"),
     studentId: v.id("users"),
-    classId: v.id("classes"),
+    classId: v.union(v.id("classes"), v.id("groups")),
     reason: v.string(),
   },
   handler: async (ctx, args) => {
@@ -530,13 +631,111 @@ export const lockExamForStudent = mutation({
   },
 });
 
+export const getExamSubmissions = query({
+  args: {
+    examId: v.id("exams"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
+    }
+
+    // Get all submissions for this exam
+    const submissions = await ctx.db
+      .query("examSubmissions")
+      .withIndex("by_exam", (q) => q.eq("examId", args.examId))
+      .collect();
+
+    // Enrich with student names
+    const enrichedSubmissions = await Promise.all(
+      submissions.map(async (sub) => {
+        const student = await ctx.db.get(sub.studentId);
+        return {
+          ...sub,
+          studentName: student?.name || "طالب غير معروف",
+        };
+      })
+    );
+
+    // Sort by submission date (newest first)
+    return enrichedSubmissions.sort((a, b) => b.submittedAt - a.submittedAt);
+  },
+});
+
+
+export const gradeExamSubmission = mutation({
+  args: {
+    submissionId: v.id("examSubmissions"),
+    gradedAnswers: v.array(
+      v.object({
+        questionId: v.id("questions"),
+        answer: v.string(),
+        marksObtained: v.number(),
+        feedback: v.optional(v.string()),
+      })
+    ),
+    totalMarks: v.number(),
+    feedback: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || (user.role !== "admin" && user.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
+    }
+
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) throw new Error("التسليم غير موجود");
+
+    // Check if already graded
+    if (submission.status === "graded") {
+      throw new Error("هذا التسليم تم تصحيحه بالفعل");
+    }
+
+    // Update the submission
+    await ctx.db.patch(args.submissionId, {
+      answers: args.gradedAnswers.map((a) => ({
+        questionId: a.questionId,
+        answer: a.answer,
+        marksObtained: a.marksObtained,
+        feedback: a.feedback,
+      })),
+      totalMarks: args.totalMarks,
+      status: "graded",
+      gradedBy: user._id,
+      gradedAt: Date.now(),
+      feedback: args.feedback,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
 // ✅ تصدير الدوال
 export const exams = {
   getExams,
   getExamById,
+  getExamSubmissions,
+  gradeExamSubmission,
   getStudentExams,
   createExam,
   updateExam,
   deleteExam,
   publishExam,
+  getUpcomingForStudent
 };

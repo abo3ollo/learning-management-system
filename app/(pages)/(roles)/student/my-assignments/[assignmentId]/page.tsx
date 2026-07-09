@@ -32,6 +32,8 @@ import {
   Eye,
   ListChecks,
   FileQuestion,
+  GraduationCap,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
@@ -226,53 +228,75 @@ export default function StudentAssignmentDetailPage() {
     setError(null);
     setSuccess(null);
 
-    try {
-      const attachments = selectedFiles.map((file) => ({
-        name: file.name,
-        url: URL.createObjectURL(file),
-        size: file.size,
-        type: file.type,
-      }));
+  try {
+  const attachments = selectedFiles.map((file) => ({
+    name: file.name,
+    url: URL.createObjectURL(file),
+    size: file.size,
+    type: file.type,
+  }));
 
-      // ✅ تحويل answers إلى الصيغة المطلوبة
-      const answersArray = Object.entries(answers).map(([questionId, answer]) => ({
-        questionId: questionId as any,
-        answer: String(answer),
-      }));
+  // ✅ تحويل answers إلى الصيغة المطلوبة
+  const answersArray = Object.entries(answers).map(([questionId, answer]) => ({
+    questionId: questionId as any,
+    answer: String(answer),
+  }));
 
-      const submissionData = {
-        content: content,
-        attachments: attachments,
-        answers: answersArray,
-      };
+  const submissionData = {
+    content: content,
+    attachments: attachments,
+    answers: answersArray,
+  };
 
-      if (isSubmitted && assignment.allowResubmission) {
-        await resubmitAssignment({
-          submissionId: submission!._id,
-          ...submissionData,
-        });
-        setSuccess("تم إعادة تسليم الواجب بنجاح");
-      } else {
-        await submitAssignment({
-          assignmentId: assignmentId as any,
-          classId: assignment.classIds[0] as any,
-          ...submissionData,
-        });
-        setSuccess("تم تسليم الواجب بنجاح");
-      }
-
-      setSelectedFiles([]);
-      setContent("");
-      setAnswers({});
-
-      setTimeout(() => {
-        router.refresh();
-      }, 1000);
-    } catch (error: any) {
-      setError(error.message || "حدث خطأ أثناء التسليم");
-    } finally {
-      setIsSubmitting(false);
+  if (isSubmitted && assignment.allowResubmission) {
+    await resubmitAssignment({
+      submissionId: submission!._id,
+      ...submissionData,
+    });
+    setSuccess("تم إعادة تسليم الواجب بنجاح");
+  } else {
+    // ✅ استخدام groupIds من الواجب
+    let groupId = null;
+    
+    if (assignment.groupIds && assignment.groupIds.length > 0) {
+      groupId = assignment.groupIds[0];
     }
+    // ✅ إذا لم يوجد groupId، استخدم classIds (للتوافق القديم)
+    else if (assignment.classIds && assignment.classIds.length > 0) {
+      // يمكن تحويل classId إلى groupId أو استخدامه مباشرة
+      // لكن الأفضل استخدام groupId فقط
+      setError("هذا الواجب قديم ولا يدعم المجموعات. يرجى التواصل مع الإدارة.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    if (!groupId) {
+      setError("لا توجد مجموعة محددة لهذا الواجب");
+      setIsSubmitting(false);
+      return;
+    }
+
+    // ✅ إرسال البيانات مع groupId فقط
+    await submitAssignment({
+      assignmentId: assignmentId as any,
+      groupId: groupId as any,
+      ...submissionData,
+    });
+    setSuccess("تم تسليم الواجب بنجاح");
+  }
+
+  setSelectedFiles([]);
+  setContent("");
+  setAnswers({});
+
+  setTimeout(() => {
+    router.refresh();
+  }, 1000);
+} catch (error: any) {
+  setError(error.message || "حدث خطأ أثناء التسليم");
+} finally {
+  setIsSubmitting(false);
+}
   };
 
   const getTimeRemaining = (dueDate: number) => {
@@ -434,6 +458,22 @@ export default function StudentAssignmentDetailPage() {
                 {getStatusBadge()}
               </div>
               <div className="flex flex-wrap gap-4 mt-3">
+                {/* ✅ الصف */}
+                {assignment.grade && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <GraduationCap className="h-4 w-4 text-[#1a7a8a]" />
+                    <span>{assignment.grade.name}</span>
+                  </div>
+                )}
+                
+                {/* ✅ المجموعات */}
+                {assignment.groups && assignment.groups.length > 0 && (
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <Users className="h-4 w-4 text-[#1a7a8a]" />
+                    <span>{assignment.groups.map((g: any) => g.name).join(", ")}</span>
+                  </div>
+                )}
+
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <Calendar className="h-4 w-4 text-[#1a7a8a]" />
                   <span>

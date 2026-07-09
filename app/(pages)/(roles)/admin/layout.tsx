@@ -70,6 +70,7 @@ export default function AdminLayout({
     { href: "/admin/students", label: "الطلاب", icon: GraduationCap },
     { href: "/admin/parents", label: "أولياء الامور", icon: RiParentFill },
     { href: "/admin/classes", label: "الفصول", icon: SiGoogleclassroom },
+    { href: "/admin/grades", label: "الصفوف", icon: SiGoogleclassroom },
     { href: "/admin/courses", label: "المواد", icon: BookOpen },
     { href: "/admin/schedules", label: "الجدول", icon: AiOutlineSchedule },
     { href: "/admin/media", label: "الوسائط", icon: MdOutlinePermMedia },

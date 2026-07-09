@@ -7,6 +7,8 @@ export default defineSchema({
     name: v.string(),
     email: v.string(),
     phoneNumber: v.optional(v.string()),
+    gradeId: v.optional(v.id("grades")),
+    groupId: v.optional(v.id("groups")),
     classId: v.optional(v.id("classes")),
     role: v.union(
       v.literal("student"),
@@ -63,7 +65,7 @@ export default defineSchema({
     .index("by_studentId", ["studentId"])
     .index("by_teacherId", ["teacherId"]) // ✅ إضافة index للمعلمين
     .index("by_parentId", ["parentId"])
-    .index("by_classId", ["classId"]), // ✅ إضافة index للبحث بالفصل    // إضافة index للوالدين
+    .index("by_gradeId", ["gradeId"]), // ✅ إضافة index للبحث بالصف    // إضافة index للوالدين
 
   parentStudentLinks: defineTable({
     parentId: v.id("users"),
@@ -125,46 +127,84 @@ export default defineSchema({
     updatedAt: v.number(),
   }),
 
-  // classes
-  classes: defineTable({
-    classNameEn: v.string(),
-    classNameAr: v.string(),
-    classCode: v.string(),
-    grade: v.string(),
-    gradeLevel: v.number(),
-    section: v.string(),
-    supervisorId: v.optional(v.id("users")),
-    academicYear: v.string(),
+  // ✅ جدول الصفوف (المستويات الدراسية) - ينشئها الأدمن فقط
+  grades: defineTable({
+    name: v.string(), // "الصف الأول الابتدائي"
+    nameEn: v.string(), // "Grade 1"
+    gradeLevel: v.number(), // 1, 2, 3, ...
+    academicYear: v.string(), // "2026-2027"
+    maxGroups: v.optional(v.number()), // الحد الأقصى للمجموعات
+    status: v.union(v.literal("active"), v.literal("inactive")),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_gradeLevel", ["gradeLevel"])
+    .index("by_academicYear", ["academicYear"])
+    .index("by_status", ["status"])
+    .index("by_createdBy", ["createdBy"]),
+
+  // ✅ جدول المجموعات (تحت الصف) - ينشئها الأدمن + المعلم
+  groups: defineTable({
+    name: v.string(), // "مجموعة عربي 1"
+    nameEn: v.string(), // "Arabic Group 1"
+    gradeId: v.id("grades"), // ✅ إشارة إلى الصف
+    subject: v.string(), // "اللغة العربية" - ✅ إجباري
     maxStudents: v.number(),
     currentStudents: v.number(),
+    supervisorId: v.optional(v.id("users")),
     location: v.optional(v.string()),
     status: v.union(
       v.literal("active"),
       v.literal("inactive"),
       v.literal("completed"),
     ),
-    schedule: v.optional(
-      v.object({
-        days: v.array(v.string()),
-        startTime: v.string(),
-        endTime: v.string(),
-      }),
-    ),
     students: v.array(v.id("users")),
-    teachers: v.optional(v.array(v.id("users"))), // ✅ جعل teachers اختيارياً
-    createdBy: v.optional(v.id("users")),
+    teachers: v.optional(v.array(v.id("users"))),
+    createdBy: v.id("users"),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_classCode", ["classCode"])
-    .index("by_grade", ["grade"])
+    .index("by_grade", ["gradeId"])
     .index("by_supervisor", ["supervisorId"])
-    .index("by_academicYear", ["academicYear"])
     .index("by_status", ["status"])
-     .index("by_createdBy", ["createdBy"]),
+    .index("by_createdBy", ["createdBy"]),
+
+  classes: defineTable({
+    classNameAr: v.optional(v.string()),
+    classNameEn: v.optional(v.string()),
+    classCode: v.optional(v.string()),
+    grade: v.optional(v.string()),
+    gradeLevel: v.optional(v.number()),
+    section: v.optional(v.string()),
+    academicYear: v.optional(v.string()),
+    supervisorId: v.optional(v.id("users")),
+    status: v.optional(
+      v.union(
+        v.literal("active"),
+        v.literal("inactive"),
+        v.literal("completed"),
+      ),
+    ),
+    students: v.optional(v.array(v.id("users"))),
+    teachers: v.optional(v.array(v.id("users"))),
+    createdBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+    location: v.optional(v.string()),
+    maxStudents: v.optional(v.number()),
+    currentStudents: v.optional(v.number()),
+    gradeId: v.optional(v.id("grades")),
+    groupId: v.optional(v.id("groups")),
+  })
+    .index("by_grade", ["gradeId"])
+    .index("by_supervisor", ["supervisorId"])
+    .index("by_status", ["status"])
+    .index("by_createdBy", ["createdBy"]),
 
   classSubjects: defineTable({
-    classId: v.id("classes"),
+    classId: v.optional(v.id("classes")),
+    gradeId: v.id("grades"),
     subjectId: v.id("courses"), // ربط بالمادة (course)
     teacherId: v.id("users"), // معلم المادة
     order: v.number(), // ترتيب المادة في الفصل
@@ -180,45 +220,51 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_class", ["classId"])
+    .index("by_grade", ["gradeId"])
     .index("by_subject", ["subjectId"])
     .index("by_teacher", ["teacherId"])
-    .index("by_class_status", ["classId", "status"]),
+    .index("by_grade_status", ["gradeId", "status"]),
 
-  // جدول الحصص الأسبوعي
-  schedules: defineTable({
-    classId: v.id("classes"), // الفصل
-    academicYear: v.string(), // العام الدراسي
-    term: v.union(v.literal("first"), v.literal("second")), // الفصل الدراسي
-    weekDays: v.array(
+  // convex/schema.ts
+
+schedules: defineTable({
+  groupId: v.optional(v.id("groups")), // ✅ أضف هذا
+  classId: v.optional(v.id("classes")), // ✅ للتوافق القديم
+  academicYear: v.string(),
+  term: v.union(v.literal("first"), v.literal("second")),
+  weekDays: v.array(
+    v.object({
+      day: v.string(),
+      periods: v.array(
+        v.object({
+          periodNumber: v.number(),
+          startTime: v.string(),
+          endTime: v.string(),
+          subject: v.string(),
+          teacherId: v.optional(v.id("users")),
+          teacherName: v.optional(v.string()), // ✅ لإظهار اسم المعلم
+          room: v.optional(v.string()),
+          isBreak: v.boolean(),
+          notes: v.optional(v.string()),
+        }),
+      ),
+    }),
+  ),
+  holidays: v.optional(
+    v.array(
       v.object({
-        day: v.union(
-          v.literal("sunday"),
-          v.literal("monday"),
-          v.literal("tuesday"),
-          v.literal("wednesday"),
-          v.literal("thursday"),
-          v.literal("friday"),
-          v.literal("saturday"),
-        ),
-        periods: v.array(
-          v.object({
-            periodNumber: v.number(), // رقم الحصة (1،2،3...)
-            startTime: v.string(), // وقت البداية "08:00"
-            endTime: v.string(), // وقت النهاية "09:00"
-            subject: v.string(), // المادة
-            teacherId: v.optional(v.id("users")), // المعلم
-            room: v.optional(v.string()), // رقم الفصل/القاعة
-            isBreak: v.boolean(), // هل هي حصة استراحة؟
-            notes: v.optional(v.string()), // ملاحظات
-          }),
-        ),
+        date: v.number(),
+        reason: v.string(),
+        type: v.union(v.literal("holiday"), v.literal("exception")),
       }),
     ),
-    createdAt: v.number(),
-    updatedAt: v.number(),
-  })
-    .index("by_class", ["classId"])
-    .index("by_academicYear", ["academicYear"]),
+  ),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_group", ["groupId"]) // ✅ أضف هذا
+  .index("by_class", ["classId"])
+  .index("by_academicYear", ["academicYear"]),
 
   // تسجيل الحضور
   attendance: defineTable({
@@ -287,6 +333,8 @@ export default defineSchema({
       v.literal("class"),
       v.literal("student"),
       v.literal("section"),
+      v.literal("grade"), // ✅ إضافة grade
+      v.literal("group"), // ✅ إضافة group
     ),
     targetId: v.string(), // classId | studentId | sectionId
     title: v.string(),
@@ -305,6 +353,7 @@ export default defineSchema({
   courses: defineTable({
     title: v.string(),
     description: v.string(),
+    classId: v.optional(v.id("classes")),
     teacherId: v.id("users"),
     thumbnail: v.optional(v.string()),
     isPublished: v.boolean(),
@@ -315,22 +364,26 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_teacher", ["teacherId"])
+    .index("by_class", ["classId"])
     .index("by_published", ["isPublished"])
     .index("by_category", ["category"]),
 
   assignments: defineTable({
     title: v.string(),
     description: v.optional(v.string()),
-    classIds: v.array(v.id("classes")), // يمكن اختيار أكثر من فصل
+    classIds: v.optional(v.array(v.id("classes"))),
+    gradeId: v.id("grades"), // ✅ إضافة
+    groupIds: v.optional(v.array(v.id("groups"))), // ✅ اختياري
     type: v.union(
       v.literal("assignment"),
       v.literal("quiz"),
       v.literal("exam"),
       v.literal("project"),
     ),
-    questions: v.optional(v.array(v.id("questions"))), // ✅ إضافة مصفوفة من معرفات الأسئلة
-    fullGrade: v.float64(), // ✅ الدرجة الكاملة
-    courseId: v.id("courses"),
+    questions: v.optional(v.array(v.id("questions"))),
+    fullGrade: v.float64(),
+    // ✅ courseId أصبح اختياري
+    courseId: v.optional(v.id("courses")),
     maxAttempts: v.optional(v.number()),
     allowResubmission: v.boolean(),
     isGroupWork: v.boolean(),
@@ -338,16 +391,12 @@ export default defineSchema({
     showGrade: v.boolean(),
     location: v.optional(v.string()),
     logic: v.optional(v.string()),
-
-    // جدول التقييم
     startDate: v.number(),
     dueDate: v.number(),
-    weight: v.number(), // الوزن المئوي
-    passingGrade: v.number(), // درجة النجاح
+    weight: v.number(),
+    passingGrade: v.number(),
     allowLateSubmission: v.boolean(),
-    lateSubmissionPenalty: v.optional(v.number()), // خصم التأخير
-
-    // المرفقات
+    lateSubmissionPenalty: v.optional(v.number()),
     attachments: v.array(
       v.object({
         name: v.string(),
@@ -358,7 +407,6 @@ export default defineSchema({
     ),
     allowedFileTypes: v.array(v.string()),
     maxFileSize: v.optional(v.number()),
-
     status: v.union(
       v.literal("draft"),
       v.literal("published"),
@@ -370,6 +418,8 @@ export default defineSchema({
     publishedAt: v.optional(v.number()),
   })
     .index("by_class", ["classIds"])
+    .index("by_grade", ["gradeId"]) // ✅ إضافة
+    .index("by_group", ["groupIds"]) // ✅ إضافة
     .index("by_status", ["status"])
     .index("by_createdBy", ["createdBy"])
     .index("by_dueDate", ["dueDate"]),
@@ -377,7 +427,8 @@ export default defineSchema({
   submissions: defineTable({
     assignmentId: v.id("assignments"),
     studentId: v.id("users"),
-    classId: v.id("classes"),
+    classId: v.optional(v.id("classes")),
+    groupId: v.optional(v.id("groups")), // ✅ إضافة groupId
     submittedAt: v.number(),
     content: v.optional(v.string()),
     attachments: v.array(
@@ -415,6 +466,7 @@ export default defineSchema({
     .index("by_assignment", ["assignmentId"])
     .index("by_student", ["studentId"])
     .index("by_class", ["classId"])
+    .index("by_group", ["groupId"]) // ✅ إضافة index
     .index("by_assignment_student", ["assignmentId", "studentId"]),
 
   enrollments: defineTable({
@@ -509,8 +561,10 @@ export default defineSchema({
     model: v.string(),
     grade: v.string(),
     subject: v.string(),
-    courseId: v.optional(v.id("courses")),
-    classIds: v.array(v.id("classes")),
+    courseId: v.optional(v.id("courses")), // ✅ اختياري للتوافق القديم
+    classIds: v.optional(v.array(v.id("classes"))), // ✅ اختياري للتوافق القديم
+    gradeId: v.id("grades"), // ✅ إضافة
+    groupIds: v.array(v.id("groups")), // ✅ إضافة
     totalMarks: v.number(),
     duration: v.number(),
     date: v.number(),
@@ -541,13 +595,15 @@ export default defineSchema({
     .index("by_course", ["courseId"])
     .index("by_status", ["status"])
     .index("by_createdBy", ["createdBy"])
+    .index("by_grade", ["gradeId"]) // ✅ إضافة
+    .index("by_group", ["groupIds"]) // ✅ إضافة
     .index("by_date", ["date"]),
 
   // ✅ جدول تسليمات الامتحانات
   examSubmissions: defineTable({
     examId: v.id("exams"),
     studentId: v.id("users"),
-    classId: v.id("classes"),
+    classId: v.optional(v.union(v.id("classes"), v.id("groups"))),
     submittedAt: v.number(),
     answers: v.array(
       v.object({

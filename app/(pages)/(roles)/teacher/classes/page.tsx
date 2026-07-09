@@ -25,12 +25,21 @@ import {
   GraduationCap,
   Eye,
   UserPlus,
+  Code,
 } from "lucide-react";
 import Link from "next/link";
 import { AddNewClass } from "@/app/_components/Teacher/AddNewClass";
+import { AddStudentToClassDialog } from "@/app/_components/Teacher/AddStudentToClassDialog";
+import { MdSchedule } from "react-icons/md";
 
 // ✅ مكون المجموعة (Class Card)
-function ClassCard({ classData }: { classData: any }) {
+function ClassCard({
+  classData,
+  onAddStudent
+}: {
+  classData: any;
+  onAddStudent: (classId: string, className: string, classGrade: string) => void;
+}) {
   return (
     <Card className="hover:shadow-md transition-shadow">
       <CardHeader className="pb-2">
@@ -61,22 +70,32 @@ function ClassCard({ classData }: { classData: any }) {
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-600">
+            <Code className="h-4 w-4 text-[#1a7a8a]" />
+            <span>{classData.classCode || "-"}</span> 
+          </div>
+          
+          <div className="flex items-center gap-2 text-sm text-gray-600">
             <Calendar className="h-4 w-4 text-[#1a7a8a]" />
             <span>{classData.academicYear || "2025-2026"}</span>
           </div>
           <div className="flex items-center gap-2 mt-3">
-            <Link href={`/teacher/classes/${classData._id}`}>
-              <Button size="sm" variant="outline" className="flex-1 gap-1">
-                <Eye className="h-4 w-4" />
-                عرض التفاصيل
+
+            <Link href={`/teacher/classes/${classData._id}/schedule`}>
+              <Button variant="outline" className="gap-2">
+                <Calendar className="h-4 w-4" />
+                الجدول
               </Button>
             </Link>
-            <Link href={`/teacher/classes/${classData._id}/students`}>
-              <Button size="sm" variant="outline" className="flex-1 gap-1">
-                <UserPlus className="h-4 w-4" />
-                الطلاب
-              </Button>
-            </Link>
+
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 gap-1"
+              onClick={() => onAddStudent(classData._id, classData.classNameAr, classData.grade)}
+            >
+              <UserPlus className="h-4 w-4" />
+              الطلاب
+            </Button>
           </div>
         </div>
       </CardContent>
@@ -88,10 +107,17 @@ export default function TeacherClassesPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+  // ✅ State للمودال الخاص بالطلاب
+  const [isStudentDialogOpen, setIsStudentDialogOpen] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState<string>("");
+  const [selectedClassName, setSelectedClassName] = useState<string>("");
+  const [selectedClassGrade, setSelectedClassGrade] = useState<string>("");
+
   // جلب الفصول
   const classes = useQuery(api.classes.classes.getClasses, {
     search: searchQuery || undefined,
   });
+  console.log("Fetched classes:", classes);
 
   // حالة التحميل
   if (classes === undefined) {
@@ -120,6 +146,14 @@ export default function TeacherClassesPage() {
       cls.grade?.toLowerCase().includes(search)
     );
   });
+
+  // ✅ فتح مودال إضافة طالب
+  const handleOpenStudentDialog = (classId: string, className: string, classGrade: string) => {
+    setSelectedClassId(classId);
+    setSelectedClassName(className);
+    setSelectedClassGrade(classGrade);
+    setIsStudentDialogOpen(true);
+  };
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -213,7 +247,11 @@ export default function TeacherClassesPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredClasses.map((cls: any) => (
-              <ClassCard key={cls._id} classData={cls} />
+              <ClassCard
+                key={cls._id}
+                classData={cls}
+                onAddStudent={handleOpenStudentDialog}
+              />
             ))}
           </div>
         </>
@@ -225,6 +263,22 @@ export default function TeacherClassesPage() {
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={() => {
           // يمكن إعادة تحميل البيانات هنا
+        }}
+      />
+
+      {/* ✅ Add Student to Class Dialog */}
+      <AddStudentToClassDialog
+        isOpen={isStudentDialogOpen}
+        onClose={() => {
+          setIsStudentDialogOpen(false);
+          setSelectedClassId("");
+          setSelectedClassName("");
+          setSelectedClassGrade("");
+        }}
+        classId={selectedClassId}
+        classGrade={selectedClassGrade}
+        onSuccess={() => {
+          // تحديث البيانات بعد إضافة الطالب
         }}
       />
     </div>
