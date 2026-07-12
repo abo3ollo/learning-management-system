@@ -78,6 +78,7 @@ export default function AdminLayout({
     { href: "/admin/assignments", label: "الواجبات", icon: FileText }, 
     { href: "/admin/exams", label: "الامتحانات", icon: PiExam  }, 
     { href: "/admin/approvals", label: "الموافقة", icon: ClipboardCheck },
+    { href: "/admin/landing", label: "الشاشه الرئيسيه", icon: Settings },
     { href: "/admin/settings", label: "الإعدادات", icon: Settings },
   ];
 

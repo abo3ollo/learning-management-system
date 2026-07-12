@@ -16,6 +16,7 @@ import type * as exams_exams from "../exams/exams.js";
 import type * as grades_grades from "../grades/grades.js";
 import type * as groups_groups from "../groups/groups.js";
 import type * as index from "../index.js";
+import type * as landing_landing from "../landing/landing.js";
 import type * as media_mediaassignments from "../media/mediaassignments.js";
 import type * as media_mediafiles from "../media/mediafiles.js";
 import type * as questions_questions from "../questions/questions.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   "grades/grades": typeof grades_grades;
   "groups/groups": typeof groups_groups;
   index: typeof index;
+  "landing/landing": typeof landing_landing;
   "media/mediaassignments": typeof media_mediaassignments;
   "media/mediafiles": typeof media_mediafiles;
   "questions/questions": typeof questions_questions;

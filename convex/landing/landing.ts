@@ -1,0 +1,831 @@
+// convex/landing/landing.ts
+
+import { v } from "convex/values";
+import { mutation, query } from "../_generated/server";
+import { Id } from "../_generated/dataModel";
+
+// ─── Auth Helper ──────────────────────────────────────────────────
+
+async function getAdminUser(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("غير مصرح");
+
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_clerkId", (q: any) => q.eq("clerkId", identity.subject))
+    .first();
+
+  if (!user) throw new Error("المستخدم غير موجود");
+
+  if (user.role !== "admin") {
+    throw new Error("مطلوب صلاحيات أدمن");
+  }
+
+  return user;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════════════════════
+
+// ✅ جلب إعدادات Landing Page (للأدمن)
+export const getSettings = query({
+  args: {},
+  handler: async (ctx) => {
+    const admin = await getAdminUser(ctx);
+
+    const settings = await ctx.db.query("landingSettings").first();
+
+    return settings || null;
+  },
+});
+
+// ✅ جلب إعدادات Landing Page (للعرض العام)
+export const getPublicSettings = query({
+  args: {},
+  handler: async (ctx) => {
+    const settings = await ctx.db.query("landingSettings").first();
+
+    return settings || null;
+  },
+});
+
+// ✅ تحديث إعدادات Landing Page
+export const updateSettings = mutation({
+  args: {
+    heroBadge: v.optional(v.string()),
+    heroBadgeAr: v.optional(v.string()),
+    heroTitle: v.optional(v.string()),
+    heroTitleAr: v.optional(v.string()),
+    heroSubtitle: v.optional(v.string()),
+    heroSubtitleAr: v.optional(v.string()),
+    heroImageUrl: v.optional(v.string()),
+    ctaText: v.optional(v.string()),
+    ctaTextAr: v.optional(v.string()),
+    ctaUrl: v.optional(v.string()),
+    secondaryCta: v.optional(v.string()),
+    secondaryCtaAr: v.optional(v.string()),
+    secondaryCtaUrl: v.optional(v.string()),
+    stats: v.optional(
+      v.array(
+        v.object({
+          value: v.string(),
+          label: v.string(),
+          labelAr: v.string(),
+        }),
+      ),
+    ),
+    themeMode: v.optional(v.union(v.literal("dark"), v.literal("light"))),
+    showTestimonials: v.optional(v.boolean()),
+    showCourses: v.optional(v.boolean()),
+    showGallery: v.optional(v.boolean()),
+    contactEmail: v.optional(v.string()),
+    contactPhone: v.optional(v.string()),
+    whatsappLink: v.optional(v.string()),
+    address: v.optional(v.string()),
+    addressAr: v.optional(v.string()),
+    footerDescription: v.optional(v.string()),
+    footerDescriptionAr: v.optional(v.string()),
+    seoTitle: v.optional(v.string()),
+    seoTitleAr: v.optional(v.string()),
+    seoDescription: v.optional(v.string()),
+    seoDescriptionAr: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+
+    const existing = await ctx.db.query("landingSettings").first();
+
+    const data = {
+      ...args,
+      updatedAt: Date.now(),
+    };
+
+    if (existing) {
+      await ctx.db.patch(existing._id, data);
+      return existing._id;
+    } else {
+      const defaults = {
+        heroBadge: "The Future of Marine Education",
+        heroBadgeAr: "مستقبل التعليم البحري",
+        heroTitle: "Learn Anytime, Anywhere with Marine Academy",
+        heroTitleAr: "تعلّم في أي وقت، من أي مكان مع أكاديمية مارين",
+        heroSubtitle:
+          "A comprehensive educational platform designed to empower students and teachers through advanced interactive tools.",
+        heroSubtitleAr:
+          "منصة تعليمية شاملة مصممة لتمكين الطلاب والمعلمين من خلال أدوات تفاعلية متقدمة.",
+        heroImageUrl: "/images/hero.png",
+        ctaText: "Start Your Journey Now",
+        ctaTextAr: "ابدأ رحلتك الآن",
+        ctaUrl: "/onboarding",
+        secondaryCta: "Free Demo",
+        secondaryCtaAr: "عرض مجاني",
+        secondaryCtaUrl: "#",
+        stats: [
+          { value: "5000+", label: "Active Students", labelAr: "طالب نشط" },
+          { value: "200+", label: "Expert Teachers", labelAr: "معلم خبير" },
+          {
+            value: "50+",
+            label: "Weekly Live Classes",
+            labelAr: "فصل مباشر أسبوعياً",
+          },
+        ],
+        themeMode: "dark" as const,
+        showTestimonials: true,
+        showCourses: true,
+        showGallery: true,
+        contactEmail: "info@marineacademy.com",
+        contactPhone: "+966 50 000 0000",
+        whatsappLink: "https://wa.me/966500000000",
+        address: "Riyadh, Saudi Arabia",
+        addressAr: "الرياض، المملكة العربية السعودية",
+        footerDescription:
+          "The global leader in marine and technical education.",
+        footerDescriptionAr: "الرائد العالمي في التعليم البحري والتقني.",
+        seoTitle: "Marine Academy - Premier Marine Education Platform",
+        seoTitleAr: "أكاديمية مارين - منصة التعليم البحري الرائدة",
+        seoDescription:
+          "Marine Academy offers comprehensive marine education with live classes, expert teachers, and interactive learning tools.",
+        seoDescriptionAr:
+          "تقدم أكاديمية مارين تعليماً بحرياً شاملاً مع فصول مباشرة ومعلمين خبراء وأدوات تعلم تفاعلية.",
+      };
+
+      return await ctx.db.insert("landingSettings", {
+        ...defaults,
+        ...data,
+      });
+    }
+  },
+});
+
+// ══════════════════════════════════════════════════════════════════
+// SECTIONS
+// ══════════════════════════════════════════════════════════════════
+
+// ✅ جلب جميع الأقسام (للأدمن)
+export const getSections = query({
+  args: {},
+  handler: async (ctx) => {
+    const admin = await getAdminUser(ctx);
+
+    const sections = await ctx.db.query("landingSections").collect();
+
+    return sections.sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+});
+
+// ✅ جلب الأقسام النشطة (للعرض العام)
+export const getPublicSections = query({
+  args: {},
+  handler: async (ctx) => {
+    const sections = await ctx.db.query("landingSections").collect();
+
+    return sections
+      .filter((s) => s.isEnabled)
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+});
+
+// ✅ إنشاء قسم جديد
+export const createSection = mutation({
+  args: {
+    slug: v.string(),
+    displayOrder: v.number(),
+    isEnabled: v.boolean(),
+    title: v.optional(v.string()),
+    titleAr: v.optional(v.string()),
+    subtitle: v.optional(v.string()),
+    subtitleAr: v.optional(v.string()),
+    body: v.optional(v.string()),
+    bodyAr: v.optional(v.string()),
+    ctaText: v.optional(v.string()),
+    ctaTextAr: v.optional(v.string()),
+    ctaUrl: v.optional(v.string()),
+    mediaUrl: v.optional(v.string()),
+    mediaType: v.optional(v.union(v.literal("image"), v.literal("video"))),
+    features: v.optional(
+      v.array(
+        v.object({
+          icon: v.string(),
+          title: v.string(),
+          titleAr: v.string(),
+          desc: v.string(),
+          descAr: v.string(),
+        }),
+      ),
+    ),
+    cards: v.optional(
+      v.array(
+        v.object({
+          icon: v.string(),
+          title: v.string(),
+          titleAr: v.string(),
+          desc: v.string(),
+          descAr: v.string(),
+        }),
+      ),
+    ),
+    steps: v.optional(
+      v.array(
+        v.object({
+          number: v.string(),
+          title: v.string(),
+          titleAr: v.string(),
+          desc: v.string(),
+          descAr: v.string(),
+        }),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+
+    return await ctx.db.insert("landingSections", {
+      ...args,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// ✅ تحديث قسم
+export const updateSection = mutation({
+  args: {
+    sectionId: v.id("landingSections"),
+    slug: v.optional(v.string()),
+    displayOrder: v.optional(v.number()),
+    isEnabled: v.optional(v.boolean()),
+    title: v.optional(v.string()),
+    titleAr: v.optional(v.string()),
+    subtitle: v.optional(v.string()),
+    subtitleAr: v.optional(v.string()),
+    body: v.optional(v.string()),
+    bodyAr: v.optional(v.string()),
+    ctaText: v.optional(v.string()),
+    ctaTextAr: v.optional(v.string()),
+    ctaUrl: v.optional(v.string()),
+    mediaUrl: v.optional(v.string()),
+    mediaType: v.optional(v.union(v.literal("image"), v.literal("video"))),
+    features: v.optional(
+      v.array(
+        v.object({
+          icon: v.string(),
+          title: v.string(),
+          titleAr: v.string(),
+          desc: v.string(),
+          descAr: v.string(),
+        }),
+      ),
+    ),
+    cards: v.optional(
+      v.array(
+        v.object({
+          icon: v.string(),
+          title: v.string(),
+          titleAr: v.string(),
+          desc: v.string(),
+          descAr: v.string(),
+        }),
+      ),
+    ),
+    steps: v.optional(
+      v.array(
+        v.object({
+          number: v.string(),
+          title: v.string(),
+          titleAr: v.string(),
+          desc: v.string(),
+          descAr: v.string(),
+        }),
+      ),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+    const { sectionId, ...fields } = args;
+
+    const section = await ctx.db.get(sectionId);
+    if (!section) throw new Error("القسم غير موجود");
+
+    await ctx.db.patch(sectionId, {
+      ...fields,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ حذف قسم
+export const deleteSection = mutation({
+  args: { sectionId: v.id("landingSections") },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+
+    const section = await ctx.db.get(args.sectionId);
+    if (!section) throw new Error("القسم غير موجود");
+
+    await ctx.db.delete(args.sectionId);
+    return { success: true };
+  },
+});
+
+// ══════════════════════════════════════════════════════════════════
+// COURSES
+// ══════════════════════════════════════════════════════════════════
+
+// ✅ جلب جميع الدورات (للأدمن)
+export const getCourses = query({
+  args: {},
+  handler: async (ctx) => {
+    const admin = await getAdminUser(ctx);
+
+    const courses = await ctx.db.query("landingCourses").collect();
+
+    return courses.sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+});
+
+// ✅ جلب الدورات المنشورة (للعرض العام)
+export const getPublicCourses = query({
+  args: { featured: v.optional(v.boolean()) },
+  handler: async (ctx, args) => {
+    const courses = await ctx.db.query("landingCourses").collect();
+
+    let filtered = courses.filter((c) => c.isPublished);
+
+    if (args.featured) {
+      filtered = filtered.filter((c) => c.isFeatured);
+    }
+
+    return filtered.sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+});
+
+// ✅ إنشاء دورة جديدة
+export const createCourse = mutation({
+  args: {
+    title: v.string(),
+    titleAr: v.string(),
+    summary: v.string(),
+    summaryAr: v.string(),
+    instructor: v.string(),
+    rating: v.number(),
+    priceLabel: v.optional(v.string()),
+    priceLabelAr: v.optional(v.string()),
+    ctaText: v.string(),
+    ctaTextAr: v.string(),
+    ctaUrl: v.string(),
+    imageUrl: v.string(),
+    displayOrder: v.number(),
+    isPublished: v.boolean(),
+    isFeatured: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+
+    return await ctx.db.insert("landingCourses", {
+      ...args,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// ✅ تحديث دورة
+export const updateCourse = mutation({
+  args: {
+    courseId: v.id("landingCourses"),
+    title: v.optional(v.string()),
+    titleAr: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    summaryAr: v.optional(v.string()),
+    instructor: v.optional(v.string()),
+    rating: v.optional(v.number()),
+    priceLabel: v.optional(v.string()),
+    priceLabelAr: v.optional(v.string()),
+    ctaText: v.optional(v.string()),
+    ctaTextAr: v.optional(v.string()),
+    ctaUrl: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    displayOrder: v.optional(v.number()),
+    isPublished: v.optional(v.boolean()),
+    isFeatured: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+    const { courseId, ...fields } = args;
+
+    const course = await ctx.db.get(courseId);
+    if (!course) throw new Error("الدورة غير موجودة");
+
+    await ctx.db.patch(courseId, {
+      ...fields,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ حذف دورة
+export const deleteCourse = mutation({
+  args: { courseId: v.id("landingCourses") },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+
+    const course = await ctx.db.get(args.courseId);
+    if (!course) throw new Error("الدورة غير موجودة");
+
+    await ctx.db.delete(args.courseId);
+    return { success: true };
+  },
+});
+
+// ══════════════════════════════════════════════════════════════════
+// TESTIMONIALS
+// ══════════════════════════════════════════════════════════════════
+
+// ✅ جلب جميع التوصيات (للأدمن)
+export const getTestimonials = query({
+  args: {},
+  handler: async (ctx) => {
+    const admin = await getAdminUser(ctx);
+
+    const testimonials = await ctx.db.query("landingTestimonials").collect();
+
+    return testimonials.sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+});
+
+// ✅ جلب التوصيات المنشورة (للعرض العام)
+export const getPublicTestimonials = query({
+  args: {},
+  handler: async (ctx) => {
+    const testimonials = await ctx.db.query("landingTestimonials").collect();
+
+    return testimonials
+      .filter((t) => t.isPublished)
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+});
+
+// ✅ إنشاء توصية جديدة
+export const createTestimonial = mutation({
+  args: {
+    name: v.string(),
+    nameAr: v.string(),
+    role: v.string(),
+    roleAr: v.string(),
+    text: v.string(),
+    textAr: v.string(),
+    rating: v.number(),
+    avatarUrl: v.optional(v.string()),
+    displayOrder: v.number(),
+    isPublished: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+
+    return await ctx.db.insert("landingTestimonials", {
+      ...args,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// ✅ تحديث توصية
+export const updateTestimonial = mutation({
+  args: {
+    testimonialId: v.id("landingTestimonials"),
+    name: v.optional(v.string()),
+    nameAr: v.optional(v.string()),
+    role: v.optional(v.string()),
+    roleAr: v.optional(v.string()),
+    text: v.optional(v.string()),
+    textAr: v.optional(v.string()),
+    rating: v.optional(v.number()),
+    avatarUrl: v.optional(v.string()),
+    displayOrder: v.optional(v.number()),
+    isPublished: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+    const { testimonialId, ...fields } = args;
+
+    const testimonial = await ctx.db.get(testimonialId);
+    if (!testimonial) throw new Error("التوصية غير موجودة");
+
+    await ctx.db.patch(testimonialId, {
+      ...fields,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ حذف توصية
+export const deleteTestimonial = mutation({
+  args: { testimonialId: v.id("landingTestimonials") },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+
+    const testimonial = await ctx.db.get(args.testimonialId);
+    if (!testimonial) throw new Error("التوصية غير موجودة");
+
+    await ctx.db.delete(args.testimonialId);
+    return { success: true };
+  },
+});
+
+// ══════════════════════════════════════════════════════════════════
+// VIDEO TESTIMONIALS
+// ══════════════════════════════════════════════════════════════════
+
+// ✅ جلب جميع فيديوهات الشهادات (للأدمن)
+export const getVideoTestimonials = query({
+  args: {},
+  handler: async (ctx) => {
+    const admin = await getAdminUser(ctx);
+
+    const videos = await ctx.db.query("landingVideoTestimonials").collect();
+
+    return videos.sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+});
+
+// ✅ جلب فيديوهات الشهادات المنشورة (للعرض العام)
+export const getPublicVideoTestimonials = query({
+  args: {},
+  handler: async (ctx) => {
+    const videos = await ctx.db.query("landingVideoTestimonials").collect();
+
+    return videos
+      .filter((v) => v.isPublished)
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+});
+
+// ✅ إنشاء فيديو شهادة جديد
+export const createVideoTestimonial = mutation({
+  args: {
+    title: v.string(),
+    titleAr: v.string(),
+    description: v.string(),
+    descriptionAr: v.string(),
+    videoUrl: v.string(),
+    thumbnailUrl: v.optional(v.string()),
+    embedType: v.union(
+      v.literal("youtube"),
+      v.literal("vimeo"),
+      v.literal("file"),
+    ),
+    displayOrder: v.number(),
+    isPublished: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+
+    return await ctx.db.insert("landingVideoTestimonials", {
+      ...args,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// ✅ تحديث فيديو شهادة
+export const updateVideoTestimonial = mutation({
+  args: {
+    videoId: v.id("landingVideoTestimonials"),
+    title: v.optional(v.string()),
+    titleAr: v.optional(v.string()),
+    description: v.optional(v.string()),
+    descriptionAr: v.optional(v.string()),
+    videoUrl: v.optional(v.string()),
+    thumbnailUrl: v.optional(v.string()),
+    embedType: v.optional(
+      v.union(v.literal("youtube"), v.literal("vimeo"), v.literal("file")),
+    ),
+    displayOrder: v.optional(v.number()),
+    isPublished: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+    const { videoId, ...fields } = args;
+
+    const video = await ctx.db.get(videoId);
+    if (!video) throw new Error("الفيديو غير موجود");
+
+    await ctx.db.patch(videoId, {
+      ...fields,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ حذف فيديو شهادة
+export const deleteVideoTestimonial = mutation({
+  args: { videoId: v.id("landingVideoTestimonials") },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+
+    const video = await ctx.db.get(args.videoId);
+    if (!video) throw new Error("الفيديو غير موجود");
+
+    await ctx.db.delete(args.videoId);
+    return { success: true };
+  },
+});
+
+// ══════════════════════════════════════════════════════════════════
+// GALLERY
+// ══════════════════════════════════════════════════════════════════
+
+// ✅ جلب جميع معرض الصور (للأدمن)
+export const getGallery = query({
+  args: {},
+  handler: async (ctx) => {
+    const admin = await getAdminUser(ctx);
+
+    const gallery = await ctx.db.query("landingGallery").collect();
+
+    return gallery.sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+});
+
+// ✅ جلب معرض الصور المنشور (للعرض العام)
+export const getPublicGallery = query({
+  args: { category: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const items = await ctx.db.query("landingGallery").collect();
+
+    let filtered = items.filter((item) => item.isPublished);
+
+    if (args.category) {
+      filtered = filtered.filter((item) => item.category === args.category);
+    }
+
+    return filtered.sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+});
+
+// ✅ إنشاء عنصر معرض جديد
+export const createGalleryItem = mutation({
+  args: {
+    title: v.string(),
+    titleAr: v.string(),
+    caption: v.string(),
+    captionAr: v.string(),
+    category: v.string(),
+    imageUrl: v.string(),
+    displayOrder: v.number(),
+    isPublished: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+
+    return await ctx.db.insert("landingGallery", {
+      ...args,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// ✅ تحديث عنصر معرض
+export const updateGalleryItem = mutation({
+  args: {
+    itemId: v.id("landingGallery"),
+    title: v.optional(v.string()),
+    titleAr: v.optional(v.string()),
+    caption: v.optional(v.string()),
+    captionAr: v.optional(v.string()),
+    category: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    displayOrder: v.optional(v.number()),
+    isPublished: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+    const { itemId, ...fields } = args;
+
+    const item = await ctx.db.get(itemId);
+    if (!item) throw new Error("العنصر غير موجود");
+
+    await ctx.db.patch(itemId, {
+      ...fields,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ حذف عنصر معرض
+export const deleteGalleryItem = mutation({
+  args: { itemId: v.id("landingGallery") },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+
+    const item = await ctx.db.get(args.itemId);
+    if (!item) throw new Error("العنصر غير موجود");
+
+    await ctx.db.delete(args.itemId);
+    return { success: true };
+  },
+});
+
+// ══════════════════════════════════════════════════════════════════
+// GET ALL DATA (للأدمن)
+// ══════════════════════════════════════════════════════════════════
+
+// ✅ جلب جميع بيانات Landing Page (للأدمن)
+export const getLandingData = query({
+  args: {},
+  handler: async (ctx) => {
+    const admin = await getAdminUser(ctx);
+
+    const [settings, sections, courses, testimonials, gallery] =
+      await Promise.all([
+        ctx.db.query("landingSettings").first(),
+        ctx.db
+          .query("landingSections")
+          .collect()
+          .then((s) => s.sort((a, b) => a.displayOrder - b.displayOrder)),
+        ctx.db
+          .query("landingCourses")
+          .collect()
+          .then((c) => c.sort((a, b) => a.displayOrder - b.displayOrder)),
+        ctx.db
+          .query("landingTestimonials")
+          .collect()
+          .then((t) => t.sort((a, b) => a.displayOrder - b.displayOrder)),
+        ctx.db
+          .query("landingGallery")
+          .collect()
+          .then((g) => g.sort((a, b) => a.displayOrder - b.displayOrder)),
+      ]);
+
+    return {
+      settings: settings || null,
+      sections,
+      courses,
+      testimonials,
+      gallery,
+    };
+  },
+});
+
+// ══════════════════════════════════════════════════════════════════
+// EXPORTS
+// ══════════════════════════════════════════════════════════════════
+
+export const landing = {
+  // Settings
+  getSettings,
+  getPublicSettings,
+  updateSettings,
+
+  // Sections
+  getSections,
+  getPublicSections,
+  createSection,
+  updateSection,
+  deleteSection,
+
+  // Courses
+  getCourses,
+  getPublicCourses,
+  createCourse,
+  updateCourse,
+  deleteCourse,
+
+  // Testimonials
+  getTestimonials,
+  getPublicTestimonials,
+  createTestimonial,
+  updateTestimonial,
+  deleteTestimonial,
+
+  // Video Testimonials
+  getVideoTestimonials,
+  getPublicVideoTestimonials,
+  createVideoTestimonial,
+  updateVideoTestimonial,
+  deleteVideoTestimonial,
+
+  // Gallery
+  getGallery,
+  getPublicGallery,
+  createGalleryItem,
+  updateGalleryItem,
+  deleteGalleryItem,
+
+  // All data
+  getLandingData,
+};

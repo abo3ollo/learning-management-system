@@ -227,44 +227,44 @@ export default defineSchema({
 
   // convex/schema.ts
 
-schedules: defineTable({
-  groupId: v.optional(v.id("groups")), // ✅ أضف هذا
-  classId: v.optional(v.id("classes")), // ✅ للتوافق القديم
-  academicYear: v.string(),
-  term: v.union(v.literal("first"), v.literal("second")),
-  weekDays: v.array(
-    v.object({
-      day: v.string(),
-      periods: v.array(
-        v.object({
-          periodNumber: v.number(),
-          startTime: v.string(),
-          endTime: v.string(),
-          subject: v.string(),
-          teacherId: v.optional(v.id("users")),
-          teacherName: v.optional(v.string()), // ✅ لإظهار اسم المعلم
-          room: v.optional(v.string()),
-          isBreak: v.boolean(),
-          notes: v.optional(v.string()),
-        }),
-      ),
-    }),
-  ),
-  holidays: v.optional(
-    v.array(
+  schedules: defineTable({
+    groupId: v.optional(v.id("groups")), // ✅ أضف هذا
+    classId: v.optional(v.id("classes")), // ✅ للتوافق القديم
+    academicYear: v.string(),
+    term: v.union(v.literal("first"), v.literal("second")),
+    weekDays: v.array(
       v.object({
-        date: v.number(),
-        reason: v.string(),
-        type: v.union(v.literal("holiday"), v.literal("exception")),
+        day: v.string(),
+        periods: v.array(
+          v.object({
+            periodNumber: v.number(),
+            startTime: v.string(),
+            endTime: v.string(),
+            subject: v.string(),
+            teacherId: v.optional(v.id("users")),
+            teacherName: v.optional(v.string()), // ✅ لإظهار اسم المعلم
+            room: v.optional(v.string()),
+            isBreak: v.boolean(),
+            notes: v.optional(v.string()),
+          }),
+        ),
       }),
     ),
-  ),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-})
-  .index("by_group", ["groupId"]) // ✅ أضف هذا
-  .index("by_class", ["classId"])
-  .index("by_academicYear", ["academicYear"]),
+    holidays: v.optional(
+      v.array(
+        v.object({
+          date: v.number(),
+          reason: v.string(),
+          type: v.union(v.literal("holiday"), v.literal("exception")),
+        }),
+      ),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_group", ["groupId"]) // ✅ أضف هذا
+    .index("by_class", ["classId"])
+    .index("by_academicYear", ["academicYear"]),
 
   // تسجيل الحضور
   attendance: defineTable({
@@ -633,4 +633,176 @@ schedules: defineTable({
     .index("by_class", ["classId"])
     .index("by_exam_student", ["examId", "studentId"])
     .index("by_status", ["status"]), // ✅ إضافة index للحالة
+
+  // ─── Landing Page Tables ──────────────────────────────────────
+
+  landingSettings: defineTable({
+    heroBadge: v.string(),
+    heroBadgeAr: v.string(),
+    heroTitle: v.string(),
+    heroTitleAr: v.string(),
+    heroSubtitle: v.string(),
+    heroSubtitleAr: v.string(),
+    heroImageUrl: v.string(),
+    ctaText: v.string(),
+    ctaTextAr: v.string(),
+    ctaUrl: v.string(),
+    secondaryCta: v.string(),
+    secondaryCtaAr: v.string(),
+    secondaryCtaUrl: v.string(),
+    stats: v.array(
+      v.object({
+        value: v.string(),
+        label: v.string(),
+        labelAr: v.string(),
+      }),
+    ),
+    themeMode: v.union(v.literal("dark"), v.literal("light")),
+    showTestimonials: v.boolean(),
+    showCourses: v.boolean(),
+    showGallery: v.boolean(),
+    contactEmail: v.string(),
+    contactPhone: v.string(),
+    whatsappLink: v.string(),
+    address: v.string(),
+    addressAr: v.string(),
+    footerDescription: v.string(),
+    footerDescriptionAr: v.string(),
+    seoTitle: v.string(),
+    seoTitleAr: v.string(),
+    seoDescription: v.string(),
+    seoDescriptionAr: v.string(),
+    updatedAt: v.number(),
+  }),
+
+  landingSections: defineTable({
+    slug: v.string(),
+    displayOrder: v.number(),
+    isEnabled: v.boolean(),
+    title: v.optional(v.string()),
+    titleAr: v.optional(v.string()),
+    subtitle: v.optional(v.string()),
+    subtitleAr: v.optional(v.string()),
+    body: v.optional(v.string()),
+    bodyAr: v.optional(v.string()),
+    ctaText: v.optional(v.string()),
+    ctaTextAr: v.optional(v.string()),
+    ctaUrl: v.optional(v.string()),
+    mediaUrl: v.optional(v.string()),
+    mediaType: v.optional(v.union(v.literal("image"), v.literal("video"))),
+    features: v.optional(
+      v.array(
+        v.object({
+          icon: v.string(),
+          title: v.string(),
+          titleAr: v.string(),
+          desc: v.string(),
+          descAr: v.string(),
+        }),
+      ),
+    ),
+    cards: v.optional(
+      v.array(
+        v.object({
+          icon: v.string(),
+          title: v.string(),
+          titleAr: v.string(),
+          desc: v.string(),
+          descAr: v.string(),
+        }),
+      ),
+    ),
+    steps: v.optional(
+      v.array(
+        v.object({
+          number: v.string(),
+          title: v.string(),
+          titleAr: v.string(),
+          desc: v.string(),
+          descAr: v.string(),
+        }),
+      ),
+    ),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_slug", ["slug"])
+    .index("by_order", ["displayOrder"])
+    .index("by_enabled", ["isEnabled"]),
+
+  landingCourses: defineTable({
+    title: v.string(),
+    titleAr: v.string(),
+    summary: v.string(),
+    summaryAr: v.string(),
+    instructor: v.string(),
+    rating: v.number(),
+    priceLabel: v.optional(v.string()),
+    priceLabelAr: v.optional(v.string()),
+    ctaText: v.string(),
+    ctaTextAr: v.string(),
+    ctaUrl: v.string(),
+    imageUrl: v.string(),
+    displayOrder: v.number(),
+    isPublished: v.boolean(),
+    isFeatured: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_order", ["displayOrder"])
+    .index("by_published", ["isPublished"])
+    .index("by_featured", ["isFeatured"]),
+
+  landingTestimonials: defineTable({
+    name: v.string(),
+    nameAr: v.string(),
+    role: v.string(),
+    roleAr: v.string(),
+    text: v.string(),
+    textAr: v.string(),
+    rating: v.number(),
+    avatarUrl: v.optional(v.string()),
+    displayOrder: v.number(),
+    isPublished: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_order", ["displayOrder"])
+    .index("by_published", ["isPublished"]),
+
+  landingVideoTestimonials: defineTable({
+    title: v.string(),
+    titleAr: v.string(),
+    description: v.string(),
+    descriptionAr: v.string(),
+    videoUrl: v.string(), // رابط الفيديو (YouTube, Vimeo, أو ملف)
+    thumbnailUrl: v.optional(v.string()),
+    embedType: v.union(
+      v.literal("youtube"),
+      v.literal("vimeo"),
+      v.literal("file"),
+    ),
+    displayOrder: v.number(),
+    isPublished: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_order", ["displayOrder"])
+    .index("by_published", ["isPublished"]),
+
+  landingGallery: defineTable({
+    title: v.string(),
+    titleAr: v.string(),
+    caption: v.string(),
+    captionAr: v.string(),
+    category: v.string(),
+    imageUrl: v.string(),
+    displayOrder: v.number(),
+    isPublished: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_order", ["displayOrder"])
+    .index("by_published", ["isPublished"])
+    .index("by_category", ["category"]),
 });
