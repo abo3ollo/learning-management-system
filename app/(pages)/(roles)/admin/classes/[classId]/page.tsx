@@ -21,7 +21,7 @@ import { ClassInfoTab } from "@/app/_components/Classes/ClassInfoTab";
 import { ClassStudentsTab } from "@/app/_components/Classes/ClassStudentsTab";
 import { ClassTeachersTab } from "@/app/_components/Classes/ClassTeachersTab";
 import { ClassSubjectsTab } from "@/app/_components/Classes/ClassSubjectsTab";
-import { ClassScheduleTab } from "@/app/_components/Classes/ClassScheduleTab";
+
 import Link from "next/link";
 
 
@@ -131,7 +131,7 @@ export default function ClassDetailsPage() {
           {activeTab === "students" && <ClassStudentsTab classId={classId} />}
           {activeTab === "teachers" && <ClassTeachersTab classId={classId} />}
           {activeTab === "subjects" && <ClassSubjectsTab classId={classId} />}
-          {activeTab === "schedule" && <ClassScheduleTab classId={classId} />}
+          
         </div>
       </div>
     </div>
