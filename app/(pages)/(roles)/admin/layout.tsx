@@ -93,7 +93,7 @@ export default function AdminLayout({
         <div className="p-5 flex items-center justify-between border-b border-[#03363d]">
           {sidebarOpen ? (
             <Link href="/admin" className="text-xl font-semibold tracking-tight">
-              LMS Admin
+              Admin
             </Link>
           ) : (
             <Link href="/admin" className="text-xl font-semibold">

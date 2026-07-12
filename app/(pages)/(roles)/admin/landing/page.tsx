@@ -62,6 +62,9 @@ interface LandingSettings {
   heroRatingLabel?: string;
   heroRatingLabelAr?: string;
 
+  schoolName: string;
+  schoolNameAr: string;
+
   // CTA
   ctaText: string;
   ctaTextAr: string;
@@ -213,6 +216,8 @@ export default function AdminLandingPage() {
     heroSubtitle: "A comprehensive educational platform designed to empower students and teachers through advanced interactive tools.",
     heroSubtitleAr: "منصة تعليمية شاملة مصممة لتمكين الطلاب والمعلمين من خلال أدوات تفاعلية متقدمة.",
     heroImageUrl: "/images/hero.png",
+    schoolName: "Marine Academy",
+    schoolNameAr: "أكاديمية مارين",
     ctaText: "Start Your Journey Now",
     ctaTextAr: "ابدأ رحلتك الآن",
     ctaUrl: "/onboarding",
@@ -1579,6 +1584,24 @@ export default function AdminLandingPage() {
                 <CardTitle>إعدادات إضافية</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>اسم المدرسة (عربي)</Label>
+                    <Input
+                      value={settings.schoolNameAr || "أكاديمية مارين"}
+                      onChange={(e) => setSettings({ ...settings, schoolNameAr: e.target.value })}
+                      placeholder="أكاديمية مارين"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>اسم المدرسة (إنجليزي)</Label>
+                    <Input
+                      value={settings.schoolName || "Marine Academy"}
+                      onChange={(e) => setSettings({ ...settings, schoolName: e.target.value })}
+                      placeholder="Marine Academy"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label>وضع السمة</Label>
                   <div className="flex gap-4">

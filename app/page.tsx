@@ -91,6 +91,8 @@ export default function LandingPage() {
     heroSubtitle: "A comprehensive educational platform designed to empower students and teachers through advanced interactive tools.",
     heroSubtitleAr: "منصة تعليمية شاملة مصممة لتمكين الطلاب والمعلمين من خلال أدوات تفاعلية متقدمة.",
     heroImageUrl: "/images/hero.png",
+    schoolName: "Marine Academy",
+    schoolNameAr: "أكاديمية مارين",
     ctaText: "Start Your Journey Now",
     ctaTextAr: "ابدأ رحلتك الآن",
     ctaUrl: "/onboarding",
@@ -265,153 +267,153 @@ export default function LandingPage() {
   };
 
   // ── VIDEO TESTIMONIALS SECTION ──────────────────────────────
-const renderVideoTestimonials = () => {
-  if (!videoTestimonials || videoTestimonials.length === 0) return null;
+  const renderVideoTestimonials = () => {
+    if (!videoTestimonials || videoTestimonials.length === 0) return null;
 
-  return (
-    <>
-      <section className="py-20 bg-[#f7fafa]">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-14">
-            <h2 className="text-4xl font-extrabold text-[#0a2540] mb-3">
-              {lang === "ar" ? "لا تسمع منا... اسمع من طلابنا" : "Don't just take our word for it... hear from our students."}
-            </h2>
-            {/* <p className="text-gray-500">
+    return (
+      <>
+        <section className="py-20 bg-[#f7fafa]">
+          <div className="max-w-7xl mx-auto px-6">
+            <div className="text-center mb-14">
+              <h2 className="text-4xl font-extrabold text-[#0a2540] mb-3">
+                {lang === "ar" ? "لا تسمع منا... اسمع من طلابنا" : "Don't just take our word for it... hear from our students."}
+              </h2>
+              {/* <p className="text-gray-500">
               {lang === "ar" ? "أبواب السعودية" : "Abwab Saudi"}
             </p> */}
-          </div>
+            </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {videoTestimonials.map((video: any) => {
-              const isYouTube = video.embedType === "youtube";
-              const videoId = getYouTubeId(video.videoUrl);
-              
-              // ✅ عدة مصادر لغلاف اليوتيوب
-              const getYouTubeThumbnail = (id: string) => {
-                // جرب هذه المصادر بالترتيب
-                const sources = [
-                  `https://img.youtube.com/vi/${id}/maxresdefault.jpg`,  // جودة عالية
-                  `https://img.youtube.com/vi/${id}/hqdefault.jpg`,     // جودة متوسطة
-                  `https://img.youtube.com/vi/${id}/mqdefault.jpg`,     // جودة منخفضة
-                  `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`,     // بديل
-                  `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,         // بديل
-                ];
-                return sources;
-              };
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {videoTestimonials.map((video: any) => {
+                const isYouTube = video.embedType === "youtube";
+                const videoId = getYouTubeId(video.videoUrl);
 
-              const thumbnailSources = isYouTube && videoId 
-                ? getYouTubeThumbnail(videoId)
-                : [video.thumbnailUrl || '/images/video-placeholder.jpg'];
+                // ✅ عدة مصادر لغلاف اليوتيوب
+                const getYouTubeThumbnail = (id: string) => {
+                  // جرب هذه المصادر بالترتيب
+                  const sources = [
+                    `https://img.youtube.com/vi/${id}/maxresdefault.jpg`,  // جودة عالية
+                    `https://img.youtube.com/vi/${id}/hqdefault.jpg`,     // جودة متوسطة
+                    `https://img.youtube.com/vi/${id}/mqdefault.jpg`,     // جودة منخفضة
+                    `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`,     // بديل
+                    `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,         // بديل
+                  ];
+                  return sources;
+                };
 
-              // استخدام الصورة الأولى كمصدر رئيسي
-              const thumbnailUrl = thumbnailSources[0];
-              
-              const embedUrl = isYouTube
-                ? `https://www.youtube.com/embed/${videoId}`
-                : video.videoUrl;
+                const thumbnailSources = isYouTube && videoId
+                  ? getYouTubeThumbnail(videoId)
+                  : [video.thumbnailUrl || '/images/video-placeholder.jpg'];
 
-              return (
-                <div 
-                  key={video._id} 
-                  className="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer bg-gray-900"
-                  style={{ aspectRatio: '4/5' }}
-                  onClick={() => openVideo(embedUrl, video.embedType)}
-                >
-                  {/* Thumbnail with fallback */}
-                  <img
-                    src={thumbnailUrl}
-                    alt=""
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    onError={(e) => {
-                      // إذا فشل التحميل، جرب الصورة التالية
-                      const img = e.target as HTMLImageElement;
-                      const currentSrc = img.src;
-                      const currentIndex = thumbnailSources.indexOf(currentSrc);
-                      
-                      if (currentIndex < thumbnailSources.length - 1) {
-                        img.src = thumbnailSources[currentIndex + 1];
-                      } else {
-                        // إذا فشلت كل الصور، استخدم صورة افتراضية
-                        img.src = '/images/video-placeholder.jpg';
-                      }
-                    }}
-                    loading="lazy"
-                  />
+                // استخدام الصورة الأولى كمصدر رئيسي
+                const thumbnailUrl = thumbnailSources[0];
 
-                  {/* YouTube watermark indicator */}
-                  {isYouTube && (
-                    <div className="absolute top-3 right-3 bg-red-600 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                      </svg>
-                      YouTube
+                const embedUrl = isYouTube
+                  ? `https://www.youtube.com/embed/${videoId}`
+                  : video.videoUrl;
+
+                return (
+                  <div
+                    key={video._id}
+                    className="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer bg-gray-900"
+                    style={{ aspectRatio: '4/5' }}
+                    onClick={() => openVideo(embedUrl, video.embedType)}
+                  >
+                    {/* Thumbnail with fallback */}
+                    <img
+                      src={thumbnailUrl}
+                      alt=""
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      onError={(e) => {
+                        // إذا فشل التحميل، جرب الصورة التالية
+                        const img = e.target as HTMLImageElement;
+                        const currentSrc = img.src;
+                        const currentIndex = thumbnailSources.indexOf(currentSrc);
+
+                        if (currentIndex < thumbnailSources.length - 1) {
+                          img.src = thumbnailSources[currentIndex + 1];
+                        } else {
+                          // إذا فشلت كل الصور، استخدم صورة افتراضية
+                          img.src = '/images/video-placeholder.jpg';
+                        }
+                      }}
+                      loading="lazy"
+                    />
+
+                    {/* YouTube watermark indicator */}
+                    {isYouTube && (
+                      <div className="absolute top-3 right-3 bg-red-600 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                        </svg>
+                        YouTube
+                      </div>
+                    )}
+
+                    {/* Overlay with Play Button */}
+                    <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
+                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110">
+                        <svg
+                          className="w-8 h-8 md:w-10 md:h-10 text-[#0a2540] ml-1"
+                          fill="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </div>
                     </div>
-                  )}
 
-                  {/* Overlay with Play Button */}
-                  <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
-                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110">
-                      <svg 
-                        className="w-8 h-8 md:w-10 md:h-10 text-[#0a2540] ml-1" 
-                        fill="currentColor" 
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
+                    {/* Title overlay at bottom */}
+                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/80 to-transparent">
+                      <p className="text-white text-sm font-medium line-clamp-2">
+                        {lang === "ar" ? video.titleAr || video.title : video.title}
+                      </p>
                     </div>
                   </div>
-
-                  {/* Title overlay at bottom */}
-                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/80 to-transparent">
-                    <p className="text-white text-sm font-medium line-clamp-2">
-                      {lang === "ar" ? video.titleAr || video.title : video.title}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Video Modal */}
-      {selectedVideo && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
-          onClick={closeVideo}
-        >
-          <div 
-            className="relative w-full max-w-4xl"
-            style={{ aspectRatio: '16/9' }}
-            onClick={(e) => e.stopPropagation()}
+        {/* Video Modal */}
+        {selectedVideo && (
+          <div
+            className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
+            onClick={closeVideo}
           >
-            <button
-              onClick={closeVideo}
-              className="absolute -top-12 right-0 text-white hover:text-gray-300 text-3xl transition-colors"
+            <div
+              className="relative w-full max-w-4xl"
+              style={{ aspectRatio: '16/9' }}
+              onClick={(e) => e.stopPropagation()}
             >
-              ✕
-            </button>
-            {selectedEmbedType === "youtube" ? (
-              <iframe
-                src={selectedVideo + (selectedVideo.includes('?') ? '&autoplay=1' : '?autoplay=1')}
-                className="w-full h-full rounded-xl"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            ) : (
-              <video
-                src={selectedVideo}
-                className="w-full h-full rounded-xl"
-                controls
-                autoPlay
-              />
-            )}
+              <button
+                onClick={closeVideo}
+                className="absolute -top-12 right-0 text-white hover:text-gray-300 text-3xl transition-colors"
+              >
+                ✕
+              </button>
+              {selectedEmbedType === "youtube" ? (
+                <iframe
+                  src={selectedVideo + (selectedVideo.includes('?') ? '&autoplay=1' : '?autoplay=1')}
+                  className="w-full h-full rounded-xl"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <video
+                  src={selectedVideo}
+                  className="w-full h-full rounded-xl"
+                  controls
+                  autoPlay
+                />
+              )}
+            </div>
           </div>
-        </div>
-      )}
-    </>
-  );
-};
+        )}
+      </>
+    );
+  };
 
   // دالة مساعدة لاستخراج ID الفيديو من رابط YouTube
   function getYouTubeId(url: string): string {
@@ -530,7 +532,7 @@ const renderVideoTestimonials = () => {
   };
 
 
-   const openVideo = (videoUrl: string, embedType: string) => {
+  const openVideo = (videoUrl: string, embedType: string) => {
     setSelectedVideo(videoUrl);
     setSelectedEmbedType(embedType);
   };
@@ -547,7 +549,7 @@ const renderVideoTestimonials = () => {
       <nav className="fixed top-0 inset-x-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
           <Link href="/" className="text-xl font-bold text-[#0a2540] shrink-0">
-            Marine Academy
+            {lang === "ar" ? data.schoolNameAr || "أكاديمية مارين" : data.schoolName || "Marine Academy"}
           </Link>
 
           {/* <div className="hidden lg:flex items-center gap-6 text-sm text-gray-600">
@@ -633,13 +635,20 @@ const renderVideoTestimonials = () => {
             {/* Left Content */}
             <div>
               {/* Rating Badge */}
-              <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur border border-gray-200 rounded-full px-4 py-2 mb-6 shadow-sm">
+              <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur border border-gray-200 rounded-full px-4 py-2 shadow-sm animate-fade-in-up">
                 <div className="flex items-center gap-1">
                   <span className="text-yellow-400 text-sm">★★★★★</span>
-                  <span className="text-sm font-semibold text-gray-800 mr-1">4.8/5</span>
+                  <span className="text-sm font-semibold text-gray-800 mr-1">
+                    {data.heroRating || "4.8"}/5
+                  </span>
                 </div>
                 <span className="text-xs text-gray-500 border-r border-gray-200 pr-3">
-                  {lang === "ar" ? "نسبة رضا الطالب" : "Student Satisfaction"}
+                  {lang === "ar"
+                    ? data.heroRatingLabelAr || "نسبة رضا الطالب"
+                    : data.heroRatingLabel || "Student Satisfaction"}
+                </span>
+                <span className="text-xs text-green-500 bg-green-50 px-2 py-0.5 rounded-full">
+                  ★ {lang === "ar" ? "ممتاز" : "Excellent"}
                 </span>
               </div>
 
