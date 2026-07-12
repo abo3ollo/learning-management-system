@@ -280,3 +280,12 @@
 //     </div>
 //   );
 // }
+
+export default function AdminSchedulesPage() {
+  return (
+    <div>
+      <h1>إدارة الجداول</h1>
+      {/* محتوى الصفحة */}
+    </div>
+  );
+}
