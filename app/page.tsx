@@ -8,8 +8,6 @@ import { api } from "@/convex/_generated/api";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  FaArrowRight,
-  FaPlay,
   FaStar,
   FaFacebook,
   FaTwitter,
@@ -24,8 +22,7 @@ import { Loader2 } from "lucide-react";
 import * as Icons from "react-icons/fa";
 import { PiStudentBold } from "react-icons/pi";
 import { RiParentFill } from "react-icons/ri";
-import { FaPhoneFlip } from "react-icons/fa6";
-import { Card, CardContent } from "@/components/ui/card";
+
 
 // ─── Icon Mapping ────────────────────────────────────────────────
 const iconMap: Record<string, any> = {

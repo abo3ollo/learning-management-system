@@ -253,7 +253,7 @@ export const addScheduleSlot = mutation({
     if (!group) throw new Error("المجموعة غير موجودة");
 
     // جلب الجدول الحالي أو إنشاء جديد
-    let schedule = await ctx.db
+    const schedule = await ctx.db
       .query("schedules")
       .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
       .first();
@@ -451,7 +451,7 @@ export const addGroupHoliday = mutation({
       throw new Error("مطلوب صلاحيات مشرف أو معلم");
     }
 
-    let schedule = await ctx.db
+    const schedule = await ctx.db
       .query("schedules")
       .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
       .first();
