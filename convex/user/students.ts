@@ -1,10 +1,22 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
-import { generateStudentId } from "./helpers";
 import { Id } from "../_generated/dataModel";
 
 
-// إنشاء طالب جديد
+
+
+// دالة مساعدة لتوليد رقم طالب فريد
+async function generateStudentId(ctx: any): Promise<string> {
+  const count = await ctx.db
+    .query("users")
+    .filter((q: any) => q.eq(q.field("role"), "student"))
+    .collect();
+  
+  const nextNumber = count.length + 1;
+  return `STU-${String(nextNumber).padStart(5, '0')}`;
+}
+
+// ✅ إنشاء طالب جديد
 export const createStudent = mutation({
   args: {
     name: v.string(),
@@ -46,7 +58,19 @@ export const createStudent = mutation({
       }
     }
     
-    // ✅ إنشاء الطالب بحالة active
+    // ✅ التحقق من رقم الهاتف
+    if (args.phoneNumber) {
+      const existingPhone = await ctx.db
+        .query("users")
+        .filter((q) => q.eq(q.field("phoneNumber"), args.phoneNumber))
+        .first();
+      
+      if (existingPhone) {
+        throw new Error("رقم الهاتف موجود مسبقاً");
+      }
+    }
+    
+    // ✅ إنشاء الطالب
     const student = await ctx.db.insert("users", {
       clerkId: `manual_${studentId}`,
       name: args.name,
@@ -90,9 +114,10 @@ export const createStudent = mutation({
     if (args.groupId) {
       const groupData = await ctx.db.get(args.groupId);
       if (groupData) {
+        const updatedStudents = [...(groupData.students || []), student];
         await ctx.db.patch(args.groupId, {
-          students: [...(groupData.students || []), student],
-          currentStudents: (groupData.currentStudents || 0) + 1,
+          students: updatedStudents,
+          currentStudents: updatedStudents.length,
           updatedAt: Date.now(),
         });
       }
@@ -107,7 +132,6 @@ export const createStudent = mutation({
         studentId: studentId,
         name: args.name,
         email: args.email || `${studentId}@system.local`,
-        
         createdBy: admin.email,
       },
       createdAt: Date.now(),
@@ -117,53 +141,17 @@ export const createStudent = mutation({
   },
 });
 
-// جلب جميع الطلاب
-export const getAvailableStudentsForGroup = query({
-  args: {
-    groupId: v.id("groups"),
-    search: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("غير مصرح");
+// ✅ جلب جميع الطلاب مع معلومات الصف والمجموعة
+// convex/user/students.ts
 
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "teacher")) {
-      throw new Error("مطلوب صلاحيات مشرف أو معلم");
-    }
-
-    const group = await ctx.db.get(args.groupId);
-    if (!group) throw new Error("المجموعة غير موجودة");
-
-    let students = await ctx.db
-      .query("users")
-      .withIndex("by_role", (q) => q.eq("role", "student"))
-      .collect();
-
-    students = students.filter((student) => student.status === "active" && student.gradeId === group.gradeId && !group.students.includes(student._id));
-
-    if (args.search && args.search.trim() !== "") {
-      const searchLower = args.search.toLowerCase();
-      students = students.filter((student) =>
-        student.name.toLowerCase().includes(searchLower) ||
-        student.email.toLowerCase().includes(searchLower) ||
-        student.studentId?.toLowerCase().includes(searchLower)
-      );
-    }
-
-    return students.sort((a, b) => a.name.localeCompare(b.name));
-  },
-});
-
+// ✅ جلب جميع الطلاب مع معلومات الصف والمجموعة
 export const getStudents = query({
   args: {
     status: v.optional(v.string()),
     search: v.optional(v.string()),
     classId: v.optional(v.id("classes")),
+    gradeId: v.optional(v.id("grades")),
+    groupId: v.optional(v.id("groups")),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -190,6 +178,16 @@ export const getStudents = query({
       .withIndex("by_role", (q) => q.eq("role", "student"))
       .collect();
 
+    // ✅ فلتر حسب الصف
+    if (args.gradeId) {
+      students = students.filter((s) => s.gradeId === args.gradeId);
+    }
+
+    // ✅ فلتر حسب المجموعة
+    if (args.groupId) {
+      students = students.filter((s) => s.groupId === args.groupId);
+    }
+
     // ✅ فلتر حسب الفصل إذا تم تحديده
     if (args.classId) {
       students = students.filter((s) => s.classId === args.classId);
@@ -197,7 +195,6 @@ export const getStudents = query({
 
     // ✅ إذا كان المستخدم معلم، جلب طلاب فصوله فقط
     if (isTeacher && !args.classId) {
-      // جلب جميع الفصول التي يدرسها المعلم
       const allClasses = await ctx.db.query("classes").collect();
       const teacherClasses = allClasses.filter(
         (c) => c.teachers && c.teachers.includes(currentUser._id)
@@ -230,17 +227,49 @@ export const getStudents = query({
     if (args.search && args.search.trim() !== "") {
       const searchLower = args.search.toLowerCase();
       students = students.filter((student) =>
-        student.name.toLowerCase().includes(searchLower) ||
-        student.email.toLowerCase().includes(searchLower) ||
+        student.name?.toLowerCase().includes(searchLower) ||
+        student.email?.toLowerCase().includes(searchLower) ||
         student.studentId?.toLowerCase().includes(searchLower) ||
         student.phoneNumber?.includes(args.search || "")
       );
     }
 
-    // إضافة معلومات أولياء الأمور والفصل
-    const studentsWithParentsAndClass = await Promise.all(
+    // ✅ إضافة معلومات إضافية (الصف، المجموعة، أولياء الأمور)
+    const studentsWithDetails = await Promise.all(
       students.map(async (student) => {
-        // جلب أولياء الأمور
+        // ✅ جلب معلومات الصف
+        let gradeName = "غير محدد";
+        let gradeObj = null;
+        if (student.gradeId) {
+          const grade = await ctx.db.get(student.gradeId);
+          if (grade) {
+            gradeName = grade.name;
+            gradeObj = {
+              _id: grade._id,
+              name: grade.name,
+              nameEn: grade.nameEn,
+              gradeLevel: grade.gradeLevel,
+            };
+          }
+        }
+
+        // ✅ جلب معلومات المجموعة
+        let groupName = "غير محدد";
+        let groupObj = null;
+        if (student.groupId) {
+          const group = await ctx.db.get(student.groupId);
+          if (group) {
+            groupName = group.name;
+            groupObj = {
+              _id: group._id,
+              name: group.name,
+              nameEn: group.nameEn,
+              subject: group.subject,
+            };
+          }
+        }
+
+        // ✅ جلب أولياء الأمور
         const parentLinks = await ctx.db
           .query("parentStudentLinks")
           .withIndex("by_student", (q) => q.eq("studentId", student._id))
@@ -257,7 +286,7 @@ export const getStudents = query({
           })
         );
 
-        // جلب معلومات الفصل
+        // ✅ جلب معلومات الفصل
         let classInfo = null;
         if (student.classId) {
           const classData = await ctx.db.get(student.classId);
@@ -282,13 +311,77 @@ export const getStudents = query({
         
         return { 
           ...student, 
+          gradeName,
+          gradeObj,
+          groupName,
+          groupObj,
           parents: parents.filter(Boolean),
           classInfo,
         };
       })
     );
     
-    return studentsWithParentsAndClass;
+    return studentsWithDetails;
+  },
+});
+
+// ✅ جلب الطلاب المتاحين للإضافة إلى مجموعة
+export const getAvailableStudentsForGroup = query({
+  args: {
+    groupId: v.id("groups"),
+    search: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const currentUser = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "teacher")) {
+      throw new Error("مطلوب صلاحيات مشرف أو معلم");
+    }
+
+    const group = await ctx.db.get(args.groupId);
+    if (!group) throw new Error("المجموعة غير موجودة");
+
+    let students = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "student"))
+      .collect();
+
+    students = students.filter((student) => 
+      student.status === "active" && 
+      student.gradeId === group.gradeId && 
+      !group.students.includes(student._id)
+    );
+
+    if (args.search && args.search.trim() !== "") {
+      const searchLower = args.search.toLowerCase();
+      students = students.filter((student) =>
+        student.name?.toLowerCase().includes(searchLower) ||
+        student.email?.toLowerCase().includes(searchLower) ||
+        student.studentId?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // جلب معلومات الصف لكل طالب
+    const studentsWithGrade = await Promise.all(
+      students.map(async (student) => {
+        let gradeName = "غير محدد";
+        if (student.gradeId) {
+          const grade = await ctx.db.get(student.gradeId);
+          if (grade) {
+            gradeName = grade.name;
+          }
+        }
+        return { ...student, gradeName };
+      })
+    );
+
+    return studentsWithGrade.sort((a, b) => a.name.localeCompare(b.name));
   },
 });
 
@@ -638,11 +731,12 @@ export const updateStudent = mutation({
 });
 
 // حذف طالب
+
 export const deleteStudent = mutation({
   args: { studentId: v.id("users") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new Error("غير مصرح");
 
     const admin = await ctx.db
       .query("users")
@@ -650,18 +744,21 @@ export const deleteStudent = mutation({
       .first();
 
     if (!admin || admin.role !== "admin") {
-      throw new Error("Unauthorized: Admin only");
+      throw new Error("مطلوب صلاحيات مشرف");
     }
 
     const student = await ctx.db.get(args.studentId);
     if (!student || student.role !== "student") {
-      throw new Error("Student not found");
+      throw new Error("الطالب غير موجود");
     }
 
+    // إزالة الطالب من المجموعة إذا كان موجوداً
     if (student.groupId) {
-      const groupData = await ctx.db.get(student.groupId);
-      if (groupData) {
-        const updatedStudents = (groupData.students || []).filter((id: Id<"users">) => id !== student._id);
+      const group = await ctx.db.get(student.groupId);
+      if (group) {
+        const updatedStudents = (group.students || []).filter(
+          (id) => id !== args.studentId
+        );
         await ctx.db.patch(student.groupId, {
           students: updatedStudents,
           currentStudents: updatedStudents.length,
@@ -670,24 +767,17 @@ export const deleteStudent = mutation({
       }
     }
 
+    // حذف روابط أولياء الأمور
     const parentLinks = await ctx.db
       .query("parentStudentLinks")
-      .withIndex("by_student", (q) => q.eq("studentId", student._id))
+      .withIndex("by_student", (q) => q.eq("studentId", args.studentId))
       .collect();
 
     for (const link of parentLinks) {
       await ctx.db.delete(link._id);
     }
 
-    const enrollments = await ctx.db
-      .query("enrollments")
-      .withIndex("by_student", (q) => q.eq("studentId", student._id))
-      .collect();
-
-    for (const enrollment of enrollments) {
-      await ctx.db.delete(enrollment._id);
-    }
-
+    // حذف الطالب
     await ctx.db.delete(args.studentId);
 
     await ctx.db.insert("auditLogs", {
@@ -696,7 +786,7 @@ export const deleteStudent = mutation({
       resourceType: "user",
       resourceId: args.studentId,
       details: {
-        studentId: student.studentId || "",
+        studentId: student.studentId,
         name: student.name,
         deletedBy: admin.email,
       },

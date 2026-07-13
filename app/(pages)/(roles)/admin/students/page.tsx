@@ -15,6 +15,9 @@ import {
   Download,
   Loader2,
   Filter,
+  Users,
+  Layers,
+  School,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -26,34 +29,56 @@ export default function AdminStudentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("all");
+  const [selectedGrade, setSelectedGrade] = useState("all");
+  const [selectedGroup, setSelectedGroup] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // جلب الطلاب
   const studentsData = useQuery(api.user.students.getStudents, {
     status: selectedFilter !== "all" ? selectedFilter : undefined,
     search: searchQuery || undefined,
   });
-  console.log(studentsData);
-  const pendingApprovals = useQuery(api.user.admin.getPendingRegistrations);
+
+  // جلب الصفوف والمجموعات للفلاتر
+  const grades = useQuery(api.grades.grades.getActiveGrades, {});
+  const groups = useQuery(api.groups.groups.getGroups, {});
+
+
 
   const deleteStudent = useMutation(api.user.students.deleteStudent);
 
   const students = studentsData || [];
   const isLoading = studentsData === undefined;
-  const pendingCount = pendingApprovals?.length ?? 0;
+  const pendingCount = students.filter((s: any) => s.status === "pending").length;
   const activeCount = students.filter((s: any) => s.status === "approved").length;
+
+  // فلترة الطلاب حسب الصف والمجموعة
+  const filteredStudents = students.filter((student: any) => {
+    let match = true;
+
+    if (selectedGrade !== "all") {
+      match = match && student.gradeId === selectedGrade;
+    }
+
+    if (selectedGroup !== "all") {
+      match = match && student.groupId === selectedGroup;
+    }
+
+    return match;
+  });
 
   const stats = [
     {
-      label: "Total Students",
+      label: "إجمالي الطلاب",
       value: students.length,
       icon: GraduationCap,
       iconBg: "bg-blue-50",
       iconColor: "text-blue-500",
-      trend: "+12%",
+      trend: "+١٢٪",
       up: true,
     },
     {
-      label: "Pending Approval",
+      label: "بانتظار الموافقة",
       value: pendingCount,
       icon: UserPlus,
       iconBg: "bg-amber-50",
@@ -62,24 +87,24 @@ export default function AdminStudentsPage() {
       up: true,
     },
     {
-      label: "Active Students",
+      label: "الطلاب النشطون",
       value: activeCount,
       icon: GraduationCap,
       iconBg: "bg-green-50",
       iconColor: "text-green-500",
-      trend: "+5%",
+      trend: "+٥٪",
       up: true,
     },
   ];
 
   const handleDelete = async (studentId: string) => {
-    if (!confirm("Are you sure? This action cannot be undone.")) return;
+    if (!confirm("هل أنت متأكد؟ لا يمكن التراجع عن هذا الإجراء.")) return;
     setDeletingId(studentId);
     try {
       await deleteStudent({ studentId: studentId as any });
     } catch (error) {
-      console.error("Error deleting student:", error);
-      alert("Failed to delete student");
+      console.error("خطأ في حذف الطالب:", error);
+      alert("فشل حذف الطالب");
     } finally {
       setDeletingId(null);
     }
@@ -87,49 +112,49 @@ export default function AdminStudentsPage() {
 
   const statusStyle: Record<string, string> = {
     approved: "bg-green-50 text-green-700 border border-green-200",
-    pending:  "bg-amber-50 text-amber-700 border border-amber-200",
+    pending: "bg-amber-50 text-amber-700 border border-amber-200",
     rejected: "bg-red-50 text-red-600 border border-red-200",
   };
 
   const statusLabel: Record<string, string> = {
-    approved: "Active",
-    pending:  "Pending",
-    rejected: "Rejected",
+    approved: "نشط",
+    pending: "قيد الانتظار",
+    rejected: "مرفوض",
   };
 
   return (
-    <div className="min-h-screen bg-[#f7fafa]">
-      {/* Top bar */}
+    <div className="min-h-screen bg-[#f7fafa]" dir="rtl">
+      {/* الشريط العلوي */}
       <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-        <h1 className="text-xl font-semibold text-[#001f24]">Students</h1>
+        <h1 className="text-xl font-semibold text-[#001f24]">الطلاب</h1>
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
             className="gap-2 border-gray-200 text-gray-600 hover:bg-gray-50"
           >
             <Download className="h-4 w-4" />
-            Export
+            تصدير
           </Button>
           <Button
             onClick={() => setIsAddModalOpen(true)}
             className="gap-2 bg-[#001f24] hover:bg-[#03363d] text-white"
           >
             <Plus className="h-4 w-4" />
-            Add Student
+            إضافة طالب
           </Button>
         </div>
       </header>
 
       <div className="p-8 max-w-7xl mx-auto space-y-6">
-        {/* Page title */}
+        {/* عنوان الصفحة */}
         <div>
-          <h2 className="text-2xl font-bold text-[#001f24]">Manage Students</h2>
+          <h2 className="text-2xl font-bold text-[#001f24]">إدارة الطلاب</h2>
           <p className="text-gray-500 mt-1 text-sm">
-            View, add, and manage all registered students.
+            عرض وإضافة وإدارة جميع الطلاب المسجلين.
           </p>
         </div>
 
-        {/* Stats */}
+        {/* الإحصائيات */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {stats.map((stat) => {
             const Icon = stat.icon;
@@ -142,9 +167,8 @@ export default function AdminStudentsPage() {
                   <div className={`w-11 h-11 rounded-xl ${stat.iconBg} flex items-center justify-center`}>
                     <Icon className={`h-5 w-5 ${stat.iconColor}`} />
                   </div>
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    stat.up ? "text-green-600" : "text-red-500"
-                  }`}>
+                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${stat.up ? "text-green-600" : "text-red-500"
+                    }`}>
                     {stat.trend} {stat.up ? "↗" : "↘"}
                   </span>
                 </div>
@@ -155,32 +179,69 @@ export default function AdminStudentsPage() {
           })}
         </div>
 
-        {/* Search + filter */}
+        {/* البحث والفلاتر */}
         <div className="bg-white rounded-xl border border-gray-100 p-4 flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search by name, email or phone..."
+              placeholder="بحث بالاسم أو البريد الإلكتروني أو الهاتف..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 border-gray-200 focus-visible:ring-[#03363d]/20"
+              className="pr-9 border-gray-200 focus-visible:ring-[#03363d]/20"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {/* فلتر الصف */}
+            <select
+              value={selectedGrade}
+              onChange={(e) => setSelectedGrade(e.target.value)}
+              className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#03363d]/20 bg-white min-w-30"
+            >
+              <option value="all">جميع الصفوف</option>
+              {grades?.map((grade: any) => (
+                <option key={grade._id} value={grade._id}>
+                  {grade.name}
+                </option>
+              ))}
+            </select>
+
+            {/* فلتر المجموعة */}
+            <select
+              value={selectedGroup}
+              onChange={(e) => setSelectedGroup(e.target.value)}
+              className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#03363d]/20 bg-white min-w-30"
+            >
+              <option value="all">جميع المجموعات</option>
+              {groups
+                ?.filter((g: any) => selectedGrade === "all" || g.gradeId === selectedGrade)
+                .map((group: any) => (
+                  <option key={group._id} value={group._id}>
+                    {group.name}
+                  </option>
+                ))}
+            </select>
+
+            {/* فلتر الحالة */}
             <select
               value={selectedFilter}
               onChange={(e) => setSelectedFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#03363d]/20 bg-white"
+              className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#03363d]/20 bg-white min-w-30"
             >
-              <option value="all">All Students</option>
-              <option value="approved">Active</option>
-              <option value="pending">Pending</option>
-              <option value="rejected">Rejected</option>
+              <option value="all">جميع الحالات</option>
+              <option value="approved">نشط</option>
+              <option value="pending">قيد الانتظار</option>
+              <option value="rejected">مرفوض</option>
             </select>
+
             <Button
               variant="outline"
               size="icon"
-              onClick={() => { setSelectedFilter("all"); setSearchQuery(""); }}
+              onClick={() => {
+                setSelectedFilter("all");
+                setSelectedGrade("all");
+                setSelectedGroup("all");
+                setSearchQuery("");
+              }}
               className="border-gray-200 text-gray-500 hover:bg-gray-50"
             >
               <Filter className="h-4 w-4" />
@@ -188,51 +249,52 @@ export default function AdminStudentsPage() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* الجدول */}
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-[#f7fafa]">
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Student</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Contact</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Class</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Parent</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Joined</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الطالب</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">جهة الاتصال</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الصف</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">المجموعة</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">ولي الأمر</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">تاريخ التسجيل</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الحالة</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الإجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-16 text-center">
+                    <td colSpan={8} className="px-6 py-16 text-center">
                       <Loader2 className="h-8 w-8 animate-spin mx-auto text-[#001f24]" />
                     </td>
                   </tr>
-                ) : students.length === 0 ? (
+                ) : filteredStudents.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-16 text-center">
+                    <td colSpan={8} className="px-6 py-16 text-center">
                       <div className="flex flex-col items-center gap-3">
                         <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center">
                           <GraduationCap className="h-8 w-8 text-blue-400" />
                         </div>
-                        <p className="text-gray-500 font-medium">No students found</p>
+                        <p className="text-gray-500 font-medium">لا يوجد طلاب</p>
                         <Button
                           size="sm"
                           onClick={() => setIsAddModalOpen(true)}
                           className="bg-[#001f24] hover:bg-[#03363d] text-white gap-2"
                         >
                           <Plus className="h-4 w-4" />
-                          Add First Student
+                          إضافة أول طالب
                         </Button>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  students.map((student: any) => (
+                  filteredStudents.map((student: any) => (
                     <tr key={student._id} className="hover:bg-[#f7fafa] transition-colors">
-                      {/* Student */}
+                      {/* الطالب */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
@@ -249,7 +311,7 @@ export default function AdminStudentsPage() {
                         </div>
                       </td>
 
-                      {/* Contact */}
+                      {/* جهة الاتصال */}
                       <td className="px-6 py-4">
                         <div className="space-y-1">
                           <p className="text-sm text-gray-600 flex items-center gap-1.5">
@@ -265,51 +327,58 @@ export default function AdminStudentsPage() {
                         </div>
                       </td>
 
-                      {/* Class */}
+                      {/* الصف */}
                       <td className="px-6 py-4">
-                        <div className="space-y-1">
-                          <p className="text-sm text-gray-600 flex items-center gap-1.5">
-                            <SiGoogleclassroom  className="h-3.5 w-3.5 text-gray-400" />
-                            {student.classInfo?.classNameAr || "No class assigned"}
-                          </p>
-                          
+                        <div className="flex items-center gap-1.5">
+                          <School className="h-3.5 w-3.5 text-gray-400" />
+                          <span className="text-sm text-gray-600">
+                            {student.gradeName || "غير محدد"}
+                          </span>
                         </div>
                       </td>
 
-                      {/* Parent */}
+                      {/* المجموعة */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-1.5">
+                          <Layers className="h-3.5 w-3.5 text-gray-400" />
+                          <span className="text-sm text-gray-600">
+                            {student.groupName || "غير محدد"}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* ولي الأمر */}
                       <td className="px-6 py-4">
                         <div className="space-y-1">
                           <p className="text-sm text-gray-600 flex items-center gap-1.5">
                             <Mail className="h-3.5 w-3.5 text-gray-400" />
-                            {student.parents?.[0]?.email || "No parent email"}
+                            {student.parentEmail || "غير محدد"}
                           </p>
-                          {student.phoneNumber && (
+                          {student.parentPhone && (
                             <p className="text-sm text-gray-600 flex items-center gap-1.5">
                               <Phone className="h-3.5 w-3.5 text-gray-400" />
-                            {student.parents?.[0]?.phoneNumber || "No parent phone number"}
-                              
+                              {student.parentPhone}
                             </p>
                           )}
                         </div>
                       </td>
 
-                      {/* Joined */}
+                      {/* تاريخ التسجيل */}
                       <td className="px-6 py-4 text-sm text-gray-500">
-                        {new Date(student.createdAt).toLocaleDateString("en-GB", {
+                        {new Date(student.createdAt).toLocaleDateString("ar-EG", {
                           day: "2-digit", month: "short", year: "numeric",
                         })}
                       </td>
 
-                      {/* Status */}
+                      {/* الحالة */}
                       <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                          statusStyle[student.status] ?? "bg-gray-100 text-gray-600"
-                        }`}>
+                        <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusStyle[student.status] ?? "bg-gray-100 text-gray-600"
+                          }`}>
                           {statusLabel[student.status] ?? student.status}
                         </span>
                       </td>
 
-                      {/* Actions */}
+                      {/* الإجراءات */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1">
                           <Link href={`/admin/students/${student._id}`}>
@@ -337,11 +406,14 @@ export default function AdminStudentsPage() {
             </table>
           </div>
 
-          {/* Table footer */}
-          {students.length > 0 && (
-            <div className="px-6 py-3 border-t border-gray-50 bg-[#f7fafa]">
+          {/* تذييل الجدول */}
+          {filteredStudents.length > 0 && (
+            <div className="px-6 py-3 border-t border-gray-50 bg-[#f7fafa] flex justify-between items-center">
               <p className="text-xs text-gray-400">
-                Showing <span className="font-semibold text-[#001f24]">{students.length}</span> students
+                عرض <span className="font-semibold text-[#001f24]">{filteredStudents.length}</span> طالب
+              </p>
+              <p className="text-xs text-gray-400">
+                إجمالي <span className="font-semibold text-[#001f24]">{students.length}</span> طالب
               </p>
             </div>
           )}

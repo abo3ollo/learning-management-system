@@ -30,11 +30,13 @@ import {
   PieChart,
   MoreVertical,
   ChevronRight,
+  FolderOpen,
 } from "lucide-react";
 import { PiStudentBold } from "react-icons/pi";
 import { FaChalkboardTeacher, FaHandshake } from "react-icons/fa";
 import { LuBaggageClaim } from "react-icons/lu";
 import { IoMdTrendingUp } from "react-icons/io";
+import { SiGoogleclassroom } from "react-icons/si";
 
 // بيانات النشاط الأخير
 const recentActivities = [
@@ -74,15 +76,39 @@ export default function AdminDashboard() {
     { title: "الطلاب", value: "١,٢٤٧", icon: PiStudentBold, trend: "+١٢٪", up: true, iconBg: "bg-blue-50", iconColor: "text-blue-500" },
     { title: "المعلمون", value: "٤٨", icon: FaChalkboardTeacher, trend: "+٨٪", up: true, iconBg: "bg-teal-50", iconColor: "text-teal-500" },
     { title: "الدورات", value: "١٥٦", icon: BookOpen, trend: "+١٥٪", up: true, iconBg: "bg-slate-100", iconColor: "text-slate-500" },
-    { title: "الإيرادات", value: "٤٥,٢٠٠ ر.س", icon: TrendingUp, trend: "+٢٣٪", up: true, iconBg: "bg-green-50", iconColor: "text-green-500" },
+    { title: "المجموعات", value: "20", icon: SiGoogleclassroom, trend: "+٢٣٪", up: true, iconBg: "bg-green-50", iconColor: "text-green-500" },
   ];
 
-  const quickActions = [
-    { title: "إضافة طالب", icon: UserPlus, href: "/admin/students", bg: "bg-blue-50", iconBg: "bg-blue-600", labelColor: "text-blue-600" },
-    { title: "مركز الوسائط", icon: Library, href: "/admin/content", bg: "bg-green-100", iconBg: "bg-green-600", labelColor: "text-green-600" },
-    { title: "إعدادات النظام", icon: Settings, href: "/admin/settings", bg: "bg-slate-100", iconBg: "bg-slate-700", labelColor: "text-slate-700" },
-    { title: "الخطة الدراسية", icon: BookOpen, href: "/admin/plans", bg: "bg-purple-100", iconBg: "bg-purple-600", labelColor: "text-purple-600" },
+  const quickActionsGrid = [
+    { title: "المعلمون", icon: FaChalkboardTeacher, href: "/admin/teachers", color: "emerald" },
+    { title: "إضافة طالب", icon: PiStudentBold, href: "/admin/students", color: "teal" },
+    { title: "اولياء الامور", icon: Users, href: "/admin/roles", color: "purple" },
+    { title: "مكتبة المحتوى", icon: Library, href: "/admin/content", color: "blue" },
+    { title: "بنك الأسئلة", icon: FileQuestion, href: "/admin/questions", color: "amber" },
+    { title: "تسجيل دفعة", icon: UserPlus, href: "/admin/batch", color: "green" },
+    { title: "إنشاء امتحان", icon: GraduationCap, href: "/admin/exams", color: "red" },
+    { title: "المستخدمون", icon: Users, href: "/admin/users", color: "slate" },
+    { title: "خطط الدروس", icon: BookOpen, href: "/admin/plans", color: "indigo" },
+    { title: "الإشعارات", icon: Bell, href: "/admin/notifications", color: "pink" },
+    { title: "الإعدادات", icon: Settings, href: "/admin/settings", color: "gray" },
+    { title: "معرض الوسائط", icon: Library, href: "/admin/media", color: "cyan" },
+    { title: "البورتفوليو", icon: FolderOpen, href: "/admin/portfolio", color: "violet" },
   ];
+  const colorMap: Record<string, { bg: string, iconBg: string, from: string, to: string }> = {
+    blue: { bg: "bg-blue-50", iconBg: "bg-blue-600", from: "from-blue-50", to: "to-blue-100/50" },
+    purple: { bg: "bg-purple-50", iconBg: "bg-purple-600", from: "from-purple-50", to: "to-purple-100/50" },
+    amber: { bg: "bg-amber-50", iconBg: "bg-amber-600", from: "from-amber-50", to: "to-amber-100/50" },
+    green: { bg: "bg-green-50", iconBg: "bg-green-600", from: "from-green-50", to: "to-green-100/50" },
+    red: { bg: "bg-red-50", iconBg: "bg-red-600", from: "from-red-50", to: "to-red-100/50" },
+    teal: { bg: "bg-teal-50", iconBg: "bg-teal-600", from: "from-teal-50", to: "to-teal-100/50" },
+    slate: { bg: "bg-slate-50", iconBg: "bg-slate-700", from: "from-slate-50", to: "to-slate-100/50" },
+    indigo: { bg: "bg-indigo-50", iconBg: "bg-indigo-600", from: "from-indigo-50", to: "to-indigo-100/50" },
+    pink: { bg: "bg-pink-50", iconBg: "bg-pink-600", from: "from-pink-50", to: "to-pink-100/50" },
+    gray: { bg: "bg-gray-50", iconBg: "bg-gray-700", from: "from-gray-50", to: "to-gray-100/50" },
+    cyan: { bg: "bg-cyan-50", iconBg: "bg-cyan-600", from: "from-cyan-50", to: "to-cyan-100/50" },
+    emerald: { bg: "bg-emerald-50", iconBg: "bg-emerald-600", from: "from-emerald-50", to: "to-emerald-100/50" },
+    violet: { bg: "bg-violet-50", iconBg: "bg-violet-600", from: "from-violet-50", to: "to-violet-100/50" },
+  };
 
   const pendingCount = pendingUsers?.length ?? 0;
 
@@ -154,92 +180,57 @@ export default function AdminDashboard() {
             return (
               <div
                 key={stat.title}
-                className="group bg-white rounded-2xl p-6 border border-gray-100 hover:border-[#1a7a8a]/20 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+                className="group bg-white rounded-2xl px-5 py-2 border border-gray-100 hover:border-[#1a7a8a]/20 hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
               >
                 <div className="flex items-start justify-between">
                   <div className={`w-12 h-12 rounded-2xl ${stat.iconBg} flex items-center justify-center group-hover:scale-110 transition-transform`}>
                     <Icon className={`h-6 w-6 ${stat.iconColor}`} />
                   </div>
-                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1 ${
-                    stat.up ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"
-                  }`}>
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-full flex items-center gap-1 ${stat.up ? "bg-green-50 text-green-600" : "bg-red-50 text-red-500"
+                    }`}>
                     {stat.trend}
                     {stat.up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
                   </span>
                 </div>
-                <p className="text-3xl font-bold text-[#001f24] mt-4">{stat.value}</p>
-                <p className="text-sm text-gray-500 mt-1">{stat.title}</p>
+                <p className="text-3xl font-bold text-[#001f24] mt-4">{stat.value} <span className="text-sm text-gray-500 mt-1">{stat.title}</span></p>
+                
               </div>
             );
           })}
         </div>
 
         {/* قسم المخططات والنشاط */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* المخطط البياني */}
-          <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-lg font-semibold text-[#001f24]">نظرة عامة على النشاط</h3>
-                <p className="text-sm text-gray-500">النشاط الأسبوعي على المنصة</p>
-              </div>
-              <button className="text-sm text-[#1a7a8a] hover:underline flex items-center gap-1">
-                عرض الكل <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="h-48 flex items-end gap-3">
-              {[
-                { day: "السبت", value: 65, color: "#1a7a8a" },
-                { day: "الأحد", value: 45, color: "#2d9cdb" },
-                { day: "الإثنين", value: 80, color: "#27ae60" },
-                { day: "الثلاثاء", value: 55, color: "#f39c12" },
-                { day: "الأربعاء", value: 70, color: "#8e44ad" },
-                { day: "الخميس", value: 40, color: "#e74c3c" },
-                { day: "الجمعة", value: 30, color: "#95a5a6" },
-              ].map((item) => (
-                <div key={item.day} className="flex-1 flex flex-col items-center gap-2">
-                  <div 
-                    className="w-full rounded-lg transition-all duration-500 hover:opacity-80"
-                    style={{ 
-                      height: `${item.value}%`, 
-                      background: `linear-linear(to top, ${item.color}dd, ${item.color}44)`,
-                      minHeight: '20px'
-                    }}
-                  />
-                  <span className="text-xs text-gray-500">{item.day}</span>
-                </div>
-              ))}
-            </div>
+        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg font-semibold text-[#001f24]">إجراءات سريعة</h3>
+            <span className="text-xs text-gray-400">{quickActionsGrid.length} إجراء</span>
           </div>
 
-          {/* الإجراءات السريعة */}
-          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-            <h3 className="text-lg font-semibold text-[#001f24] mb-4">إجراءات سريعة</h3>
-            <div className="space-y-3">
-              {quickActions.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <Link
-                    key={action.title}
-                    href={action.href}
-                    className={`${action.bg} rounded-xl p-4 flex items-center gap-4 hover:shadow-md transition-all group`}
-                  >
-                    <div className={`w-11 h-11 ${action.iconBg} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm`}>
-                      <Icon className="h-5 w-5 text-white" />
-                    </div>
-                    <p className={`text-sm font-semibold ${action.labelColor}`}>{action.title}</p>
-                    <ChevronRight className="h-4 w-4 mr-auto text-gray-400 group-hover:text-gray-600 group-hover:translate-x-1 transition-all" />
-                  </Link>
-                );
-              })}
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            {quickActionsGrid.map((action) => {
+              const Icon = action.icon;
+              const colors = colorMap[action.color];
+              return (
+                <Link
+                  key={action.title}
+                  href={action.href}
+                  className={`group flex flex-col items-center gap-2 p-4 rounded-xl bg-linear-to-br ${colors.from} ${colors.to} hover:${colors.from.replace('50', '100')} hover:${colors.to.replace('50', '200/50')} transition-all duration-300 hover:shadow-md hover:-translate-y-1`}
+                >
+                  <div className={`w-12 h-12 rounded-xl ${colors.iconBg} flex items-center justify-center group-hover:scale-110 transition-transform shadow-sm`}>
+                    <Icon className="h-6 w-6 text-white" />
+                  </div>
+                  <span className="text-xs font-medium text-gray-700 text-center leading-tight">{action.title}</span>
+                </Link>
+              );
+            })}
           </div>
         </div>
 
         {/* القسم السفلي */}
+        {/* القسم السفلي - 3 أعمدة */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* النشاط الأخير */}
-          <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-lg font-semibold text-[#001f24]">النشاط الأخير</h3>
@@ -247,68 +238,83 @@ export default function AdminDashboard() {
               </div>
               <button className="text-sm text-[#1a7a8a] hover:underline">عرض الكل</button>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-80 overflow-y-auto">
               {recentActivities.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-4 p-3 rounded-xl hover:bg-gray-50 transition-all">
-                  <div className="w-10 h-10 rounded-full bg-linear-to-br from-[#1a7a8a] to-[#2d9cdb] flex items-center justify-center text-white font-semibold text-sm">
+                <div key={idx} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-all">
+                  <div className="w-10 h-10 rounded-full bg-linear-to-br from-[#1a7a8a] to-[#2d9cdb] flex items-center justify-center text-white font-semibold text-sm shrink-0">
                     {item.avatar}
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
                       {item.user} <span className="text-gray-500 font-normal">{item.action}</span>
                     </p>
-                    <p className="text-xs text-gray-400">{item.course}</p>
+                    <p className="text-xs text-gray-400 truncate">{item.course}</p>
                   </div>
-                  <span className="text-xs text-gray-400">{item.time}</span>
+                  <span className="text-xs text-gray-400 shrink-0">{item.time}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* الأحداث القادمة وأفضل الدورات */}
-          <div className="space-y-6">
-            {/* الأحداث القادمة */}
-            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <Calendar className="h-5 w-5 text-[#1a7a8a]" />
-                <h3 className="text-lg font-semibold text-[#001f24]">الأحداث القادمة</h3>
-              </div>
-              <div className="space-y-3">
-                {upcomingEvents.map((event, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
-                    <div className={`w-2 h-12 rounded-full ${event.color}`} />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">{event.title}</p>
-                      <p className="text-xs text-gray-500">{event.time}</p>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-gray-400" />
-                  </div>
-                ))}
-              </div>
+          {/* الأحداث القادمة */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <Calendar className="h-5 w-5 text-[#1a7a8a]" />
+              <h3 className="text-lg font-semibold text-[#001f24]">الأحداث القادمة</h3>
             </div>
-
-            {/* أفضل الدورات */}
-            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
-              <div className="flex items-center gap-2 mb-4">
-                <Award className="h-5 w-5 text-[#1a7a8a]" />
-                <h3 className="text-lg font-semibold text-[#001f24]">أفضل الدورات</h3>
-              </div>
-              <div className="space-y-4">
-                {topCourses.map((course, idx) => (
-                  <div key={idx}>
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="font-medium text-gray-900">{course.name}</span>
-                      <span className="text-gray-500">{course.students} طالب</span>
-                    </div>
-                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full rounded-full transition-all duration-1000"
-                        style={{ width: `${course.progress}%`, backgroundColor: course.color }}
-                      />
-                    </div>
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {upcomingEvents.map((event, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-all">
+                  <div className={`w-2 h-12 rounded-full ${event.color}`} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{event.title}</p>
+                    <p className="text-xs text-gray-500">{event.time}</p>
                   </div>
-                ))}
-              </div>
+                  <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
+                </div>
+              ))}
+
+              {/* إضافة حدث جديد */}
+              <button className="w-full p-3 border-2 border-dashed border-gray-200 rounded-xl text-sm text-gray-400 hover:text-[#1a7a8a] hover:border-[#1a7a8a]/30 transition-all">
+                + إضافة حدث جديد
+              </button>
+            </div>
+          </div>
+
+          {/* أفضل الدورات */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm">
+            <div className="flex items-center gap-2 mb-4">
+              <Award className="h-5 w-5 text-[#1a7a8a]" />
+              <h3 className="text-lg font-semibold text-[#001f24]">أفضل الدورات</h3>
+            </div>
+            <div className="space-y-4 max-h-80 overflow-y-auto">
+              {topCourses.map((course, idx) => (
+                <div key={idx} className="group p-3 rounded-xl hover:bg-gray-50 transition-all">
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="font-medium text-gray-900 group-hover:text-[#1a7a8a] transition-colors">{course.name}</span>
+                    <span className="text-gray-500">{course.students} طالب</span>
+                  </div>
+                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-all duration-1000 group-hover:opacity-80"
+                      style={{ width: `${course.progress}%`, backgroundColor: course.color }}
+                    />
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-400 mt-1">
+                    <span>تقدم {course.progress}%</span>
+                    <span>{course.progress >= 70 ? '🚀 ممتاز' : course.progress >= 50 ? '📈 جيد' : '📚 قيد التقدم'}</span>
+                  </div>
+                </div>
+              ))}
+
+              {/* عرض جميع الدورات */}
+              <Link
+                href="/admin/courses"
+                className="flex items-center justify-center gap-2 w-full p-2 text-sm text-[#1a7a8a] hover:bg-[#1a7a8a]/5 rounded-lg transition-all"
+              >
+                عرض جميع الدورات
+                <ChevronRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
         </div>

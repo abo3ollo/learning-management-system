@@ -53,16 +53,16 @@ export default function AdminParentsPage() {
 
   const stats = [
     {
-      label: "Total Parents",
+      label: "إجمالي أولياء الأمور",
       value: parents.length,
       icon: Users,
       iconBg: "bg-blue-50",
       iconColor: "text-blue-500",
-      trend: "+0%",
+      trend: "+٠٪",
       up: true,
     },
     {
-      label: "Active",
+      label: "نشط",
       value: activeCount,
       icon: CheckCircle,
       iconBg: "bg-green-50",
@@ -71,7 +71,7 @@ export default function AdminParentsPage() {
       up: true,
     },
     {
-      label: "Linked Students",
+      label: "الطلاب المرتبطون",
       value: totalStudentsLinked,
       icon: Link2,
       iconBg: "bg-purple-50",
@@ -84,23 +84,23 @@ export default function AdminParentsPage() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
-        return { label: "Active", className: "bg-green-50 text-green-700 border border-green-200" };
+        return { label: "نشط", className: "bg-green-50 text-green-700 border border-green-200" };
       case "inactive":
-        return { label: "Inactive", className: "bg-gray-50 text-gray-600 border border-gray-200" };
+        return { label: "غير نشط", className: "bg-gray-50 text-gray-600 border border-gray-200" };
       default:
-        return { label: "Active", className: "bg-green-50 text-green-700 border border-green-200" };
+        return { label: "نشط", className: "bg-green-50 text-green-700 border border-green-200" };
     }
   };
 
   const handleDelete = async (parentId: string) => {
-    if (!confirm("Are you sure you want to delete this parent? This action cannot be undone.")) return;
+    if (!confirm("هل أنت متأكد من حذف ولي الأمر؟ لا يمكن التراجع عن هذا الإجراء.")) return;
     
     setDeletingId(parentId);
     try {
       await deleteParent({ parentId: parentId as any });
     } catch (error: any) {
-      console.error("Error deleting parent:", error);
-      alert(error.message || "An error occurred while deleting the parent.");
+      console.error("خطأ في حذف ولي الأمر:", error);
+      alert(error.message || "حدث خطأ أثناء حذف ولي الأمر.");
     } finally {
       setDeletingId(null);
     }
@@ -114,27 +114,24 @@ export default function AdminParentsPage() {
    const handleExportCSV = () => {
     setIsExporting(true);
     try {
-      // إعداد البيانات للتصدير
       const exportData = parents.map((parent: any) => ({
-        "ID": parent.parentId || parent._id.slice(-6),
-        "Name": parent.name,
-        "Email": parent.email,
-        "Phone": parent.phoneNumber || "",
-        "Job Title": parent.jobTitle || "",
-        "Work Address": parent.workAddress || "",
-        "Status": parent.status === "active" ? "Active" : "Inactive",
-        "Linked Students": parent.childrenCount || 0,
-        "Registered Date": new Date(parent.createdAt).toLocaleDateString(),
+        "المعرف": parent.parentId || parent._id.slice(-6),
+        "الاسم": parent.name,
+        "البريد الإلكتروني": parent.email,
+        "الهاتف": parent.phoneNumber || "",
+        "المسمى الوظيفي": parent.jobTitle || "",
+        "عنوان العمل": parent.workAddress || "",
+        "الحالة": parent.status === "active" ? "نشط" : "غير نشط",
+        "عدد الطلاب المرتبطين": parent.childrenCount || 0,
+        "تاريخ التسجيل": new Date(parent.createdAt).toLocaleDateString("ar-EG"),
       }));
 
-      // تحويل إلى CSV
       const headers = Object.keys(exportData[0] || {});
       const csvRows = [
         headers.join(","),
         ...exportData.map(row => 
           headers.map(header => {
             const value = row[header as keyof typeof row];
-            // معالجة القيم التي تحتوي على فواصل
             if (typeof value === "string" && (value.includes(",") || value.includes('"'))) {
               return `"${value.replace(/"/g, '""')}"`;
             }
@@ -145,29 +142,28 @@ export default function AdminParentsPage() {
 
       const csvContent = csvRows.join("\n");
       
-      // إنشاء رابط التحميل
       const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
       link.setAttribute("href", url);
-      link.setAttribute("download", `parents_export_${new Date().toISOString().slice(0, 19)}.csv`);
+      link.setAttribute("download", `اولياء_الامور_${new Date().toISOString().slice(0, 19)}.csv`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Error exporting data:", error);
-      alert("Failed to export data");
+      console.error("خطأ في تصدير البيانات:", error);
+      alert("فشل تصدير البيانات");
     } finally {
       setIsExporting(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#f7fafa]">
-      {/* Top bar */}
+    <div className="min-h-screen bg-[#f7fafa]" dir="rtl">
+      {/* الشريط العلوي */}
       <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
-        <h1 className="text-xl font-semibold text-[#001f24]">Parents</h1>
+        <h1 className="text-xl font-semibold text-[#001f24]">أولياء الأمور</h1>
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
@@ -180,28 +176,28 @@ export default function AdminParentsPage() {
             ) : (
               <Download className="h-4 w-4" />
             )}
-            {isExporting ? "Exporting..." : "Export CSV"}
+            {isExporting ? "جاري التصدير..." : "تصدير CSV"}
           </Button>
           <Button
             onClick={() => setIsAddModalOpen(true)}
             className="gap-2 bg-[#001f24] hover:bg-[#03363d] text-white"
           >
             <Plus className="h-4 w-4" />
-            Add Parent
+            إضافة ولي أمر
           </Button>
         </div>
       </header>
 
       <div className="p-8 max-w-7xl mx-auto space-y-6">
-        {/* Page title */}
+        {/* عنوان الصفحة */}
         <div>
-          <h2 className="text-2xl font-bold text-[#001f24]">Manage Parents</h2>
+          <h2 className="text-2xl font-bold text-[#001f24]">إدارة أولياء الأمور</h2>
           <p className="text-gray-500 mt-1 text-sm">
-            View, add, and manage all registered parents and link them to students.
+            عرض وإضافة وإدارة جميع أولياء الأمور المسجلين وربطهم بالطلاب.
           </p>
         </div>
 
-        {/* Stats */}
+        {/* الإحصائيات */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {stats.map((stat) => {
             const Icon = stat.icon;
@@ -227,15 +223,15 @@ export default function AdminParentsPage() {
           })}
         </div>
 
-        {/* Search + filter */}
+        {/* البحث والفلاتر */}
         <div className="bg-white rounded-xl border border-gray-100 p-4 flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search by name, email, or phone number..."
+              placeholder="بحث بالاسم أو البريد الإلكتروني أو رقم الهاتف..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 border-gray-200 focus-visible:ring-[#03363d]/20"
+              className="pr-9 border-gray-200 focus-visible:ring-[#03363d]/20"
             />
           </div>
           <div className="flex gap-2">
@@ -244,9 +240,9 @@ export default function AdminParentsPage() {
               onChange={(e) => setSelectedFilter(e.target.value)}
               className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#03363d]/20 bg-white"
             >
-              <option value="all">All Parents</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="all">جميع أولياء الأمور</option>
+              <option value="active">نشط</option>
+              <option value="inactive">غير نشط</option>
             </select>
             <Button
               variant="outline"
@@ -259,18 +255,18 @@ export default function AdminParentsPage() {
           </div>
         </div>
 
-        {/* Table */}
+        {/* الجدول */}
         <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-100 bg-[#f7fafa]">
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Parent</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Contact Information</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Job Title</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Students</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Status</th>
-                  <th className="text-left px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">ولي الأمر</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">معلومات الاتصال</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">المسمى الوظيفي</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الطلاب</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الحالة</th>
+                  <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الإجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -287,14 +283,14 @@ export default function AdminParentsPage() {
                         <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center">
                           <Users className="h-8 w-8 text-blue-400" />
                         </div>
-                        <p className="text-gray-500 font-medium">No parents found</p>
+                        <p className="text-gray-500 font-medium">لا يوجد أولياء أمور</p>
                         <Button
                           size="sm"
                           onClick={() => setIsAddModalOpen(true)}
                           className="bg-[#001f24] hover:bg-[#03363d] text-white gap-2"
                         >
                           <Plus className="h-4 w-4" />
-                          Add Parent
+                          إضافة ولي أمر
                         </Button>
                       </div>
                     </td>
@@ -304,7 +300,7 @@ export default function AdminParentsPage() {
                     const statusBadge = getStatusBadge(parent.status);
                     return (
                       <tr key={parent._id} className="hover:bg-[#f7fafa] transition-colors">
-                        {/* Parent */}
+                        {/* ولي الأمر */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center shrink-0">
@@ -321,7 +317,7 @@ export default function AdminParentsPage() {
                           </div>
                         </td>
 
-                        {/* Contact */}
+                        {/* معلومات الاتصال */}
                         <td className="px-6 py-4">
                           <div className="space-y-1">
                             <p className="text-sm text-gray-600 flex items-center gap-1.5">
@@ -337,7 +333,7 @@ export default function AdminParentsPage() {
                           </div>
                         </td>
 
-                        {/* Job Title */}
+                        {/* المسمى الوظيفي */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1.5">
                             <Briefcase className="h-3.5 w-3.5 text-gray-400" />
@@ -353,7 +349,7 @@ export default function AdminParentsPage() {
                           )}
                         </td>
 
-                        {/* Children Count */}
+                        {/* عدد الطلاب */}
                         <td className="px-6 py-4">
                           <button
                             onClick={() => handleLinkParents(parent._id)}
@@ -361,18 +357,18 @@ export default function AdminParentsPage() {
                           >
                             <Users className="h-4 w-4" />
                             <span className="text-sm font-semibold">{parent.childrenCount || 0}</span>
-                            <span className="text-xs text-gray-400 group-hover:text-gray-500">Students</span>
+                            <span className="text-xs text-gray-400 group-hover:text-gray-500">طالب</span>
                           </button>
                         </td>
 
-                        {/* Status */}
+                        {/* الحالة */}
                         <td className="px-6 py-4">
                           <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${statusBadge.className}`}>
                             {statusBadge.label}
                           </span>
                         </td>
 
-                        {/* Actions */}
+                        {/* الإجراءات */}
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1">
                             <Link href={`/admin/parents/${parent._id}`}>
@@ -401,19 +397,19 @@ export default function AdminParentsPage() {
             </table>
           </div>
 
-          {/* Table footer */}
+          {/* تذييل الجدول */}
           {parents.length > 0 && (
             <div className="px-6 py-3 border-t border-gray-50 bg-[#f7fafa]">
               <p className="text-xs text-gray-400 text-right">
-                Showing <span className="font-semibold text-[#001f24]">{parents.length}</span> of {" "}
-                <span className="font-semibold text-[#001f24]">{parents.length}</span> parents
+                عرض <span className="font-semibold text-[#001f24]">{parents.length}</span> من {" "}
+                <span className="font-semibold text-[#001f24]">{parents.length}</span> ولي أمر
               </p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Modals */}
+      {/* النوافذ المنبثقة */}
       <AddParentModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
       <LinkParentStudentModal 
         isOpen={isLinkModalOpen} 

@@ -73,12 +73,12 @@ function GradeCard({ grade }: { grade: any }) {
             <span>{grade.academicYear}</span>
           </div>
           <div className="flex items-center gap-2 mt-3">
-            <Link href={`/admin/grades/${grade._id}`} className="flex-1">
+            {/* <Link href={`/admin/grades/${grade._id}`} className="flex-1">
               <Button size="sm" variant="outline" className="w-full gap-1">
                 <Eye className="h-4 w-4" />
                 عرض التفاصيل
               </Button>
-            </Link>
+            </Link> */}
             <Link href={`/admin/grades/${grade._id}/groups`} className="flex-1">
               <Button size="sm" variant="outline" className="w-full gap-1">
                 <Layers className="h-4 w-4" />
@@ -118,7 +118,7 @@ export default function AdminGradesPage() {
   });
 
   return (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-6 p-9 max-w-7xl mx-auto" dir="rtl">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>

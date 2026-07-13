@@ -546,10 +546,10 @@ export default function LandingPage() {
     <div dir={t.dir} className="font-sans bg-white text-gray-900 overflow-x-hidden">
 
       {/* ── NAV ─────────────────────────────────────────────────── */}
-      <nav className="fixed top-0 inset-x-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
+      <nav className="fixed top-0 inset-x-0 z-50 p-3 bg-white/90 backdrop-blur border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
-          <Link href="/" className="text-xl font-bold text-[#0a2540] shrink-0">
-            {lang === "ar" ? data.schoolNameAr || "أكاديمية مارين" : data.schoolName || "Marine Academy"}
+          <Link href="/" className="text-3xl  font-semibold text-[#0a2540] shrink-0">
+            {lang === "ar" ? data.schoolNameAr || "أكاديمية تجريبي" : data.schoolName || "Test Academy"}
           </Link>
 
           {/* <div className="hidden lg:flex items-center gap-6 text-sm text-gray-600">

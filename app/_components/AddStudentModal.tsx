@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,8 @@ import {
   Calendar,
   MapPin,
   Mail,
-  AlertCircle
+  AlertCircle,
+  Loader2,
 } from "lucide-react";
 
 interface AddStudentModalProps {
@@ -39,6 +40,23 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
   const grades = useQuery(api.grades.grades.getActiveGrades, {});
   const groups = useQuery(api.groups.groups.getGroups, {});
 
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData({
+        fullName: "",
+        email: "",
+        phone: "",
+        birthDate: "",
+        gender: "",
+        address: "",
+        gradeId: "",
+        groupId: "",
+      });
+      setErrors({});
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const validateForm = () => {
@@ -49,8 +67,6 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
     }
     if (!formData.phone.trim()) {
       newErrors.phone = "رقم الهاتف مطلوب";
-    } else if (!/^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$/.test(formData.phone)) {
-      newErrors.phone = "رقم هاتف غير صحيح";
     }
     if (!formData.birthDate) {
       newErrors.birthDate = "تاريخ الميلاد مطلوب";
@@ -63,7 +79,7 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Convert date string to timestamp (number)
+  // Convert date string to timestamp
   const convertDateToTimestamp = (dateString: string): number => {
     return new Date(dateString).getTime();
   };
@@ -78,9 +94,9 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
       await createStudent({
         name: formData.fullName,
         email: formData.email || undefined,
-        phoneNumber: formData.phone, // Changed from 'phone' to 'phoneNumber'
-        birthDate: convertDateToTimestamp(formData.birthDate), // Convert string to number
-        gender: formData.gender as "male" | "female", // Type assertion
+        phoneNumber: formData.phone,
+        birthDate: convertDateToTimestamp(formData.birthDate),
+        gender: formData.gender as "male" | "female",
         address: formData.address || undefined,
         gradeId: formData.gradeId ? (formData.gradeId as any) : undefined,
         groupId: formData.groupId ? (formData.groupId as any) : undefined,
@@ -94,20 +110,20 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
         birthDate: "",
         gender: "",
         address: "",
-         gradeId: "",
-         groupId: "",
+        gradeId: "",
+        groupId: "",
       });
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating student:", error);
-      setErrors({ submit: "حدث خطأ أثناء إضافة الطالب" });
+      setErrors({ submit: error.message || "حدث خطأ أثناء إضافة الطالب" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         {/* Modal Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
@@ -241,47 +257,48 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
                 <p className="text-xs text-gray-400">سيتم التوليد تلقائياً إذا ترك فارغاً</p>
               </div>
 
-              {/* Grade / Group */}
+              {/* Grade */}
               <div className="space-y-2">
                 <Label htmlFor="gradeId">الصف الدراسي</Label>
                 <select
                   id="gradeId"
                   value={formData.gradeId}
                   onChange={(e) => setFormData({ ...formData, gradeId: e.target.value, groupId: "" })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
                   <option value="">-- اختر الصف --</option>
                   {grades?.map((grade: any) => (
                     <option key={grade._id} value={grade._id}>
-                      {grade.name} ({grade.nameEn})
+                      {grade.name}
                     </option>
                   ))}
                 </select>
               </div>
+
+              {/* Group */}
               <div className="space-y-2">
                 <Label htmlFor="groupId">المجموعة</Label>
                 <select
                   id="groupId"
                   value={formData.groupId}
                   onChange={(e) => setFormData({ ...formData, groupId: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
                   disabled={!formData.gradeId}
                 >
                   <option value="">-- اختر المجموعة --</option>
-                  {(groups || []).filter((group: any) => group.gradeId === formData.gradeId).map((group: any) => (
-                    <option key={group._id} value={group._id}>
-                      {group.name} - {group.subject}
-                    </option>
-                  ))}
+                  {groups
+                    ?.filter((group: any) => group.gradeId === formData.gradeId)
+                    .map((group: any) => (
+                      <option key={group._id} value={group._id}>
+                        {group.name} - {group.subject}
+                      </option>
+                    ))}
                 </select>
               </div>
             </div>
           </div>
 
-          {/* Section: Guardian Information */}
-          
-
-          {/* Section: Address */}
+          {/* Address */}
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">
               العنوان
@@ -331,9 +348,16 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="min-w-25"
+              className="min-w-25 bg-[#001f24] hover:bg-[#03363d] text-white gap-2"
             >
-              {isSubmitting ? "جاري الإضافة..." : "إضافة طالب"}
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  جاري الإضافة...
+                </>
+              ) : (
+                "إضافة طالب"
+              )}
             </Button>
           </div>
         </form>

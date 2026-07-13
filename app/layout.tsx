@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LMS Marine",
+  title: "Marine",
   description: "Learning Managment System",
 };
 

@@ -28,7 +28,7 @@ import { RiParentFill } from "react-icons/ri";
 import { FaChalkboardTeacher } from "react-icons/fa";
 import { SiGoogleclassroom } from "react-icons/si";
 import { AiOutlineSchedule } from "react-icons/ai";
-import { MdOutlinePermMedia } from "react-icons/md";
+import { MdOutlineHomeMax, MdOutlinePermMedia } from "react-icons/md";
 import { FaClipboardQuestion } from "react-icons/fa6";
 import { PiExam } from "react-icons/pi";
 
@@ -69,16 +69,16 @@ export default function AdminLayout({
     { href: "/admin/teachers", label: "المعلمين", icon: FaChalkboardTeacher },
     { href: "/admin/students", label: "الطلاب", icon: GraduationCap },
     { href: "/admin/parents", label: "أولياء الامور", icon: RiParentFill },
-    { href: "/admin/classes", label: "الفصول", icon: SiGoogleclassroom },
+    // { href: "/admin/classes", label: "الفصول", icon: SiGoogleclassroom },
     { href: "/admin/grades", label: "الصفوف", icon: SiGoogleclassroom },
-    { href: "/admin/courses", label: "المواد", icon: BookOpen },
-    { href: "/admin/schedules", label: "الجدول", icon: AiOutlineSchedule },
+    // { href: "/admin/courses", label: "المواد", icon: BookOpen },
+    // { href: "/admin/schedules", label: "الجدول", icon: AiOutlineSchedule },
     { href: "/admin/media", label: "الوسائط", icon: MdOutlinePermMedia },
     { href: "/admin/questions", label: "بنك الأسئلة", icon: FaClipboardQuestion  },
     { href: "/admin/assignments", label: "الواجبات", icon: FileText }, 
     { href: "/admin/exams", label: "الامتحانات", icon: PiExam  }, 
     { href: "/admin/approvals", label: "الموافقة", icon: ClipboardCheck },
-    { href: "/admin/landing", label: "الشاشه الرئيسيه", icon: Settings },
+    { href: "/admin/landing", label: "البرتوفوليو", icon: MdOutlineHomeMax  },
     { href: "/admin/settings", label: "الإعدادات", icon: Settings },
   ];
 
