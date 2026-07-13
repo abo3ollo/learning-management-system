@@ -18,7 +18,7 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { MdOutlineEmail, MdOutlineRadio } from "react-icons/md";
-import { Loader2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Megaphone } from "lucide-react";
 import * as Icons from "react-icons/fa";
 import { PiStudentBold } from "react-icons/pi";
 import { RiParentFill } from "react-icons/ri";
@@ -50,6 +50,7 @@ export default function LandingPage() {
   const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [selectedEmbedType, setSelectedEmbedType] = useState<string>("youtube");
+  const [currentAnnouncementIndex, setCurrentAnnouncementIndex] = useState(0);
 
   // ✅ جلب البيانات من Convex - مع تمرير args فارغ
   const settings = useQuery(api.landing.landing.getPublicSettings, {});
@@ -57,6 +58,7 @@ export default function LandingPage() {
   const courses = useQuery(api.landing.landing.getPublicCourses, {});
   const testimonials = useQuery(api.landing.landing.getPublicTestimonials, {});
   const videoTestimonials = useQuery(api.landing.landing.getPublicVideoTestimonials, {});
+  const announcements = useQuery(api.landing.landing.getPublicAnnouncements, {});
 
   // قائمة المواد
   const subjects = {
@@ -73,14 +75,23 @@ export default function LandingPage() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+  if (!announcements || announcements.length <= 1) return;
+  
+  const interval = setInterval(() => {
+    setCurrentAnnouncementIndex((prev) => (prev + 1) % announcements.length);
+  }, 5000);
+  return () => clearInterval(interval);
+}, [announcements]);
+
   // حالة التحميل
-  if (settings === undefined || sections === undefined || courses === undefined || testimonials === undefined || videoTestimonials === undefined) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
-        <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
-      </div>
-    );
-  }
+  if (settings === undefined || sections === undefined || courses === undefined || testimonials === undefined || videoTestimonials === undefined || announcements === undefined) {
+  return (
+    <div className="flex items-center justify-center min-h-screen bg-white">
+      <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
+    </div>
+  );
+}
 
   // إذا لم توجد إعدادات، استخدم البيانات الافتراضية
   const defaultSettings = {
@@ -265,6 +276,91 @@ export default function LandingPage() {
       );
     });
   };
+
+  // ── ANNOUNCEMENTS SECTION ──────────────────────────────────────
+const renderAnnouncements = () => {
+  if (!announcements || announcements.length === 0) return null;
+
+  const currentAnnouncement = announcements[currentAnnouncementIndex];
+
+  return (
+    <section className="py-16 bg-linear-to-r from-[#001f24] to-[#03363d]">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <Megaphone className="h-6 w-6 text-[#a3ced6]" />
+            <h2 className="text-xl font-bold text-white">
+              {lang === "ar" ? "أحدث الإعلانات" : "Latest Announcements"}
+            </h2>
+            {announcements.length > 1 && (
+              <span className="bg-[#1a7a8a] text-white text-xs px-2 py-1 rounded-full">
+                {currentAnnouncementIndex + 1} / {announcements.length}
+              </span>
+            )}
+          </div>
+          {announcements.length > 1 && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentAnnouncementIndex((prev) => 
+                  prev === 0 ? announcements.length - 1 : prev - 1
+                )}
+                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setCurrentAnnouncementIndex((prev) => 
+                  (prev + 1) % announcements.length
+                )}
+                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8 items-center bg-white/5 rounded-2xl p-6 backdrop-blur border border-white/10">
+          {/* Announcement Image */}
+          <div className="relative h-64 md:h-80 rounded-xl overflow-hidden">
+            <img
+              src={currentAnnouncement.imageUrl || "/images/announcement-placeholder.jpg"}
+              alt={currentAnnouncement.title}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/images/announcement-placeholder.jpg";
+              }}
+            />
+            <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent" />
+            <span className="absolute bottom-4 right-4 bg-[#1a7a8a] text-white text-xs px-2 py-1 rounded-full">
+              {lang === "ar" ? "إعلان" : "Announcement"}
+            </span>
+          </div>
+
+          {/* Announcement Content */}
+          <div className="space-y-4">
+            <h3 className="text-2xl font-bold text-white">
+              {lang === "ar" ? currentAnnouncement.titleAr || currentAnnouncement.title : currentAnnouncement.title}
+            </h3>
+            <p className="text-[#a3ced6] text-lg leading-relaxed">
+              {lang === "ar" ? currentAnnouncement.descriptionAr || currentAnnouncement.description : currentAnnouncement.description}
+            </p>
+            {currentAnnouncement.points && currentAnnouncement.points.length > 0 && (
+              <ul className="space-y-2">
+                {(lang === "ar" ? currentAnnouncement.pointsAr : currentAnnouncement.points).map((point: string, idx: number) => (
+                  <li key={idx} className="flex items-start gap-2 text-[#a3ced6] text-sm">
+                    <span className="text-[#1a7a8a] mt-1">▸</span>
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
 
   // ── VIDEO TESTIMONIALS SECTION ──────────────────────────────
   const renderVideoTestimonials = () => {
@@ -810,6 +906,9 @@ export default function LandingPage() {
 
       {/* ── Dynamic Sections from Convex ────────────────────────── */}
       {renderSections()}
+
+      {/* ── ANNOUNCEMENTS ───────────────────────────────────────── */}
+      {renderAnnouncements()}
 
       {/* ── Courses from Convex ─────────────────────────────────── */}
       {renderCourses()}

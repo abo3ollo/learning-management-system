@@ -810,4 +810,20 @@ export default defineSchema({
     .index("by_order", ["displayOrder"])
     .index("by_published", ["isPublished"])
     .index("by_category", ["category"]),
+
+  landingAnnouncements: defineTable({
+    title: v.string(),
+    titleAr: v.string(),
+    description: v.string(),
+    descriptionAr: v.string(),
+    points: v.array(v.string()),
+    pointsAr: v.array(v.string()),
+    imageUrl: v.string(),
+    displayOrder: v.number(),
+    isPublished: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_order", ["displayOrder"])
+    .index("by_published", ["isPublished"]),
 });

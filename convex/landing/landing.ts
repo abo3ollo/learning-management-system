@@ -64,16 +64,16 @@ export const updateSettings = mutation({
     heroSubtitle: v.optional(v.string()),
     heroSubtitleAr: v.optional(v.string()),
     heroImageUrl: v.optional(v.string()),
-    
+
     // ✅ أضف heroRating والحقول المرتبطة
     heroRating: v.optional(v.string()),
     heroRatingLabel: v.optional(v.string()),
     heroRatingLabelAr: v.optional(v.string()),
-    
+
     // School Name
     schoolName: v.optional(v.string()),
     schoolNameAr: v.optional(v.string()),
-    
+
     // Trust Badges
     trustBadge1: v.optional(v.string()),
     trustBadge1Ar: v.optional(v.string()),
@@ -83,13 +83,13 @@ export const updateSettings = mutation({
     trustBadge3Value: v.optional(v.string()),
     trustBadge3: v.optional(v.string()),
     trustBadge3Ar: v.optional(v.string()),
-    
+
     // Floating Badges
     floatingBadge1: v.optional(v.string()),
     floatingBadge1Ar: v.optional(v.string()),
     floatingBadge2: v.optional(v.string()),
     floatingBadge2Ar: v.optional(v.string()),
-    
+
     // CTA
     ctaText: v.optional(v.string()),
     ctaTextAr: v.optional(v.string()),
@@ -97,35 +97,37 @@ export const updateSettings = mutation({
     secondaryCta: v.optional(v.string()),
     secondaryCtaAr: v.optional(v.string()),
     secondaryCtaUrl: v.optional(v.string()),
-    
+
     // Stats
-    stats: v.optional(v.array(
-      v.object({
-        value: v.string(),
-        label: v.string(),
-        labelAr: v.string(),
-      })
-    )),
-    
+    stats: v.optional(
+      v.array(
+        v.object({
+          value: v.string(),
+          label: v.string(),
+          labelAr: v.string(),
+        }),
+      ),
+    ),
+
     // Theme
     themeMode: v.optional(v.union(v.literal("dark"), v.literal("light"))),
-    
+
     // Visibility
     showTestimonials: v.optional(v.boolean()),
     showCourses: v.optional(v.boolean()),
     showGallery: v.optional(v.boolean()),
-    
+
     // Contact
     contactEmail: v.optional(v.string()),
     contactPhone: v.optional(v.string()),
     whatsappLink: v.optional(v.string()),
     address: v.optional(v.string()),
     addressAr: v.optional(v.string()),
-    
+
     // Footer
     footerDescription: v.optional(v.string()),
     footerDescriptionAr: v.optional(v.string()),
-    
+
     // SEO
     seoTitle: v.optional(v.string()),
     seoTitleAr: v.optional(v.string()),
@@ -134,10 +136,8 @@ export const updateSettings = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await getAdminUser(ctx);
-    
-    const existing = await ctx.db
-      .query("landingSettings")
-      .first();
+
+    const existing = await ctx.db.query("landingSettings").first();
 
     const data = {
       ...args,
@@ -154,8 +154,10 @@ export const updateSettings = mutation({
         heroBadgeAr: "مستقبل التعليم البحري",
         heroTitle: "Learn Anytime, Anywhere with Marine Academy",
         heroTitleAr: "تعلّم في أي وقت، من أي مكان مع أكاديمية مارين",
-        heroSubtitle: "A comprehensive educational platform designed to empower students and teachers through advanced interactive tools.",
-        heroSubtitleAr: "منصة تعليمية شاملة مصممة لتمكين الطلاب والمعلمين من خلال أدوات تفاعلية متقدمة.",
+        heroSubtitle:
+          "A comprehensive educational platform designed to empower students and teachers through advanced interactive tools.",
+        heroSubtitleAr:
+          "منصة تعليمية شاملة مصممة لتمكين الطلاب والمعلمين من خلال أدوات تفاعلية متقدمة.",
         heroImageUrl: "/images/hero.png",
         heroRating: "4.8",
         heroRatingLabel: "Student Satisfaction",
@@ -171,7 +173,11 @@ export const updateSettings = mutation({
         stats: [
           { value: "5000+", label: "Active Students", labelAr: "طالب نشط" },
           { value: "200+", label: "Expert Teachers", labelAr: "معلم خبير" },
-          { value: "50+", label: "Weekly Live Classes", labelAr: "فصل مباشر أسبوعياً" },
+          {
+            value: "50+",
+            label: "Weekly Live Classes",
+            labelAr: "فصل مباشر أسبوعياً",
+          },
         ],
         themeMode: "dark" as const,
         showTestimonials: true,
@@ -182,12 +188,15 @@ export const updateSettings = mutation({
         whatsappLink: "https://wa.me/966500000000",
         address: "Riyadh, Saudi Arabia",
         addressAr: "الرياض، المملكة العربية السعودية",
-        footerDescription: "The global leader in marine and technical education.",
+        footerDescription:
+          "The global leader in marine and technical education.",
         footerDescriptionAr: "الرائد العالمي في التعليم البحري والتقني.",
         seoTitle: "Marine Academy - Premier Marine Education Platform",
         seoTitleAr: "أكاديمية مارين - منصة التعليم البحري الرائدة",
-        seoDescription: "Marine Academy offers comprehensive marine education with live classes, expert teachers, and interactive learning tools.",
-        seoDescriptionAr: "تقدم أكاديمية مارين تعليماً بحرياً شاملاً مع فصول مباشرة ومعلمين خبراء وأدوات تعلم تفاعلية.",
+        seoDescription:
+          "Marine Academy offers comprehensive marine education with live classes, expert teachers, and interactive learning tools.",
+        seoDescriptionAr:
+          "تقدم أكاديمية مارين تعليماً بحرياً شاملاً مع فصول مباشرة ومعلمين خبراء وأدوات تعلم تفاعلية.",
       };
 
       return await ctx.db.insert("landingSettings", {
@@ -781,6 +790,102 @@ export const deleteGalleryItem = mutation({
 });
 
 // ══════════════════════════════════════════════════════════════════
+// ANNOUNCEMENTS
+// ══════════════════════════════════════════════════════════════════
+
+// ✅ جلب جميع الإعلانات (للأدمن)
+export const getAnnouncements = query({
+  args: {},
+  handler: async (ctx) => {
+    const admin = await getAdminUser(ctx);
+
+    const announcements = await ctx.db.query("landingAnnouncements").collect();
+
+    return announcements.sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+});
+
+// ✅ جلب الإعلانات المنشورة (للعرض العام)
+export const getPublicAnnouncements = query({
+  args: {},
+  handler: async (ctx) => {
+    const announcements = await ctx.db.query("landingAnnouncements").collect();
+
+    return announcements
+      .filter((a) => a.isPublished)
+      .sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+});
+
+// ✅ إنشاء إعلان جديد
+export const createAnnouncement = mutation({
+  args: {
+    title: v.string(),
+    titleAr: v.string(),
+    description: v.string(),
+    descriptionAr: v.string(),
+    points: v.array(v.string()),
+    pointsAr: v.array(v.string()),
+    imageUrl: v.string(),
+    displayOrder: v.number(),
+    isPublished: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+
+    return await ctx.db.insert("landingAnnouncements", {
+      ...args,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// ✅ تحديث إعلان
+export const updateAnnouncement = mutation({
+  args: {
+    announcementId: v.id("landingAnnouncements"),
+    title: v.optional(v.string()),
+    titleAr: v.optional(v.string()),
+    description: v.optional(v.string()),
+    descriptionAr: v.optional(v.string()),
+    points: v.optional(v.array(v.string())),
+    pointsAr: v.optional(v.array(v.string())),
+    imageUrl: v.optional(v.string()),
+    displayOrder: v.optional(v.number()),
+    isPublished: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+    const { announcementId, ...fields } = args;
+
+    const announcement = await ctx.db.get(announcementId);
+    if (!announcement) throw new Error("الإعلان غير موجود");
+
+    await ctx.db.patch(announcementId, {
+      ...fields,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ حذف إعلان
+export const deleteAnnouncement = mutation({
+  args: { announcementId: v.id("landingAnnouncements") },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+
+    const announcement = await ctx.db.get(args.announcementId);
+    if (!announcement) throw new Error("الإعلان غير موجود");
+
+    await ctx.db.delete(args.announcementId);
+    return { success: true };
+  },
+});
+
+// ══════════════════════════════════════════════════════════════════
 // GET ALL DATA (للأدمن)
 // ══════════════════════════════════════════════════════════════════
 
@@ -837,6 +942,13 @@ export const landing = {
   createSection,
   updateSection,
   deleteSection,
+
+  // Announcements
+  getAnnouncements,
+  getPublicAnnouncements,
+  createAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
 
   // Courses
   getCourses,

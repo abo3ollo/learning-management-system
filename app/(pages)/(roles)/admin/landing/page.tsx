@@ -43,6 +43,7 @@ import {
   Trophy,
   GraduationCap,
   Play,
+  Megaphone,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -175,13 +176,24 @@ const defaultVideo = {
   embedType: "youtube" as const,
 };
 
+const defaultAnnouncement = {
+  isPublished: true,
+  title: "",
+  titleAr: "",
+  description: "",
+  descriptionAr: "",
+  points: [] as string[],
+  pointsAr: [] as string[],
+  imageUrl: "",
+};
+
 // ─── Main Component ────────────────────────────────────────────
 export default function AdminLandingPage() {
   const [activeTab, setActiveTab] = useState("hero");
   const [isSaving, setIsSaving] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
-  const [dialogType, setDialogType] = useState<"section" | "course" | "testimonial" | "gallery" | "video">("section");
+  const [dialogType, setDialogType] = useState<"section" | "course" | "testimonial" | "gallery" | "video" | "announcement">("section");
 
   // جلب بيانات Landing Page
   const landingData = useQuery(api.landing.landing.getLandingData);
@@ -190,6 +202,7 @@ export default function AdminLandingPage() {
   const testimonials = useQuery(api.landing.landing.getTestimonials);
   const gallery = useQuery(api.landing.landing.getGallery);
   const videoTestimonials = useQuery(api.landing.landing.getVideoTestimonials);
+  const announcements = useQuery(api.landing.landing.getAnnouncements);
 
   const updateSettings = useMutation(api.landing.landing.updateSettings);
   const createSection = useMutation(api.landing.landing.createSection);
@@ -207,6 +220,9 @@ export default function AdminLandingPage() {
   const createVideoTestimonial = useMutation(api.landing.landing.createVideoTestimonial);
   const updateVideoTestimonial = useMutation(api.landing.landing.updateVideoTestimonial);
   const deleteVideoTestimonial = useMutation(api.landing.landing.deleteVideoTestimonial);
+  const createAnnouncement = useMutation(api.landing.landing.createAnnouncement);
+  const updateAnnouncement = useMutation(api.landing.landing.updateAnnouncement);
+  const deleteAnnouncement = useMutation(api.landing.landing.deleteAnnouncement);
 
   const [settings, setSettings] = useState<LandingSettings>({
     heroBadge: "The Future of Marine Education",
@@ -248,12 +264,15 @@ export default function AdminLandingPage() {
 
   // ─── Dialog Handlers ──────────────────────────────────────────
 
-  const openCreateDialog = (type: "section" | "course" | "testimonial" | "gallery" | "video") => {
+  const openCreateDialog = (type: "section" | "course" | "testimonial" | "gallery" | "video" | "announcement") => {
     setDialogType(type);
     let defaults = {};
     switch (type) {
       case "section":
         defaults = { ...defaultSection };
+        break;
+      case "announcement":
+        defaults = { ...defaultAnnouncement };
         break;
       case "course":
         defaults = { ...defaultCourse };
@@ -280,7 +299,7 @@ export default function AdminLandingPage() {
     setIsDialogOpen(true);
   };
 
-  const openEditDialog = (type: "section" | "course" | "testimonial" | "gallery" | "video", item: any) => {
+  const openEditDialog = (type: "section" | "course" | "testimonial" | "gallery" | "video" | "announcement", item: any) => {
     setDialogType(type);
     setEditingItem({ ...item });
     setIsDialogOpen(true);
@@ -327,6 +346,9 @@ export default function AdminLandingPage() {
           case "video":
             await updateVideoTestimonial({ videoId: _id as any, ...cleanData });
             break;
+          case "announcement": // ✅ أضف هذا
+            await updateAnnouncement({ announcementId: _id as any, ...cleanData });
+            break;
         }
         toast.success("✅ تم التحديث بنجاح");
       } else {
@@ -345,6 +367,9 @@ export default function AdminLandingPage() {
             break;
           case "video":
             await createVideoTestimonial({ ...editingItem, displayOrder: videoTestimonials?.length || 0 });
+            break;
+          case "announcement": // ✅ أضف هذا
+            await createAnnouncement({ ...editingItem, displayOrder: announcements?.length || 0 });
             break;
         }
         toast.success("✅ تم الإضافة بنجاح");
@@ -374,6 +399,9 @@ export default function AdminLandingPage() {
           break;
         case "video":
           await deleteVideoTestimonial({ videoId: id as any });
+          break;
+        case "announcement": // ✅ أضف هذا
+          await deleteAnnouncement({ announcementId: id as any });
           break;
       }
       toast.success("✅ تم الحذف بنجاح");
@@ -829,6 +857,125 @@ export default function AdminLandingPage() {
     </div>
   );
 
+
+  const renderAnnouncementsTab = () => {
+    const announcementsData = announcements;
+
+    if (announcementsData === undefined) {
+      return (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4" dir="rtl">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">الإعلانات</h3>
+          <Button
+            onClick={() => {
+              setDialogType("announcement");
+              setEditingItem({
+                isPublished: true,
+                title: "",
+                titleAr: "",
+                description: "",
+                descriptionAr: "",
+                points: [],
+                pointsAr: [],
+                imageUrl: "",
+              });
+              setIsDialogOpen(true);
+            }}
+            className="bg-[#001f24] hover:bg-[#03363d] text-white"
+          >
+            <Plus className="h-4 w-4 ml-2" />
+            إضافة إعلان
+          </Button>
+        </div>
+
+        {!announcements || announcements.length === 0 ? (
+          <Card className="p-8 text-center">
+            <Megaphone className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+            <p className="text-gray-500">لا توجد إعلانات</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {announcements.map((item: any) => (
+              <Card key={item._id} className="overflow-hidden">
+                <div className="relative h-48 w-full  bg-gray-100">
+                  <img
+                    src={item.imageUrl || "/images/announcement-placeholder.jpg"}
+                    alt={item.title}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/images/announcement-placeholder.jpg";
+                    }}
+                  />
+                  <Badge className={`absolute top-3 right-3 ${item.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>
+                    {item.isPublished ? "منشور" : "غير منشور"}
+                  </Badge>
+                </div>
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-[#001f24] line-clamp-1">
+                        {item.title || item.titleAr}
+                      </h4>
+                      <p className="text-sm text-gray-500 line-clamp-2 mt-1">
+                        {item.description || item.descriptionAr}
+                      </p>
+                      {item.points && item.points.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {item.points.slice(0, 2).map((point: string, idx: number) => (
+                            <p key={idx} className="text-xs text-gray-400 flex items-start gap-1">
+                              <span className="text-[#1a7a8a]">•</span>
+                              {point.length > 30 ? point.slice(0, 30) + "..." : point}
+                            </p>
+                          ))}
+                          {item.points.length > 2 && (
+                            <p className="text-xs text-[#1a7a8a]">+{item.points.length - 2} نقاط أخرى</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-1 mr-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setDialogType("announcement");
+                          setEditingItem(item);
+                          setIsDialogOpen(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-700"
+                        onClick={async () => {
+                          if (confirm("هل أنت متأكد من حذف هذا الإعلان؟")) {
+                            await deleteAnnouncement({ announcementId: item._id });
+                            toast.success("تم حذف الإعلان بنجاح");
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderVideoTestimonialsTab = () => {
     return (
       <div className="space-y-4" dir="rtl">
@@ -1101,6 +1248,107 @@ export default function AdminLandingPage() {
                   onChange={(e) => setEditingItem({ ...editingItem, isEnabled: e.target.checked })}
                 />
                 مفعل
+              </Label>
+            </div>
+          </div>
+        );
+        break;
+
+      case "announcement":
+        title = isEditing ? "تعديل الإعلان" : "إضافة إعلان جديد";
+        fields = (
+          <div className="space-y-4" dir="rtl">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>العنوان (عربي)</Label>
+                <Input
+                  value={editingItem.titleAr || ""}
+                  onChange={(e) => setEditingItem({ ...editingItem, titleAr: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>العنوان (إنجليزي)</Label>
+                <Input
+                  value={editingItem.title || ""}
+                  onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>الوصف (عربي)</Label>
+                <Textarea
+                  value={editingItem.descriptionAr || ""}
+                  onChange={(e) => setEditingItem({ ...editingItem, descriptionAr: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>الوصف (إنجليزي)</Label>
+                <Textarea
+                  value={editingItem.description || ""}
+                  onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>النقاط (عربي) - كل نقطة في سطر جديد</Label>
+              <Textarea
+                value={editingItem.pointsAr?.join("\n") || ""}
+                onChange={(e) => setEditingItem({
+                  ...editingItem,
+                  pointsAr: e.target.value.split("\n").filter((p: string) => p.trim() !== "")
+                })}
+                rows={4}
+                placeholder="نقطة 1\nنقطة 2\nنقطة 3"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>النقاط (إنجليزي) - كل نقطة في سطر جديد</Label>
+              <Textarea
+                value={editingItem.points?.join("\n") || ""}
+                onChange={(e) => setEditingItem({
+                  ...editingItem,
+                  points: e.target.value.split("\n").filter((p: string) => p.trim() !== "")
+                })}
+                rows={4}
+                placeholder="Point 1\nPoint 2\nPoint 3"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>رابط الصورة</Label>
+              <Input
+                value={editingItem.imageUrl || ""}
+                onChange={(e) => setEditingItem({ ...editingItem, imageUrl: e.target.value })}
+                placeholder="https://example.com/image.jpg"
+              />
+              {editingItem.imageUrl && (
+                <div className="mt-2 relative w-full h-32 rounded-lg overflow-hidden border border-[#c0c8c9]">
+                  <img
+                    src={editingItem.imageUrl}
+                    alt="Announcement"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <Label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={editingItem.isPublished ?? true}
+                  onChange={(e) => setEditingItem({ ...editingItem, isPublished: e.target.checked })}
+                />
+                منشور
               </Label>
             </div>
           </div>
@@ -1535,9 +1783,13 @@ export default function AdminLandingPage() {
             <Globe className="h-4 w-4 ml-2" />
             الهيرو
           </TabsTrigger>
-          <TabsTrigger value="sections">
+          {/* <TabsTrigger value="sections">
             <Layout className="h-4 w-4 ml-2" />
             الأقسام
+          </TabsTrigger> */}
+          <TabsTrigger value="announcements">
+            <Megaphone className="h-4 w-4 ml-2" />
+            الإعلانات
           </TabsTrigger>
           <TabsTrigger value="courses">
             <BookOpen className="h-4 w-4 ml-2" />
@@ -1563,6 +1815,10 @@ export default function AdminLandingPage() {
 
         <TabsContent value="sections" className="mt-4">
           {renderSectionsTab()}
+        </TabsContent>
+
+        <TabsContent value="announcements" className="mt-4">
+          {renderAnnouncementsTab()}
         </TabsContent>
 
         <TabsContent value="courses" className="mt-4">
