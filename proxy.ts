@@ -6,6 +6,7 @@ const isPublicRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/trips(.*)',  
 ]);
 
 const isAuthRoute = createRouteMatcher([

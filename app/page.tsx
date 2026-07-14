@@ -18,7 +18,7 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { MdOutlineEmail, MdOutlineRadio } from "react-icons/md";
-import { ChevronLeft, ChevronRight, Loader2, Megaphone } from "lucide-react";
+import { ArrowRight, ChevronLeft, ChevronRight, Loader2, Megaphone } from "lucide-react";
 import * as Icons from "react-icons/fa";
 import { PiStudentBold } from "react-icons/pi";
 import { RiParentFill } from "react-icons/ri";
@@ -277,86 +277,153 @@ export default function LandingPage() {
     });
   };
 
-  // ── ANNOUNCEMENTS SECTION ──────────────────────────────────────
+
+// ── ANNOUNCEMENTS SECTION ──────────────────────────────────────
 const renderAnnouncements = () => {
   if (!announcements || announcements.length === 0) return null;
 
   const currentAnnouncement = announcements[currentAnnouncementIndex];
 
   return (
-    <section className="py-16 bg-linear-to-r from-[#001f24] to-[#03363d]">
+    <section className="py-20 bg-linear-to-b from-white to-[#f7fafa]">
       <div className="max-w-7xl mx-auto px-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Megaphone className="h-6 w-6 text-[#a3ced6]" />
-            <h2 className="text-xl font-bold text-white">
-              {lang === "ar" ? "أحدث الإعلانات" : "Latest Announcements"}
-            </h2>
-            {announcements.length > 1 && (
-              <span className="bg-[#1a7a8a] text-white text-xs px-2 py-1 rounded-full">
-                {currentAnnouncementIndex + 1} / {announcements.length}
-              </span>
-            )}
+        {/* Section header with editorial feel */}
+        <div className="flex items-center justify-between mb-10">
+          <div className="flex items-center gap-4">
+            <div className="w-1 h-8 bg-[#1a7a8a] rounded-full"></div>
+            <div>
+              <h2 className="text-2xl font-bold text-[#0a2540] tracking-tight">
+                {lang === "ar" ? "أحدث الإعلانات" : "Latest Announcements"}
+              </h2>
+              <p className="text-sm text-gray-500">
+                {lang === "ar" ? "آخر المستجدات والأخبار" : "News and updates"}
+              </p>
+            </div>
           </div>
           {announcements.length > 1 && (
-            <div className="flex gap-2">
-              <button
-                onClick={() => setCurrentAnnouncementIndex((prev) => 
-                  prev === 0 ? announcements.length - 1 : prev - 1
-                )}
-                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => setCurrentAnnouncementIndex((prev) => 
-                  (prev + 1) % announcements.length
-                )}
-                className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-400 font-medium">
+                {String(currentAnnouncementIndex + 1).padStart(2, '0')} / {String(announcements.length).padStart(2, '0')}
+              </span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setCurrentAnnouncementIndex((prev) => 
+                    prev === 0 ? announcements.length - 1 : prev - 1
+                  )}
+                  className="p-2 rounded-lg border border-gray-200 hover:border-[#1a7a8a] hover:bg-[#e0f5f7] transition-all duration-200 group"
+                  aria-label="Previous announcement"
+                >
+                  <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-[#1a7a8a]" />
+                </button>
+                <button
+                  onClick={() => setCurrentAnnouncementIndex((prev) => 
+                    (prev + 1) % announcements.length
+                  )}
+                  className="p-2 rounded-lg border border-gray-200 hover:border-[#1a7a8a] hover:bg-[#e0f5f7] transition-all duration-200 group"
+                  aria-label="Next announcement"
+                >
+                  <ChevronLeft className="h-4 w-4 text-gray-400 group-hover:text-[#1a7a8a]" />
+                </button>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8 items-center bg-white/5 rounded-2xl p-6 backdrop-blur border border-white/10">
-          {/* Announcement Image */}
-          <div className="relative h-64 md:h-80 rounded-xl overflow-hidden">
-            <img
-              src={currentAnnouncement.imageUrl || "/images/announcement-placeholder.jpg"}
-              alt={currentAnnouncement.title}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "/images/announcement-placeholder.jpg";
-              }}
-            />
-            <div className="absolute inset-0 bg-linear-to-t from-black/50 to-transparent" />
-            <span className="absolute bottom-4 right-4 bg-[#1a7a8a] text-white text-xs px-2 py-1 rounded-full">
-              {lang === "ar" ? "إعلان" : "Announcement"}
-            </span>
-          </div>
+        {/* Feature card - editorial style */}
+        <div className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100">
+          <div className="grid lg:grid-cols-5 gap-0">
+            {/* Image - takes 2/5 of space */}
+            <div className="lg:col-span-2 relative min-h-75 lg:min-h-100 overflow-hidden">
+              <img
+                src={currentAnnouncement.imageUrl || "/images/announcement-placeholder.jpg"}
+                alt={currentAnnouncement.title}
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = "/images/announcement-placeholder.jpg";
+                }}
+              />
+              {/* Gradient overlay for text readability on mobile */}
+              <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent lg:hidden"></div>
+              
+              {/* Badge */}
+              <div className="absolute top-4 left-4 bg-[#1a7a8a] text-white text-xs font-medium px-3 py-1.5 rounded-full tracking-wide flex items-center gap-1.5 shadow-lg">
+                <Megaphone className="h-3 w-3" />
+                {lang === "ar" ? "إعلان" : "Announcement"}
+              </div>
+              
+              {/* Counter badge on image - mobile only */}
+              {announcements.length > 1 && (
+                <div className="absolute bottom-4 right-4 lg:hidden bg-black/60 backdrop-blur text-white text-xs px-3 py-1 rounded-full">
+                  {currentAnnouncementIndex + 1} / {announcements.length}
+                </div>
+              )}
+            </div>
 
-          {/* Announcement Content */}
-          <div className="space-y-4">
-            <h3 className="text-2xl font-bold text-white">
-              {lang === "ar" ? currentAnnouncement.titleAr || currentAnnouncement.title : currentAnnouncement.title}
-            </h3>
-            <p className="text-[#a3ced6] text-lg leading-relaxed">
-              {lang === "ar" ? currentAnnouncement.descriptionAr || currentAnnouncement.description : currentAnnouncement.description}
-            </p>
-            {currentAnnouncement.points && currentAnnouncement.points.length > 0 && (
-              <ul className="space-y-2">
-                {(lang === "ar" ? currentAnnouncement.pointsAr : currentAnnouncement.points).map((point: string, idx: number) => (
-                  <li key={idx} className="flex items-start gap-2 text-[#a3ced6] text-sm">
-                    <span className="text-[#1a7a8a] mt-1">▸</span>
-                    {point}
-                  </li>
-                ))}
-              </ul>
-            )}
+            {/* Content - takes 3/5 of space */}
+            <div className="lg:col-span-3 p-8 lg:p-10 flex flex-col justify-center">
+              {/* Title */}
+              <h3 className="text-2xl lg:text-3xl font-bold text-[#0a2540] mb-3 leading-tight">
+                {lang === "ar" ? currentAnnouncement.titleAr || currentAnnouncement.title : currentAnnouncement.title}
+              </h3>
+              
+              {/* Description */}
+              <p className="text-gray-600 text-base lg:text-lg leading-relaxed mb-5">
+                {lang === "ar" ? currentAnnouncement.descriptionAr || currentAnnouncement.description : currentAnnouncement.description}
+              </p>
+              
+              {/* Points with elegant bullets */}
+              {currentAnnouncement.points && currentAnnouncement.points.length > 0 && (
+                <div className="space-y-2.5">
+                  {(lang === "ar" ? currentAnnouncement.pointsAr : currentAnnouncement.points).map((point: string, idx: number) => (
+                    <div key={idx} className="flex items-start gap-3 text-gray-700">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#1a7a8a] mt-2 shrink-0"></span>
+                      <span className="text-sm lg:text-base">{point}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Buttons - Learn More & View Trips */}
+              <div className="flex flex-wrap items-center gap-4 mt-6">
+                {/* ✅ زر "اعرف أكثر" - يذهب إلى صفحة تفاصيل الإعلان (إذا وجدت) */}
+                <Link href={`/announcements/${currentAnnouncement._id}`}>
+                  <button className="text-[#1a7a8a] font-medium text-sm hover:text-[#0a2540] transition-colors inline-flex items-center gap-1 group/link">
+                    {lang === "ar" ? "اعرف أكثر" : "Learn more"}
+                    <ChevronLeft className="h-4 w-4 transition-transform group-hover/link:translate-x-1" />
+                  </button>
+                </Link>
+
+                {/* ✅ زر "استكشف الرحلات" - يذهب إلى صفحة الرحلات */}
+                <Link href="/trips">
+                  <button className="bg-[#0a2540] hover:bg-[#1a3a5c] text-white font-semibold px-6 py-2.5 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 inline-flex items-center gap-2">
+                    <span className="text-sm">
+                      {lang === "ar" ? "استكشف الرحلات" : "Explore Trips"}
+                    </span>
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Progress indicators */}
+        {announcements.length > 1 && (
+          <div className="flex justify-center gap-2 mt-6">
+            {announcements.map((_: any, idx: number) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentAnnouncementIndex(idx)}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  idx === currentAnnouncementIndex 
+                    ? 'w-8 bg-[#1a7a8a]' 
+                    : 'w-4 bg-gray-300 hover:bg-gray-400'
+                }`}
+                aria-label={`Go to announcement ${idx + 1}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
