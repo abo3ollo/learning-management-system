@@ -885,6 +885,141 @@ export const deleteAnnouncement = mutation({
   },
 });
 
+
+// convex/landing/landing.ts
+
+// ══════════════════════════════════════════════════════════════════
+// SUBSCRIPTIONS
+// ══════════════════════════════════════════════════════════════════
+
+// ✅ جلب جميع الاشتراكات (للأدمن)
+export const getSubscriptions = query({
+  args: {},
+  handler: async (ctx) => {
+    const admin = await getAdminUser(ctx);
+    
+    const subscriptions = await ctx.db
+      .query("subscriptions")
+      .collect();
+    
+    return subscriptions.sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+});
+
+// ✅ جلب الاشتراكات المنشورة (للعرض العام)
+export const getPublicSubscriptions = query({
+  args: { grade: v.optional(v.union(v.literal("primary"), v.literal("middle"), v.literal("high"))) },
+  handler: async (ctx, args) => {
+    let subscriptions = await ctx.db
+      .query("subscriptions")
+      .collect();
+    
+    subscriptions = subscriptions.filter((s) => s.isPublished);
+    
+    if (args.grade) {
+      subscriptions = subscriptions.filter((s) => s.grade === args.grade);
+    }
+    
+    return subscriptions.sort((a, b) => a.displayOrder - b.displayOrder);
+  },
+});
+
+// ✅ إنشاء اشتراك جديد
+export const createSubscription = mutation({
+  args: {
+    title: v.string(),
+    titleAr: v.string(),
+    description: v.string(),
+    descriptionAr: v.string(),
+    type: v.union(
+      v.literal("single"),
+      v.literal("monthly"),
+      v.literal("quarterly"),
+      v.literal("yearly")
+    ),
+    price: v.number(),
+    priceAr: v.string(),
+    sessionsCount: v.number(),
+    grade: v.union(
+      v.literal("primary"),
+      v.literal("middle"),
+      v.literal("high")
+    ),
+    features: v.array(v.string()),
+    featuresAr: v.array(v.string()),
+    isPopular: v.boolean(),
+    displayOrder: v.number(),
+    isPublished: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+    
+    return await ctx.db.insert("subscriptions", {
+      ...args,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+// ✅ تحديث اشتراك
+export const updateSubscription = mutation({
+  args: {
+    subscriptionId: v.id("subscriptions"),
+    title: v.optional(v.string()),
+    titleAr: v.optional(v.string()),
+    description: v.optional(v.string()),
+    descriptionAr: v.optional(v.string()),
+    type: v.optional(v.union(
+      v.literal("single"),
+      v.literal("monthly"),
+      v.literal("quarterly"),
+      v.literal("yearly")
+    )),
+    price: v.optional(v.number()),
+    priceAr: v.optional(v.string()),
+    sessionsCount: v.optional(v.number()),
+    grade: v.optional(v.union(
+      v.literal("primary"),
+      v.literal("middle"),
+      v.literal("high")
+    )),
+    features: v.optional(v.array(v.string())),
+    featuresAr: v.optional(v.array(v.string())),
+    isPopular: v.optional(v.boolean()),
+    displayOrder: v.optional(v.number()),
+    isPublished: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+    const { subscriptionId, ...fields } = args;
+    
+    const subscription = await ctx.db.get(subscriptionId);
+    if (!subscription) throw new Error("الاشتراك غير موجود");
+    
+    await ctx.db.patch(subscriptionId, {
+      ...fields,
+      updatedAt: Date.now(),
+    });
+    
+    return { success: true };
+  },
+});
+
+// ✅ حذف اشتراك
+export const deleteSubscription = mutation({
+  args: { subscriptionId: v.id("subscriptions") },
+  handler: async (ctx, args) => {
+    const admin = await getAdminUser(ctx);
+    
+    const subscription = await ctx.db.get(args.subscriptionId);
+    if (!subscription) throw new Error("الاشتراك غير موجود");
+    
+    await ctx.db.delete(args.subscriptionId);
+    return { success: true };
+  },
+});
+
 // ══════════════════════════════════════════════════════════════════
 // GET ALL DATA (للأدمن)
 // ══════════════════════════════════════════════════════════════════

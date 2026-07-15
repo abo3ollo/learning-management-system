@@ -826,4 +826,39 @@ export default defineSchema({
   })
     .index("by_order", ["displayOrder"])
     .index("by_published", ["isPublished"]),
+
+    // convex/schema.ts
+
+// أضف هذا الجدول في قسم Landing Page Tables
+
+subscriptions: defineTable({
+  title: v.string(),
+  titleAr: v.string(),
+  description: v.string(),
+  descriptionAr: v.string(),
+  type: v.union(
+    v.literal("single"),
+    v.literal("monthly"),
+    v.literal("quarterly"),
+    v.literal("yearly")
+  ),
+  price: v.number(),
+  priceAr: v.string(),
+  sessionsCount: v.number(),
+  grade: v.union(
+    v.literal("primary"),
+    v.literal("middle"),
+    v.literal("high")
+  ),
+  features: v.array(v.string()),
+  featuresAr: v.array(v.string()),
+  isPopular: v.boolean(),
+  displayOrder: v.number(),
+  isPublished: v.boolean(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_order", ["displayOrder"])
+  .index("by_published", ["isPublished"])
+  .index("by_grade", ["grade"]),
 });

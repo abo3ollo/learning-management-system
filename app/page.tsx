@@ -18,10 +18,12 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { MdOutlineEmail, MdOutlineRadio } from "react-icons/md";
-import { ArrowRight, ChevronLeft, ChevronRight, Loader2, Megaphone } from "lucide-react";
+import { ArrowRight, CheckCircle, ChevronLeft, ChevronRight, Loader2, Megaphone } from "lucide-react";
 import * as Icons from "react-icons/fa";
 import { PiStudentBold } from "react-icons/pi";
 import { RiParentFill } from "react-icons/ri";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 
 // ─── Icon Mapping ────────────────────────────────────────────────
@@ -45,12 +47,14 @@ function getIcon(iconName: string) {
 
 export default function LandingPage() {
   const { isSignedIn } = useAuth();
-  const [lang, setLang] = useState<"en" | "ar">("en");
+  const [lang, setLang] = useState<"en" | "ar">("ar");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [currentSubjectIndex, setCurrentSubjectIndex] = useState(0);
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [selectedEmbedType, setSelectedEmbedType] = useState<string>("youtube");
   const [currentAnnouncementIndex, setCurrentAnnouncementIndex] = useState(0);
+  const [selectedGrade, setSelectedGrade] = useState< "all" | "primary" | "middle" | "high">("all");
+
 
   // ✅ جلب البيانات من Convex - مع تمرير args فارغ
   const settings = useQuery(api.landing.landing.getPublicSettings, {});
@@ -59,6 +63,8 @@ export default function LandingPage() {
   const testimonials = useQuery(api.landing.landing.getPublicTestimonials, {});
   const videoTestimonials = useQuery(api.landing.landing.getPublicVideoTestimonials, {});
   const announcements = useQuery(api.landing.landing.getPublicAnnouncements, {});
+  const subscriptions = useQuery(api.landing.landing.getPublicSubscriptions, {});
+
 
   // قائمة المواد
   const subjects = {
@@ -85,7 +91,7 @@ export default function LandingPage() {
 }, [announcements]);
 
   // حالة التحميل
-  if (settings === undefined || sections === undefined || courses === undefined || testimonials === undefined || videoTestimonials === undefined || announcements === undefined) {
+  if (settings === undefined || sections === undefined || courses === undefined || testimonials === undefined || videoTestimonials === undefined || announcements === undefined || subscriptions === undefined) {
   return (
     <div className="flex items-center justify-center min-h-screen bg-white">
       <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
@@ -285,24 +291,24 @@ const renderAnnouncements = () => {
   const currentAnnouncement = announcements[currentAnnouncementIndex];
 
   return (
-    <section className="py-20 bg-linear-to-b from-white to-[#f7fafa]">
+    <section className="py-20 bg-linear-to-r from-[#001f24] to-[#03363d]">
       <div className="max-w-7xl mx-auto px-6">
         {/* Section header with editorial feel */}
         <div className="flex items-center justify-between mb-10">
           <div className="flex items-center gap-4">
             <div className="w-1 h-8 bg-[#1a7a8a] rounded-full"></div>
             <div>
-              <h2 className="text-2xl font-bold text-[#0a2540] tracking-tight">
+              <h2 className="text-2xl font-bold text-white tracking-tight">
                 {lang === "ar" ? "أحدث الإعلانات" : "Latest Announcements"}
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-[#a3ced6]">
                 {lang === "ar" ? "آخر المستجدات والأخبار" : "News and updates"}
               </p>
             </div>
           </div>
           {announcements.length > 1 && (
             <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-400 font-medium">
+              <span className="text-sm text-[#a3ced6] font-medium">
                 {String(currentAnnouncementIndex + 1).padStart(2, '0')} / {String(announcements.length).padStart(2, '0')}
               </span>
               <div className="flex gap-1">
@@ -310,19 +316,19 @@ const renderAnnouncements = () => {
                   onClick={() => setCurrentAnnouncementIndex((prev) => 
                     prev === 0 ? announcements.length - 1 : prev - 1
                   )}
-                  className="p-2 rounded-lg border border-gray-200 hover:border-[#1a7a8a] hover:bg-[#e0f5f7] transition-all duration-200 group"
+                  className="p-2 rounded-lg border border-white/20 hover:border-[#1a7a8a] hover:bg-[#1a7a8a]/20 transition-all duration-200 group"
                   aria-label="Previous announcement"
                 >
-                  <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-[#1a7a8a]" />
+                  <ChevronRight className="h-4 w-4 text-[#a3ced6] group-hover:text-[#1a7a8a]" />
                 </button>
                 <button
                   onClick={() => setCurrentAnnouncementIndex((prev) => 
                     (prev + 1) % announcements.length
                   )}
-                  className="p-2 rounded-lg border border-gray-200 hover:border-[#1a7a8a] hover:bg-[#e0f5f7] transition-all duration-200 group"
+                  className="p-2 rounded-lg border border-white/20 hover:border-[#1a7a8a] hover:bg-[#1a7a8a]/20 transition-all duration-200 group"
                   aria-label="Next announcement"
                 >
-                  <ChevronLeft className="h-4 w-4 text-gray-400 group-hover:text-[#1a7a8a]" />
+                  <ChevronLeft className="h-4 w-4 text-[#a3ced6] group-hover:text-[#1a7a8a]" />
                 </button>
               </div>
             </div>
@@ -330,7 +336,7 @@ const renderAnnouncements = () => {
         </div>
 
         {/* Feature card - editorial style */}
-        <div className="group relative bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100">
+        <div className="group relative bg-white/10 backdrop-blur-md rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-white/10">
           <div className="grid lg:grid-cols-5 gap-0">
             {/* Image - takes 2/5 of space */}
             <div className="lg:col-span-2 relative min-h-75 lg:min-h-100 overflow-hidden">
@@ -342,7 +348,7 @@ const renderAnnouncements = () => {
                   (e.target as HTMLImageElement).src = "/images/announcement-placeholder.jpg";
                 }}
               />
-              {/* Gradient overlay for text readability on mobile */}
+              {/* linear overlay for text readability on mobile */}
               <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent lg:hidden"></div>
               
               {/* Badge */}
@@ -362,12 +368,12 @@ const renderAnnouncements = () => {
             {/* Content - takes 3/5 of space */}
             <div className="lg:col-span-3 p-8 lg:p-10 flex flex-col justify-center">
               {/* Title */}
-              <h3 className="text-2xl lg:text-3xl font-bold text-[#0a2540] mb-3 leading-tight">
+              <h3 className="text-2xl lg:text-3xl font-bold text-white mb-3 leading-tight">
                 {lang === "ar" ? currentAnnouncement.titleAr || currentAnnouncement.title : currentAnnouncement.title}
               </h3>
               
               {/* Description */}
-              <p className="text-gray-600 text-base lg:text-lg leading-relaxed mb-5">
+              <p className="text-[#a3ced6] text-base lg:text-lg leading-relaxed mb-5">
                 {lang === "ar" ? currentAnnouncement.descriptionAr || currentAnnouncement.description : currentAnnouncement.description}
               </p>
               
@@ -375,7 +381,7 @@ const renderAnnouncements = () => {
               {currentAnnouncement.points && currentAnnouncement.points.length > 0 && (
                 <div className="space-y-2.5">
                   {(lang === "ar" ? currentAnnouncement.pointsAr : currentAnnouncement.points).map((point: string, idx: number) => (
-                    <div key={idx} className="flex items-start gap-3 text-gray-700">
+                    <div key={idx} className="flex items-start gap-3 text-[#a3ced6]">
                       <span className="w-1.5 h-1.5 rounded-full bg-[#1a7a8a] mt-2 shrink-0"></span>
                       <span className="text-sm lg:text-base">{point}</span>
                     </div>
@@ -387,7 +393,7 @@ const renderAnnouncements = () => {
               <div className="flex flex-wrap items-center gap-4 mt-6">
                 {/* ✅ زر "اعرف أكثر" - يذهب إلى صفحة تفاصيل الإعلان (إذا وجدت) */}
                 <Link href={`/announcements/${currentAnnouncement._id}`}>
-                  <button className="text-[#1a7a8a] font-medium text-sm hover:text-[#0a2540] transition-colors inline-flex items-center gap-1 group/link">
+                  <button className="text-[#1a7a8a] font-medium text-sm hover:text-[#a3ced6] transition-colors inline-flex items-center gap-1 group/link">
                     {lang === "ar" ? "اعرف أكثر" : "Learn more"}
                     <ChevronLeft className="h-4 w-4 transition-transform group-hover/link:translate-x-1" />
                   </button>
@@ -395,7 +401,7 @@ const renderAnnouncements = () => {
 
                 {/* ✅ زر "استكشف الرحلات" - يذهب إلى صفحة الرحلات */}
                 <Link href="/trips">
-                  <button className="bg-[#0a2540] hover:bg-[#1a3a5c] text-white font-semibold px-6 py-2.5 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 inline-flex items-center gap-2">
+                  <button className="bg-[#1a7a8a] hover:bg-[#15707e] text-white font-semibold px-6 py-2.5 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 inline-flex items-center gap-2">
                     <span className="text-sm">
                       {lang === "ar" ? "استكشف الرحلات" : "Explore Trips"}
                     </span>
@@ -417,13 +423,105 @@ const renderAnnouncements = () => {
                 className={`h-1.5 rounded-full transition-all duration-300 ${
                   idx === currentAnnouncementIndex 
                     ? 'w-8 bg-[#1a7a8a]' 
-                    : 'w-4 bg-gray-300 hover:bg-gray-400'
+                    : 'w-4 bg-white/20 hover:bg-white/40'
                 }`}
                 aria-label={`Go to announcement ${idx + 1}`}
               />
             ))}
           </div>
         )}
+      </div>
+    </section>
+  );
+};
+
+
+
+// ── SUBSCRIPTIONS SECTION ──────────────────────────────────────
+const renderSubscriptions = () => {
+  
+  if (!subscriptions || subscriptions.length === 0) return null;
+
+ const filtered = subscriptions.filter((s: any) => 
+    selectedGrade === "all" ? true : s.grade === selectedGrade
+  );
+
+  return (
+    <section className="py-20 bg-[#f7fafa]">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl md:text-4xl font-bold text-[#0a2540] mb-3">
+            {lang === "ar" ? "أسعار باقات الإشتراك" : "Subscription Packages"}
+          </h2>
+          <div className="flex justify-center gap-4 mt-4">
+            {["all" ,  "primary", "middle", "high"].map((grade) => (
+              <button
+                key={grade}
+                onClick={() => setSelectedGrade(grade as any)}
+                className={`px-6 py-2 rounded-full transition-all duration-300 ${
+                  selectedGrade === grade
+                    ? "bg-[#1a7a8a] text-white"
+                    : "bg-white text-[#0a2540] border border-gray-200 hover:border-[#1a7a8a]"
+                }`}
+              >
+                {lang === "ar"
+                    ? grade === "all" ? "الكل" 
+                    : grade === "primary" ? "ابتدائي" 
+                    : grade === "middle" ? "متوسط" 
+                    : "ثانوي"
+                    : grade === "all" ? "All" 
+                    : grade === "primary" ? "Primary" 
+                    : grade === "middle" ? "Middle" 
+                    : "High"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {filtered.map((sub: any) => {
+            const isPopular = sub.isPopular;
+            return (
+              <Card key={sub._id} className={`relative overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-xl ${
+                isPopular ? "border-2 border-[#1a7a8a] shadow-lg" : "border border-gray-100"
+              }`}>
+                {isPopular && (
+                  <div className="absolute top-0 right-0 bg-[#1a7a8a] text-white text-xs font-bold px-4 py-1 rounded-bl-lg">
+                    {lang === "ar" ? "الأكثر طلباً" : "Popular"}
+                  </div>
+                )}
+                <CardContent className="p-6 text-center">
+                  <h3 className="text-xl font-bold text-[#0a2540]">
+                    {lang === "ar" ? sub.titleAr || sub.title : sub.title}
+                  </h3>
+                  <p className="text-sm text-gray-500 mt-2">
+                    {lang === "ar" ? sub.descriptionAr || sub.description : sub.description}
+                  </p>
+                  <div className="mt-4">
+                    <span className="text-4xl font-bold text-[#1a7a8a]">{sub.price}</span>
+                    <span className="text-sm text-gray-500 mr-1">ر.س</span>
+                  </div>
+                  <p className="text-sm text-gray-400 mt-1">
+                    {sub.sessionsCount} {lang === "ar" ? "حصة" : "Sessions"}
+                  </p>
+                  <ul className="mt-4 space-y-2 text-right">
+                    {(lang === "ar" ? sub.featuresAr : sub.features).map((feature: string, idx: number) => (
+                      <li key={idx} className="text-sm text-gray-600 flex items-center gap-2">
+                        <CheckCircle className="h-4 w-4 text-[#1a7a8a]" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link href={isSignedIn ? "/subscriptions" : "/sign-in"}>
+                    <Button className="w-full mt-6 bg-[#0a2540] hover:bg-[#1a3a5c] text-white">
+                      {lang === "ar" ? "اشترك الآن" : "Subscribe Now"}
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
@@ -976,6 +1074,9 @@ const renderAnnouncements = () => {
 
       {/* ── ANNOUNCEMENTS ───────────────────────────────────────── */}
       {renderAnnouncements()}
+
+      {/* ── SUBSCRIPTIONS ───────────────────────────────────────── */}
+      {renderSubscriptions()}
 
       {/* ── Courses from Convex ─────────────────────────────────── */}
       {renderCourses()}

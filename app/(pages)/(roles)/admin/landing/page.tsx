@@ -193,7 +193,7 @@ export default function AdminLandingPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
-  const [dialogType, setDialogType] = useState<"section" | "course" | "testimonial" | "gallery" | "video" | "announcement">("section");
+  const [dialogType, setDialogType] = useState<"section" | "course" | "testimonial" | "gallery" | "video" | "announcement" | "subscription">("section");
 
   // جلب بيانات Landing Page
   const landingData = useQuery(api.landing.landing.getLandingData);
@@ -203,6 +203,7 @@ export default function AdminLandingPage() {
   const gallery = useQuery(api.landing.landing.getGallery);
   const videoTestimonials = useQuery(api.landing.landing.getVideoTestimonials);
   const announcements = useQuery(api.landing.landing.getAnnouncements);
+  const subscriptions = useQuery(api.landing.landing.getSubscriptions);
 
   const updateSettings = useMutation(api.landing.landing.updateSettings);
   const createSection = useMutation(api.landing.landing.createSection);
@@ -223,6 +224,9 @@ export default function AdminLandingPage() {
   const createAnnouncement = useMutation(api.landing.landing.createAnnouncement);
   const updateAnnouncement = useMutation(api.landing.landing.updateAnnouncement);
   const deleteAnnouncement = useMutation(api.landing.landing.deleteAnnouncement);
+  const createSubscription = useMutation(api.landing.landing.createSubscription);
+  const updateSubscription = useMutation(api.landing.landing.updateSubscription);
+  const deleteSubscription = useMutation(api.landing.landing.deleteSubscription);
 
   const [settings, setSettings] = useState<LandingSettings>({
     heroBadge: "The Future of Marine Education",
@@ -264,7 +268,7 @@ export default function AdminLandingPage() {
 
   // ─── Dialog Handlers ──────────────────────────────────────────
 
-  const openCreateDialog = (type: "section" | "course" | "testimonial" | "gallery" | "video" | "announcement") => {
+  const openCreateDialog = (type: "section" | "course" | "testimonial" | "gallery" | "video" | "announcement" |  "subscription") => {
     setDialogType(type);
     let defaults = {};
     switch (type) {
@@ -291,6 +295,23 @@ export default function AdminLandingPage() {
           imageUrl: ""
         };
         break;
+        case "subscription": // ✅ أضف هذا
+      defaults = {
+        isPublished: true,
+        isPopular: false,
+        title: "",
+        titleAr: "",
+        description: "",
+        descriptionAr: "",
+        type: "monthly",
+        price: 0,
+        priceAr: "",
+        sessionsCount: 0,
+        grade: "primary",
+        features: [],
+        featuresAr: [],
+      };
+      break;
       case "video":
         defaults = { ...defaultVideo };
         break;
@@ -349,6 +370,9 @@ export default function AdminLandingPage() {
           case "announcement": // ✅ أضف هذا
             await updateAnnouncement({ announcementId: _id as any, ...cleanData });
             break;
+          case "subscription": // ✅ أضف هذا
+            await updateSubscription({ subscriptionId: _id as any, ...cleanData });
+            break;
         }
         toast.success("✅ تم التحديث بنجاح");
       } else {
@@ -370,6 +394,9 @@ export default function AdminLandingPage() {
             break;
           case "announcement": // ✅ أضف هذا
             await createAnnouncement({ ...editingItem, displayOrder: announcements?.length || 0 });
+            break;
+          case "subscription": // ✅ أضف هذا
+            await createSubscription({ ...editingItem, displayOrder: subscriptions?.length || 0 });
             break;
         }
         toast.success("✅ تم الإضافة بنجاح");
@@ -402,6 +429,9 @@ export default function AdminLandingPage() {
           break;
         case "announcement": // ✅ أضف هذا
           await deleteAnnouncement({ announcementId: id as any });
+          break;
+        case "subscription": // ✅ أضف هذا
+          await deleteSubscription({ subscriptionId: id as any });
           break;
       }
       toast.success("✅ تم الحذف بنجاح");
@@ -976,6 +1006,124 @@ export default function AdminLandingPage() {
     );
   };
 
+
+  const renderSubscriptionsTab = () => {
+
+
+    return (
+      <div className="space-y-4" dir="rtl">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">باقات الاشتراك</h3>
+          <Button
+            onClick={() => {
+              setDialogType("subscription");
+              setEditingItem({
+                isPublished: true,
+                isPopular: false,
+                title: "",
+                titleAr: "",
+                description: "",
+                descriptionAr: "",
+                type: "monthly",
+                price: 0,
+                priceAr: "",
+                sessionsCount: 0,
+                grade: "primary",
+                features: [],
+                featuresAr: [],
+              });
+              setIsDialogOpen(true);
+            }}
+            className="bg-[#001f24] hover:bg-[#03363d] text-white"
+          >
+            <Plus className="h-4 w-4 ml-2" />
+            إضافة باقة
+          </Button>
+        </div>
+
+        {!subscriptions || subscriptions.length === 0 ? (
+          <Card className="p-8 text-center">
+            <TrendingUp className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+            <p className="text-gray-500">لا توجد باقات اشتراك</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {subscriptions.map((item: any) => (
+              <Card key={item._id} className={`overflow-hidden ${item.isPopular ? 'border-[#1a7a8a] border-2' : ''}`}>
+                {item.isPopular && (
+                  <div className="bg-[#1a7a8a] text-white text-center text-xs font-semibold py-1">
+                    الأكثر طلباً
+                  </div>
+                )}
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-[#001f24]">
+                        {item.title || item.titleAr}
+                      </h4>
+                      <p className="text-sm text-gray-500 line-clamp-2 mt-1">
+                        {item.description || item.descriptionAr}
+                      </p>
+                      <div className="mt-2">
+                        <span className="text-2xl font-bold text-[#1a7a8a]">{item.price}</span>
+                        <span className="text-sm text-gray-500 mr-1">ر.س</span>
+                      </div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        {item.sessionsCount} حصة • {item.grade === "primary" ? "ابتدائي" : item.grade === "middle" ? "متوسط" : "ثانوي"}
+                      </div>
+                      {item.features && item.features.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {item.features.slice(0, 2).map((feature: string, idx: number) => (
+                            <p key={idx} className="text-xs text-gray-400 flex items-start gap-1">
+                              <span className="text-[#1a7a8a]">•</span>
+                              {feature.length > 30 ? feature.slice(0, 30) + "..." : feature}
+                            </p>
+                          ))}
+                          {item.features.length > 2 && (
+                            <p className="text-xs text-[#1a7a8a]">+{item.features.length - 2} مميزات أخرى</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-1 mr-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setDialogType("subscription");
+                          setEditingItem(item);
+                          setIsDialogOpen(true);
+                        }}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-700"
+                        onClick={async () => {
+                          if (confirm("هل أنت متأكد من حذف هذه الباقة؟")) {
+                            await deleteSubscription({ subscriptionId: item._id });
+                            toast.success("تم حذف الباقة بنجاح");
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <Badge className={item.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                    {item.isPublished ? "منشور" : "غير منشور"}
+                  </Badge>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderVideoTestimonialsTab = () => {
     return (
       <div className="space-y-4" dir="rtl">
@@ -1349,6 +1497,141 @@ export default function AdminLandingPage() {
                   onChange={(e) => setEditingItem({ ...editingItem, isPublished: e.target.checked })}
                 />
                 منشور
+              </Label>
+            </div>
+          </div>
+        );
+        break;
+
+      case "subscription":
+        title = isEditing ? "تعديل باقة الاشتراك" : "إضافة باقة اشتراك جديدة";
+        fields = (
+          <div className="space-y-4" dir="rtl">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>العنوان (عربي)</Label>
+                <Input
+                  value={editingItem.titleAr || ""}
+                  onChange={(e) => setEditingItem({ ...editingItem, titleAr: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>العنوان (إنجليزي)</Label>
+                <Input
+                  value={editingItem.title || ""}
+                  onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>الوصف (عربي)</Label>
+                <Textarea
+                  value={editingItem.descriptionAr || ""}
+                  onChange={(e) => setEditingItem({ ...editingItem, descriptionAr: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>الوصف (إنجليزي)</Label>
+                <Textarea
+                  value={editingItem.description || ""}
+                  onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
+                  rows={2}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>السعر (ر.س)</Label>
+                <Input
+                  type="number"
+                  value={editingItem.price || 0}
+                  onChange={(e) => setEditingItem({ ...editingItem, price: parseFloat(e.target.value) })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>عدد الحصص</Label>
+                <Input
+                  type="number"
+                  value={editingItem.sessionsCount || 0}
+                  onChange={(e) => setEditingItem({ ...editingItem, sessionsCount: parseInt(e.target.value) })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>المرحلة الدراسية</Label>
+                <select
+                  value={editingItem.grade || "primary"}
+                  onChange={(e) => setEditingItem({ ...editingItem, grade: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a7a8a]"
+                >
+                  <option value="primary">ابتدائي</option>
+                  <option value="middle">متوسط</option>
+                  <option value="high">ثانوي</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label>نوع الباقة</Label>
+                <select
+                  value={editingItem.type || "monthly"}
+                  onChange={(e) => setEditingItem({ ...editingItem, type: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#1a7a8a]"
+                >
+                  <option value="single">حصة واحدة</option>
+                  <option value="monthly">شهري</option>
+                  <option value="quarterly">فصلي</option>
+                  <option value="yearly">سنوي</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>المميزات (عربي) - كل مميزة في سطر جديد</Label>
+              <Textarea
+                value={editingItem.featuresAr?.join("\n") || ""}
+                onChange={(e) => setEditingItem({
+                  ...editingItem,
+                  featuresAr: e.target.value.split("\n").filter((p: string) => p.trim() !== "")
+                })}
+                rows={4}
+                placeholder="مميزة 1\nمميزة 2\nمميزة 3"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>المميزات (إنجليزي) - كل مميزة في سطر جديد</Label>
+              <Textarea
+                value={editingItem.features?.join("\n") || ""}
+                onChange={(e) => setEditingItem({
+                  ...editingItem,
+                  features: e.target.value.split("\n").filter((p: string) => p.trim() !== "")
+                })}
+                rows={4}
+                placeholder="Feature 1\nFeature 2\nFeature 3"
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4">
+              <Label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={editingItem.isPublished ?? true}
+                  onChange={(e) => setEditingItem({ ...editingItem, isPublished: e.target.checked })}
+                />
+                منشور
+              </Label>
+              <Label className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={editingItem.isPopular ?? false}
+                  onChange={(e) => setEditingItem({ ...editingItem, isPopular: e.target.checked })}
+                />
+                الأكثر طلباً
               </Label>
             </div>
           </div>
@@ -1791,6 +2074,10 @@ export default function AdminLandingPage() {
             <Megaphone className="h-4 w-4 ml-2" />
             الإعلانات
           </TabsTrigger>
+          <TabsTrigger value="subscriptions">
+            <TrendingUp className="h-4 w-4 ml-2" />
+            الاشتراكات
+          </TabsTrigger>
           <TabsTrigger value="courses">
             <BookOpen className="h-4 w-4 ml-2" />
             الدورات
@@ -1819,6 +2106,10 @@ export default function AdminLandingPage() {
 
         <TabsContent value="announcements" className="mt-4">
           {renderAnnouncementsTab()}
+        </TabsContent>
+
+        <TabsContent value="subscriptions" className="mt-4">
+          {renderSubscriptionsTab()}
         </TabsContent>
 
         <TabsContent value="courses" className="mt-4">
