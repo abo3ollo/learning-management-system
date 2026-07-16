@@ -63,6 +63,11 @@ interface LandingSettings {
   heroRatingLabel?: string;
   heroRatingLabelAr?: string;
 
+  heroBottomText?: string;
+  heroBottomTextAr?: string;
+  heroBottomSmText?: string;
+  heroBottomSmTextAr?: string;
+
   schoolName: string;
   schoolNameAr: string;
 
@@ -231,13 +236,17 @@ export default function AdminLandingPage() {
   const [settings, setSettings] = useState<LandingSettings>({
     heroBadge: "The Future of Marine Education",
     heroBadgeAr: "مستقبل التعليم البحري",
-    heroTitle: "Learn Anytime, Anywhere with Marine Academy",
-    heroTitleAr: "تعلّم في أي وقت، من أي مكان مع أكاديمية مارين",
+    heroTitle: "Book Your Private Tutor for",
+    heroTitleAr: "احجز معلمك الخصوصي لـ",
     heroSubtitle: "A comprehensive educational platform designed to empower students and teachers through advanced interactive tools.",
     heroSubtitleAr: "منصة تعليمية شاملة مصممة لتمكين الطلاب والمعلمين من خلال أدوات تفاعلية متقدمة.",
-    heroImageUrl: "/images/hero.png",
-    schoolName: "Marine Academy",
-    schoolNameAr: "أكاديمية مارين",
+    heroBottomText: "Learn English in Britain with Confidence",
+    heroBottomTextAr: "تعلم الإنجليزية في بريطانيا بخطوات واضحة",
+    heroBottomSmText: "Steps Steps to Learn English in Britain",
+    heroBottomSmTextAr: "خطوات تعلم الإنجليزية في بريطانيا",
+    heroImageUrl: "/images/Hero1.png",
+    schoolName: "Test Academy",
+    schoolNameAr: "أكاديمية تجريبي",
     ctaText: "Start Your Journey Now",
     ctaTextAr: "ابدأ رحلتك الآن",
     ctaUrl: "/onboarding",
@@ -260,15 +269,15 @@ export default function AdminLandingPage() {
     addressAr: "الرياض، المملكة العربية السعودية",
     footerDescription: "The global leader in marine and technical education.",
     footerDescriptionAr: "الرائد العالمي في التعليم البحري والتقني.",
-    seoTitle: "Marine Academy - Premier Marine Education Platform",
-    seoTitleAr: "أكاديمية مارين - منصة التعليم البحري الرائدة",
+    seoTitle: "Test Academy - Premier Marine Education Platform",
+    seoTitleAr: "أكاديمية تجريبي - منصة التعليم البحري الرائدة",
     seoDescription: "Marine Academy offers comprehensive marine education with live classes, expert teachers, and interactive learning tools.",
     seoDescriptionAr: "تقدم أكاديمية مارين تعليماً بحرياً شاملاً مع فصول مباشرة ومعلمين خبراء وأدوات تعلم تفاعلية.",
   });
 
   // ─── Dialog Handlers ──────────────────────────────────────────
 
-  const openCreateDialog = (type: "section" | "course" | "testimonial" | "gallery" | "video" | "announcement" |  "subscription") => {
+  const openCreateDialog = (type: "section" | "course" | "testimonial" | "gallery" | "video" | "announcement" | "subscription") => {
     setDialogType(type);
     let defaults = {};
     switch (type) {
@@ -295,23 +304,23 @@ export default function AdminLandingPage() {
           imageUrl: ""
         };
         break;
-        case "subscription": // ✅ أضف هذا
-      defaults = {
-        isPublished: true,
-        isPopular: false,
-        title: "",
-        titleAr: "",
-        description: "",
-        descriptionAr: "",
-        type: "monthly",
-        price: 0,
-        priceAr: "",
-        sessionsCount: 0,
-        grade: "primary",
-        features: [],
-        featuresAr: [],
-      };
-      break;
+      case "subscription": // ✅ أضف هذا
+        defaults = {
+          isPublished: true,
+          isPopular: false,
+          title: "",
+          titleAr: "",
+          description: "",
+          descriptionAr: "",
+          type: "monthly",
+          price: 0,
+          priceAr: "",
+          sessionsCount: 0,
+          grade: "primary",
+          features: [],
+          featuresAr: [],
+        };
+        break;
       case "video":
         defaults = { ...defaultVideo };
         break;
@@ -566,6 +575,48 @@ export default function AdminLandingPage() {
             )}
           </div>
 
+          {/* ✅ Hero Bottom Text - النص الموجود تحت الصورة */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#f7fafa] rounded-lg border border-[#c0c8c9]">
+            <div className="space-y-2">
+              <Label>نص تحت الصورة (عربي)</Label>
+              <Textarea
+                value={settings.heroBottomTextAr || "تعلم الإنجليزية في بريطانيا بخطوات واضحة"}
+                onChange={(e) => setSettings({ ...settings, heroBottomTextAr: e.target.value })}
+                placeholder="نص تحت الصورة بالعربية"
+                rows={2}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>نص تحت الصورة (إنجليزي)</Label>
+              <Textarea
+                value={settings.heroBottomText || "Learn English in Britain with Confidence"}
+                onChange={(e) => setSettings({ ...settings, heroBottomText: e.target.value })}
+                placeholder="Text under image in English"
+                rows={1}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#f7fafa] rounded-lg border border-[#c0c8c9]">
+            <div className="space-y-2">
+              <Label>نص الصغير تحت الصورة (عربي)</Label>
+              <Textarea
+                value={settings.heroBottomSmTextAr || "تعلم الإنجليزية في بريطانيا بخطوات واضحة"}
+                onChange={(e) => setSettings({ ...settings, heroBottomSmTextAr: e.target.value })}
+                placeholder="نص تحت الصورة بالعربية"
+                rows={1}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>نص الصغير تحت الصورة (إنجليزي)</Label>
+              <Textarea
+                value={settings.heroBottomSmText || "Learn English in Britain with Confidence"}
+                onChange={(e) => setSettings({ ...settings, heroBottomSmText: e.target.value })}
+                placeholder="Text under image in English"
+                rows={1}
+              />
+            </div>
+          </div>
+
           {/* Primary CTA */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[#f7fafa] rounded-lg border border-[#c0c8c9]">
             <div className="space-y-2">
@@ -761,7 +812,7 @@ export default function AdminLandingPage() {
       </Card>
 
       {/* Stats Section */}
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-[#1a7a8a]" />
@@ -825,7 +876,7 @@ export default function AdminLandingPage() {
             </Button>
           </div>
         </CardContent>
-      </Card>
+      </Card> */}
     </div>
   );
 

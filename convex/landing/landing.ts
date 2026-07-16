@@ -70,6 +70,11 @@ export const updateSettings = mutation({
     heroRatingLabel: v.optional(v.string()),
     heroRatingLabelAr: v.optional(v.string()),
 
+    heroBottomText: v.optional(v.string()),
+    heroBottomTextAr: v.optional(v.string()),
+    heroBottomSmText: v.optional(v.string()),
+    heroBottomSmTextAr: v.optional(v.string()),
+
     // School Name
     schoolName: v.optional(v.string()),
     schoolNameAr: v.optional(v.string()),
@@ -158,7 +163,11 @@ export const updateSettings = mutation({
           "A comprehensive educational platform designed to empower students and teachers through advanced interactive tools.",
         heroSubtitleAr:
           "منصة تعليمية شاملة مصممة لتمكين الطلاب والمعلمين من خلال أدوات تفاعلية متقدمة.",
-        heroImageUrl: "/images/hero.png",
+        heroImageUrl: "/images/Hero1.png",
+        heroBottomText: "Learn English in Britain with Confidence",
+        heroBottomTextAr: "تعلم الإنجليزية في بريطانيا بخطوات واضحة",
+         heroBottomSmText: "Steps Steps to Learn English in Britain",
+        heroBottomSmTextAr: "خطوات تعلم الإنجليزية في بريطانيا",
         heroRating: "4.8",
         heroRatingLabel: "Student Satisfaction",
         heroRatingLabelAr: "نسبة رضا الطالب",
@@ -885,7 +894,6 @@ export const deleteAnnouncement = mutation({
   },
 });
 
-
 // convex/landing/landing.ts
 
 // ══════════════════════════════════════════════════════════════════
@@ -897,29 +905,29 @@ export const getSubscriptions = query({
   args: {},
   handler: async (ctx) => {
     const admin = await getAdminUser(ctx);
-    
-    const subscriptions = await ctx.db
-      .query("subscriptions")
-      .collect();
-    
+
+    const subscriptions = await ctx.db.query("subscriptions").collect();
+
     return subscriptions.sort((a, b) => a.displayOrder - b.displayOrder);
   },
 });
 
 // ✅ جلب الاشتراكات المنشورة (للعرض العام)
 export const getPublicSubscriptions = query({
-  args: { grade: v.optional(v.union(v.literal("primary"), v.literal("middle"), v.literal("high"))) },
+  args: {
+    grade: v.optional(
+      v.union(v.literal("primary"), v.literal("middle"), v.literal("high")),
+    ),
+  },
   handler: async (ctx, args) => {
-    let subscriptions = await ctx.db
-      .query("subscriptions")
-      .collect();
-    
+    let subscriptions = await ctx.db.query("subscriptions").collect();
+
     subscriptions = subscriptions.filter((s) => s.isPublished);
-    
+
     if (args.grade) {
       subscriptions = subscriptions.filter((s) => s.grade === args.grade);
     }
-    
+
     return subscriptions.sort((a, b) => a.displayOrder - b.displayOrder);
   },
 });
@@ -935,7 +943,7 @@ export const createSubscription = mutation({
       v.literal("single"),
       v.literal("monthly"),
       v.literal("quarterly"),
-      v.literal("yearly")
+      v.literal("yearly"),
     ),
     price: v.number(),
     priceAr: v.string(),
@@ -943,7 +951,7 @@ export const createSubscription = mutation({
     grade: v.union(
       v.literal("primary"),
       v.literal("middle"),
-      v.literal("high")
+      v.literal("high"),
     ),
     features: v.array(v.string()),
     featuresAr: v.array(v.string()),
@@ -953,7 +961,7 @@ export const createSubscription = mutation({
   },
   handler: async (ctx, args) => {
     const admin = await getAdminUser(ctx);
-    
+
     return await ctx.db.insert("subscriptions", {
       ...args,
       createdAt: Date.now(),
@@ -970,20 +978,20 @@ export const updateSubscription = mutation({
     titleAr: v.optional(v.string()),
     description: v.optional(v.string()),
     descriptionAr: v.optional(v.string()),
-    type: v.optional(v.union(
-      v.literal("single"),
-      v.literal("monthly"),
-      v.literal("quarterly"),
-      v.literal("yearly")
-    )),
+    type: v.optional(
+      v.union(
+        v.literal("single"),
+        v.literal("monthly"),
+        v.literal("quarterly"),
+        v.literal("yearly"),
+      ),
+    ),
     price: v.optional(v.number()),
     priceAr: v.optional(v.string()),
     sessionsCount: v.optional(v.number()),
-    grade: v.optional(v.union(
-      v.literal("primary"),
-      v.literal("middle"),
-      v.literal("high")
-    )),
+    grade: v.optional(
+      v.union(v.literal("primary"), v.literal("middle"), v.literal("high")),
+    ),
     features: v.optional(v.array(v.string())),
     featuresAr: v.optional(v.array(v.string())),
     isPopular: v.optional(v.boolean()),
@@ -993,15 +1001,15 @@ export const updateSubscription = mutation({
   handler: async (ctx, args) => {
     const admin = await getAdminUser(ctx);
     const { subscriptionId, ...fields } = args;
-    
+
     const subscription = await ctx.db.get(subscriptionId);
     if (!subscription) throw new Error("الاشتراك غير موجود");
-    
+
     await ctx.db.patch(subscriptionId, {
       ...fields,
       updatedAt: Date.now(),
     });
-    
+
     return { success: true };
   },
 });
@@ -1011,10 +1019,10 @@ export const deleteSubscription = mutation({
   args: { subscriptionId: v.id("subscriptions") },
   handler: async (ctx, args) => {
     const admin = await getAdminUser(ctx);
-    
+
     const subscription = await ctx.db.get(args.subscriptionId);
     if (!subscription) throw new Error("الاشتراك غير موجود");
-    
+
     await ctx.db.delete(args.subscriptionId);
     return { success: true };
   },

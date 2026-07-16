@@ -17,13 +17,16 @@ import {
   FaBars,
   FaTimes,
 } from "react-icons/fa";
+import { IoBookOutline } from "react-icons/io5";
 import { MdOutlineEmail, MdOutlineRadio } from "react-icons/md";
-import { ArrowRight, CheckCircle, ChevronLeft, ChevronRight, Loader2, Megaphone } from "lucide-react";
+import { ArrowRight, CheckCircle, ChevronLeft, ChevronRight, Loader2, Megaphone, ShieldCheck } from "lucide-react";
 import * as Icons from "react-icons/fa";
 import { PiStudentBold } from "react-icons/pi";
 import { RiParentFill } from "react-icons/ri";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { LuClock5 } from "react-icons/lu";
+import { HiOutlineUserGroup } from "react-icons/hi";
 
 
 // ─── Icon Mapping ────────────────────────────────────────────────
@@ -53,7 +56,7 @@ export default function LandingPage() {
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
   const [selectedEmbedType, setSelectedEmbedType] = useState<string>("youtube");
   const [currentAnnouncementIndex, setCurrentAnnouncementIndex] = useState(0);
-  const [selectedGrade, setSelectedGrade] = useState< "all" | "primary" | "middle" | "high">("all");
+  const [selectedGrade, setSelectedGrade] = useState<"all" | "primary" | "middle" | "high">("all");
 
 
   // ✅ جلب البيانات من Convex - مع تمرير args فارغ
@@ -82,22 +85,22 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
-  if (!announcements || announcements.length <= 1) return;
-  
-  const interval = setInterval(() => {
-    setCurrentAnnouncementIndex((prev) => (prev + 1) % announcements.length);
-  }, 5000);
-  return () => clearInterval(interval);
-}, [announcements]);
+    if (!announcements || announcements.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setCurrentAnnouncementIndex((prev) => (prev + 1) % announcements.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [announcements]);
 
   // حالة التحميل
   if (settings === undefined || sections === undefined || courses === undefined || testimonials === undefined || videoTestimonials === undefined || announcements === undefined || subscriptions === undefined) {
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-white">
-      <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
-    </div>
-  );
-}
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
+      </div>
+    );
+  }
 
   // إذا لم توجد إعدادات، استخدم البيانات الافتراضية
   const defaultSettings = {
@@ -284,241 +287,259 @@ export default function LandingPage() {
   };
 
 
-// ── ANNOUNCEMENTS SECTION ──────────────────────────────────────
-const renderAnnouncements = () => {
-  if (!announcements || announcements.length === 0) return null;
+  // ── ANNOUNCEMENTS SECTION ──────────────────────────────────────
+  const renderAnnouncements = () => {
+    if (!announcements || announcements.length === 0) return null;
 
-  const currentAnnouncement = announcements[currentAnnouncementIndex];
+    const currentAnnouncement = announcements[currentAnnouncementIndex];
+
+    return (
+      <section className="py-20 bg-linear-to-r from-[#001f24] to-[#03363d]">
+        <div className="max-w-7xl mx-auto px-6">
+          {/* Section header with editorial feel */}
+          <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center gap-4">
+              <div className="w-1 h-8 bg-[#1a7a8a] rounded-full"></div>
+              <div>
+                <h2 className="text-2xl font-bold text-white tracking-tight">
+                  {lang === "ar" ? "أحدث الإعلانات" : "Latest Announcements"}
+                </h2>
+                <p className="text-sm text-[#a3ced6]">
+                  {lang === "ar" ? "آخر المستجدات والأخبار" : "News and updates"}
+                </p>
+              </div>
+            </div>
+            {announcements.length > 1 && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-[#a3ced6] font-medium">
+                  {String(currentAnnouncementIndex + 1).padStart(2, '0')} / {String(announcements.length).padStart(2, '0')}
+                </span>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => setCurrentAnnouncementIndex((prev) =>
+                      prev === 0 ? announcements.length - 1 : prev - 1
+                    )}
+                    className="p-2 rounded-lg border border-white/20 hover:border-[#1a7a8a] hover:bg-[#1a7a8a]/20 transition-all duration-200 group"
+                    aria-label="Previous announcement"
+                  >
+                    <ChevronRight className="h-4 w-4 text-[#a3ced6] group-hover:text-[#1a7a8a]" />
+                  </button>
+                  <button
+                    onClick={() => setCurrentAnnouncementIndex((prev) =>
+                      (prev + 1) % announcements.length
+                    )}
+                    className="p-2 rounded-lg border border-white/20 hover:border-[#1a7a8a] hover:bg-[#1a7a8a]/20 transition-all duration-200 group"
+                    aria-label="Next announcement"
+                  >
+                    <ChevronLeft className="h-4 w-4 text-[#a3ced6] group-hover:text-[#1a7a8a]" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Feature card - editorial style */}
+          <div className="group relative bg-white/10 backdrop-blur-md rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-white/10">
+            <div className="grid lg:grid-cols-5 gap-0">
+              {/* Image - takes 2/5 of space */}
+              <div className="lg:col-span-2 relative min-h-75 lg:min-h-100 overflow-hidden">
+                <img
+                  src={currentAnnouncement.imageUrl || "/images/announcement-placeholder.jpg"}
+                  alt={currentAnnouncement.title}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = "/images/announcement-placeholder.jpg";
+                  }}
+                />
+                {/* linear overlay for text readability on mobile */}
+                <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent lg:hidden"></div>
+
+                {/* Badge */}
+                <div className="absolute top-4 left-4 bg-[#1a7a8a] text-white text-xs font-medium px-3 py-1.5 rounded-full tracking-wide flex items-center gap-1.5 shadow-lg">
+                  <Megaphone className="h-3 w-3" />
+                  {lang === "ar" ? "إعلان" : "Announcement"}
+                </div>
+
+                {/* Counter badge on image - mobile only */}
+                {announcements.length > 1 && (
+                  <div className="absolute bottom-4 right-4 lg:hidden bg-black/60 backdrop-blur text-white text-xs px-3 py-1 rounded-full">
+                    {currentAnnouncementIndex + 1} / {announcements.length}
+                  </div>
+                )}
+              </div>
+
+              {/* Content - takes 3/5 of space */}
+              <div className="lg:col-span-3 p-8 lg:p-10 flex flex-col justify-center">
+                {/* Title */}
+                <h3 className="text-2xl lg:text-3xl font-bold text-white mb-3 leading-tight">
+                  {lang === "ar" ? currentAnnouncement.titleAr || currentAnnouncement.title : currentAnnouncement.title}
+                </h3>
+
+                {/* Description */}
+                <p className="text-[#a3ced6] text-base lg:text-lg leading-relaxed mb-5">
+                  {lang === "ar" ? currentAnnouncement.descriptionAr || currentAnnouncement.description : currentAnnouncement.description}
+                </p>
+
+                {/* Points with elegant bullets */}
+                {currentAnnouncement.points && currentAnnouncement.points.length > 0 && (
+                  <div className="space-y-2.5">
+                    {(lang === "ar" ? currentAnnouncement.pointsAr : currentAnnouncement.points).map((point: string, idx: number) => (
+                      <div key={idx} className="flex items-start gap-3 text-[#a3ced6]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#1a7a8a] mt-2 shrink-0"></span>
+                        <span className="text-sm lg:text-base">{point}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Buttons - Learn More & View Trips */}
+                <div className="flex flex-wrap items-center gap-4 mt-6">
+                  {/* ✅ زر "اعرف أكثر" - يذهب إلى صفحة تفاصيل الإعلان (إذا وجدت) */}
+                  <Link href={`/announcements/${currentAnnouncement._id}`}>
+                    <button className="text-[#1a7a8a] font-medium text-sm hover:text-[#a3ced6] transition-colors inline-flex items-center gap-1 group/link">
+                      {lang === "ar" ? "اعرف أكثر" : "Learn more"}
+                      <ChevronLeft className="h-4 w-4 transition-transform group-hover/link:translate-x-1" />
+                    </button>
+                  </Link>
+
+                  {/* ✅ زر "استكشف الرحلات" - يذهب إلى صفحة الرحلات */}
+                  <Link href="/trips">
+                    <button className="bg-[#1a7a8a] hover:bg-[#15707e] text-white font-semibold px-6 py-2.5 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 inline-flex items-center gap-2">
+                      <span className="text-sm">
+                        {lang === "ar" ? "استكشف الرحلات" : "Explore Trips"}
+                      </span>
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Progress indicators */}
+          {announcements.length > 1 && (
+            <div className="flex justify-center gap-2 mt-6">
+              {announcements.map((_: any, idx: number) => (
+                <button
+                  key={idx}
+                  onClick={() => setCurrentAnnouncementIndex(idx)}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentAnnouncementIndex
+                    ? 'w-8 bg-[#1a7a8a]'
+                    : 'w-4 bg-white/20 hover:bg-white/40'
+                    }`}
+                  aria-label={`Go to announcement ${idx + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+    );
+  };
+
+  // ── VIDEO TESTIMONIALS SECTION ──────────────────────────────
+const renderVideoTestimonials = () => {
+  if (!videoTestimonials || videoTestimonials.length === 0) return null;
 
   return (
     <section className="py-20 bg-linear-to-r from-[#001f24] to-[#03363d]">
       <div className="max-w-7xl mx-auto px-6">
-        {/* Section header with editorial feel */}
-        <div className="flex items-center justify-between mb-10">
-          <div className="flex items-center gap-4">
+        <div className="text-center mb-14">
+          <div className="flex items-center justify-center gap-3 mb-4">
             <div className="w-1 h-8 bg-[#1a7a8a] rounded-full"></div>
-            <div>
-              <h2 className="text-2xl font-bold text-white tracking-tight">
-                {lang === "ar" ? "أحدث الإعلانات" : "Latest Announcements"}
-              </h2>
-              <p className="text-sm text-[#a3ced6]">
-                {lang === "ar" ? "آخر المستجدات والأخبار" : "News and updates"}
-              </p>
-            </div>
+            <h2 className="text-3xl font-bold text-white">
+              {lang === "ar" ? "لا تسمع منا... اسمع من طلابنا" : "Don't just take our word for it... hear from our students."}
+            </h2>
+            <div className="w-1 h-8 bg-[#1a7a8a] rounded-full"></div>
           </div>
-          {announcements.length > 1 && (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-[#a3ced6] font-medium">
-                {String(currentAnnouncementIndex + 1).padStart(2, '0')} / {String(announcements.length).padStart(2, '0')}
-              </span>
-              <div className="flex gap-1">
-                <button
-                  onClick={() => setCurrentAnnouncementIndex((prev) => 
-                    prev === 0 ? announcements.length - 1 : prev - 1
-                  )}
-                  className="p-2 rounded-lg border border-white/20 hover:border-[#1a7a8a] hover:bg-[#1a7a8a]/20 transition-all duration-200 group"
-                  aria-label="Previous announcement"
-                >
-                  <ChevronRight className="h-4 w-4 text-[#a3ced6] group-hover:text-[#1a7a8a]" />
-                </button>
-                <button
-                  onClick={() => setCurrentAnnouncementIndex((prev) => 
-                    (prev + 1) % announcements.length
-                  )}
-                  className="p-2 rounded-lg border border-white/20 hover:border-[#1a7a8a] hover:bg-[#1a7a8a]/20 transition-all duration-200 group"
-                  aria-label="Next announcement"
-                >
-                  <ChevronLeft className="h-4 w-4 text-[#a3ced6] group-hover:text-[#1a7a8a]" />
-                </button>
-              </div>
-            </div>
-          )}
+          <p className="text-[#a3ced6]">
+            {lang === "ar" ? "شاهد تجارب طلابنا مع المدرسين الخصوصيين" : "Watch our students' experiences with private tutors"}
+          </p>
         </div>
 
-        {/* Feature card - editorial style */}
-        <div className="group relative bg-white/10 backdrop-blur-md rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border border-white/10">
-          <div className="grid lg:grid-cols-5 gap-0">
-            {/* Image - takes 2/5 of space */}
-            <div className="lg:col-span-2 relative min-h-75 lg:min-h-100 overflow-hidden">
-              <img
-                src={currentAnnouncement.imageUrl || "/images/announcement-placeholder.jpg"}
-                alt={currentAnnouncement.title}
-                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "/images/announcement-placeholder.jpg";
-                }}
-              />
-              {/* linear overlay for text readability on mobile */}
-              <div className="absolute inset-0 bg-linear-to-t from-black/40 via-transparent to-transparent lg:hidden"></div>
-              
-              {/* Badge */}
-              <div className="absolute top-4 left-4 bg-[#1a7a8a] text-white text-xs font-medium px-3 py-1.5 rounded-full tracking-wide flex items-center gap-1.5 shadow-lg">
-                <Megaphone className="h-3 w-3" />
-                {lang === "ar" ? "إعلان" : "Announcement"}
-              </div>
-              
-              {/* Counter badge on image - mobile only */}
-              {announcements.length > 1 && (
-                <div className="absolute bottom-4 right-4 lg:hidden bg-black/60 backdrop-blur text-white text-xs px-3 py-1 rounded-full">
-                  {currentAnnouncementIndex + 1} / {announcements.length}
-                </div>
-              )}
-            </div>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {videoTestimonials.map((video: any) => {
+            const isYouTube = video.embedType === "youtube";
+            const videoId = getYouTubeId(video.videoUrl);
 
-            {/* Content - takes 3/5 of space */}
-            <div className="lg:col-span-3 p-8 lg:p-10 flex flex-col justify-center">
-              {/* Title */}
-              <h3 className="text-2xl lg:text-3xl font-bold text-white mb-3 leading-tight">
-                {lang === "ar" ? currentAnnouncement.titleAr || currentAnnouncement.title : currentAnnouncement.title}
-              </h3>
-              
-              {/* Description */}
-              <p className="text-[#a3ced6] text-base lg:text-lg leading-relaxed mb-5">
-                {lang === "ar" ? currentAnnouncement.descriptionAr || currentAnnouncement.description : currentAnnouncement.description}
-              </p>
-              
-              {/* Points with elegant bullets */}
-              {currentAnnouncement.points && currentAnnouncement.points.length > 0 && (
-                <div className="space-y-2.5">
-                  {(lang === "ar" ? currentAnnouncement.pointsAr : currentAnnouncement.points).map((point: string, idx: number) => (
-                    <div key={idx} className="flex items-start gap-3 text-[#a3ced6]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#1a7a8a] mt-2 shrink-0"></span>
-                      <span className="text-sm lg:text-base">{point}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-              
-              {/* Buttons - Learn More & View Trips */}
-              <div className="flex flex-wrap items-center gap-4 mt-6">
-                {/* ✅ زر "اعرف أكثر" - يذهب إلى صفحة تفاصيل الإعلان (إذا وجدت) */}
-                <Link href={`/announcements/${currentAnnouncement._id}`}>
-                  <button className="text-[#1a7a8a] font-medium text-sm hover:text-[#a3ced6] transition-colors inline-flex items-center gap-1 group/link">
-                    {lang === "ar" ? "اعرف أكثر" : "Learn more"}
-                    <ChevronLeft className="h-4 w-4 transition-transform group-hover/link:translate-x-1" />
-                  </button>
-                </Link>
+            // ✅ عدة مصادر لغلاف اليوتيوب
+            const getYouTubeThumbnail = (id: string) => {
+              const sources = [
+                `https://img.youtube.com/vi/${id}/maxresdefault.jpg`,
+                `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
+                `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
+                `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`,
+                `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+              ];
+              return sources;
+            };
 
-                {/* ✅ زر "استكشف الرحلات" - يذهب إلى صفحة الرحلات */}
-                <Link href="/trips">
-                  <button className="bg-[#1a7a8a] hover:bg-[#15707e] text-white font-semibold px-6 py-2.5 rounded-xl transition-all duration-300 shadow-md hover:shadow-lg transform hover:scale-105 inline-flex items-center gap-2">
-                    <span className="text-sm">
-                      {lang === "ar" ? "استكشف الرحلات" : "Explore Trips"}
-                    </span>
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
+            const thumbnailSources = isYouTube && videoId
+              ? getYouTubeThumbnail(videoId)
+              : [video.thumbnailUrl || '/images/video-placeholder.jpg'];
 
-        {/* Progress indicators */}
-        {announcements.length > 1 && (
-          <div className="flex justify-center gap-2 mt-6">
-            {announcements.map((_: any, idx: number) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentAnnouncementIndex(idx)}
-                className={`h-1.5 rounded-full transition-all duration-300 ${
-                  idx === currentAnnouncementIndex 
-                    ? 'w-8 bg-[#1a7a8a]' 
-                    : 'w-4 bg-white/20 hover:bg-white/40'
-                }`}
-                aria-label={`Go to announcement ${idx + 1}`}
-              />
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
-  );
-};
+            const thumbnailUrl = thumbnailSources[0];
 
+            const embedUrl = isYouTube
+              ? `https://www.youtube.com/embed/${videoId}`
+              : video.videoUrl;
 
-
-// ── SUBSCRIPTIONS SECTION ──────────────────────────────────────
-const renderSubscriptions = () => {
-  
-  if (!subscriptions || subscriptions.length === 0) return null;
-
- const filtered = subscriptions.filter((s: any) => 
-    selectedGrade === "all" ? true : s.grade === selectedGrade
-  );
-
-  return (
-    <section className="py-20 bg-[#f7fafa]">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-[#0a2540] mb-3">
-            {lang === "ar" ? "أسعار باقات الإشتراك" : "Subscription Packages"}
-          </h2>
-          <div className="flex justify-center gap-4 mt-4">
-            {["all" ,  "primary", "middle", "high"].map((grade) => (
-              <button
-                key={grade}
-                onClick={() => setSelectedGrade(grade as any)}
-                className={`px-6 py-2 rounded-full transition-all duration-300 ${
-                  selectedGrade === grade
-                    ? "bg-[#1a7a8a] text-white"
-                    : "bg-white text-[#0a2540] border border-gray-200 hover:border-[#1a7a8a]"
-                }`}
-              >
-                {lang === "ar"
-                    ? grade === "all" ? "الكل" 
-                    : grade === "primary" ? "ابتدائي" 
-                    : grade === "middle" ? "متوسط" 
-                    : "ثانوي"
-                    : grade === "all" ? "All" 
-                    : grade === "primary" ? "Primary" 
-                    : grade === "middle" ? "Middle" 
-                    : "High"}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {filtered.map((sub: any) => {
-            const isPopular = sub.isPopular;
             return (
-              <Card key={sub._id} className={`relative overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-xl ${
-                isPopular ? "border-2 border-[#1a7a8a] shadow-lg" : "border border-gray-100"
-              }`}>
-                {isPopular && (
-                  <div className="absolute top-0 right-0 bg-[#1a7a8a] text-white text-xs font-bold px-4 py-1 rounded-bl-lg">
-                    {lang === "ar" ? "الأكثر طلباً" : "Popular"}
+              <div
+                key={video._id}
+                className="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer bg-gray-800 border border-white/10 hover:border-[#1a7a8a]/50"
+                style={{ aspectRatio: '4/5' }}
+                onClick={() => openVideo(embedUrl, video.embedType)}
+              >
+                {/* Thumbnail with fallback */}
+                <img
+                  src={thumbnailUrl}
+                  alt=""
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  onError={(e) => {
+                    const img = e.target as HTMLImageElement;
+                    const currentSrc = img.src;
+                    const currentIndex = thumbnailSources.indexOf(currentSrc);
+
+                    if (currentIndex < thumbnailSources.length - 1) {
+                      img.src = thumbnailSources[currentIndex + 1];
+                    } else {
+                      img.src = '/images/video-placeholder.jpg';
+                    }
+                  }}
+                  loading="lazy"
+                />
+
+                {/* YouTube watermark indicator */}
+                {isYouTube && (
+                  <div className="absolute top-3 right-3 bg-red-600 text-white text-xs px-2 py-1 rounded flex items-center gap-1 shadow-lg">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                    </svg>
+                    YouTube
                   </div>
                 )}
-                <CardContent className="p-6 text-center">
-                  <h3 className="text-xl font-bold text-[#0a2540]">
-                    {lang === "ar" ? sub.titleAr || sub.title : sub.title}
-                  </h3>
-                  <p className="text-sm text-gray-500 mt-2">
-                    {lang === "ar" ? sub.descriptionAr || sub.description : sub.description}
-                  </p>
-                  <div className="mt-4">
-                    <span className="text-4xl font-bold text-[#1a7a8a]">{sub.price}</span>
-                    <span className="text-sm text-gray-500 mr-1">ر.س</span>
+
+                {/* Overlay with Play Button */}
+                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
+                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110">
+                    <svg
+                      className="w-8 h-8 md:w-10 md:h-10 text-[#0a2540] ml-1"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
                   </div>
-                  <p className="text-sm text-gray-400 mt-1">
-                    {sub.sessionsCount} {lang === "ar" ? "حصة" : "Sessions"}
+                </div>
+
+                {/* Title overlay at bottom */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/80 to-transparent">
+                  <p className="text-white text-sm font-medium line-clamp-2">
+                    {lang === "ar" ? video.titleAr || video.title : video.title}
                   </p>
-                  <ul className="mt-4 space-y-2 text-right">
-                    {(lang === "ar" ? sub.featuresAr : sub.features).map((feature: string, idx: number) => (
-                      <li key={idx} className="text-sm text-gray-600 flex items-center gap-2">
-                        <CheckCircle className="h-4 w-4 text-[#1a7a8a]" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href={isSignedIn ? "/subscriptions" : "/sign-in"}>
-                    <Button className="w-full mt-6 bg-[#0a2540] hover:bg-[#1a3a5c] text-white">
-                      {lang === "ar" ? "اشترك الآن" : "Subscribe Now"}
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -527,154 +548,96 @@ const renderSubscriptions = () => {
   );
 };
 
-  // ── VIDEO TESTIMONIALS SECTION ──────────────────────────────
-  const renderVideoTestimonials = () => {
-    if (!videoTestimonials || videoTestimonials.length === 0) return null;
+  // ── SUBSCRIPTIONS SECTION ──────────────────────────────────────
+  const renderSubscriptions = () => {
+
+    if (!subscriptions || subscriptions.length === 0) return null;
+
+    const filtered = subscriptions.filter((s: any) =>
+      selectedGrade === "all" ? true : s.grade === selectedGrade
+    );
 
     return (
-      <>
-        <section className="py-20 bg-[#f7fafa]">
-          <div className="max-w-7xl mx-auto px-6">
-            <div className="text-center mb-14">
-              <h2 className="text-4xl font-extrabold text-[#0a2540] mb-3">
-                {lang === "ar" ? "لا تسمع منا... اسمع من طلابنا" : "Don't just take our word for it... hear from our students."}
-              </h2>
-              {/* <p className="text-gray-500">
-              {lang === "ar" ? "أبواب السعودية" : "Abwab Saudi"}
-            </p> */}
-            </div>
-
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {videoTestimonials.map((video: any) => {
-                const isYouTube = video.embedType === "youtube";
-                const videoId = getYouTubeId(video.videoUrl);
-
-                // ✅ عدة مصادر لغلاف اليوتيوب
-                const getYouTubeThumbnail = (id: string) => {
-                  // جرب هذه المصادر بالترتيب
-                  const sources = [
-                    `https://img.youtube.com/vi/${id}/maxresdefault.jpg`,  // جودة عالية
-                    `https://img.youtube.com/vi/${id}/hqdefault.jpg`,     // جودة متوسطة
-                    `https://img.youtube.com/vi/${id}/mqdefault.jpg`,     // جودة منخفضة
-                    `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`,     // بديل
-                    `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,         // بديل
-                  ];
-                  return sources;
-                };
-
-                const thumbnailSources = isYouTube && videoId
-                  ? getYouTubeThumbnail(videoId)
-                  : [video.thumbnailUrl || '/images/video-placeholder.jpg'];
-
-                // استخدام الصورة الأولى كمصدر رئيسي
-                const thumbnailUrl = thumbnailSources[0];
-
-                const embedUrl = isYouTube
-                  ? `https://www.youtube.com/embed/${videoId}`
-                  : video.videoUrl;
-
-                return (
-                  <div
-                    key={video._id}
-                    className="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer bg-gray-900"
-                    style={{ aspectRatio: '4/5' }}
-                    onClick={() => openVideo(embedUrl, video.embedType)}
-                  >
-                    {/* Thumbnail with fallback */}
-                    <img
-                      src={thumbnailUrl}
-                      alt=""
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      onError={(e) => {
-                        // إذا فشل التحميل، جرب الصورة التالية
-                        const img = e.target as HTMLImageElement;
-                        const currentSrc = img.src;
-                        const currentIndex = thumbnailSources.indexOf(currentSrc);
-
-                        if (currentIndex < thumbnailSources.length - 1) {
-                          img.src = thumbnailSources[currentIndex + 1];
-                        } else {
-                          // إذا فشلت كل الصور، استخدم صورة افتراضية
-                          img.src = '/images/video-placeholder.jpg';
-                        }
-                      }}
-                      loading="lazy"
-                    />
-
-                    {/* YouTube watermark indicator */}
-                    {isYouTube && (
-                      <div className="absolute top-3 right-3 bg-red-600 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                        </svg>
-                        YouTube
-                      </div>
-                    )}
-
-                    {/* Overlay with Play Button */}
-                    <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors duration-300 flex items-center justify-center">
-                      <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110">
-                        <svg
-                          className="w-8 h-8 md:w-10 md:h-10 text-[#0a2540] ml-1"
-                          fill="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M8 5v14l11-7z" />
-                        </svg>
-                      </div>
-                    </div>
-
-                    {/* Title overlay at bottom */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/80 to-transparent">
-                      <p className="text-white text-sm font-medium line-clamp-2">
-                        {lang === "ar" ? video.titleAr || video.title : video.title}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
+      <section className="py-20 bg-[#f7fafa]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-[#0a2540] mb-3">
+              {lang === "ar" ? "أسعار باقات الإشتراك" : "Subscription Packages"}
+            </h2>
+            <div className="flex justify-center gap-4 mt-4">
+              {["all", "primary", "middle", "high"].map((grade) => (
+                <button
+                  key={grade}
+                  onClick={() => setSelectedGrade(grade as any)}
+                  className={`px-6 py-2 rounded-full transition-all duration-300 ${selectedGrade === grade
+                    ? "bg-[#1a7a8a] text-white"
+                    : "bg-white text-[#0a2540] border border-gray-200 hover:border-[#1a7a8a]"
+                    }`}
+                >
+                  {lang === "ar"
+                    ? grade === "all" ? "الكل"
+                      : grade === "primary" ? "ابتدائي"
+                        : grade === "middle" ? "متوسط"
+                          : "ثانوي"
+                    : grade === "all" ? "All"
+                      : grade === "primary" ? "Primary"
+                        : grade === "middle" ? "Middle"
+                          : "High"}
+                </button>
+              ))}
             </div>
           </div>
-        </section>
 
-        {/* Video Modal */}
-        {selectedVideo && (
-          <div
-            className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4"
-            onClick={closeVideo}
-          >
-            <div
-              className="relative w-full max-w-4xl"
-              style={{ aspectRatio: '16/9' }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={closeVideo}
-                className="absolute -top-12 right-0 text-white hover:text-gray-300 text-3xl transition-colors"
-              >
-                ✕
-              </button>
-              {selectedEmbedType === "youtube" ? (
-                <iframe
-                  src={selectedVideo + (selectedVideo.includes('?') ? '&autoplay=1' : '?autoplay=1')}
-                  className="w-full h-full rounded-xl"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              ) : (
-                <video
-                  src={selectedVideo}
-                  className="w-full h-full rounded-xl"
-                  controls
-                  autoPlay
-                />
-              )}
-            </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {filtered.map((sub: any) => {
+              const isPopular = sub.isPopular;
+              return (
+                <Card key={sub._id} className={`relative overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-xl ${isPopular ? "border-2 border-[#1a7a8a] shadow-lg" : "border border-gray-100"
+                  }`}>
+                  {isPopular && (
+                    <div className="absolute top-0 right-0 bg-[#1a7a8a] text-white text-xs font-bold px-4 py-1 rounded-bl-lg">
+                      {lang === "ar" ? "الأكثر طلباً" : "Popular"}
+                    </div>
+                  )}
+                  <CardContent className="p-6 text-center">
+                    <h3 className="text-xl font-bold text-[#0a2540]">
+                      {lang === "ar" ? sub.titleAr || sub.title : sub.title}
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-2">
+                      {lang === "ar" ? sub.descriptionAr || sub.description : sub.description}
+                    </p>
+                    <div className="mt-4">
+                      <span className="text-4xl font-bold text-[#1a7a8a]">{sub.price}</span>
+                      <span className="text-sm text-gray-500 mr-1">EGP</span>
+                    </div>
+                    <p className="text-sm text-gray-400 mt-1">
+                      {sub.sessionsCount} {lang === "ar" ? "حصة" : "Sessions"}
+                    </p>
+                    <ul className="mt-4 space-y-2 text-right">
+                      {(lang === "ar" ? sub.featuresAr : sub.features).map((feature: string, idx: number) => (
+                        <li key={idx} className="text-sm text-gray-600 flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4 text-[#1a7a8a]" />
+                          {feature}
+                        </li>
+                      ))}
+                    </ul>
+                    <Link href={isSignedIn ? "/subscriptions" : "/sign-in"}>
+                      <Button className="w-full mt-6 bg-[#0a2540] hover:bg-[#1a3a5c] text-white">
+                        {lang === "ar" ? "اشترك الآن" : "Subscribe Now"}
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
-        )}
-      </>
+        </div>
+      </section>
     );
   };
+
+
+
 
   // دالة مساعدة لاستخراج ID الفيديو من رابط YouTube
   function getYouTubeId(url: string): string {
@@ -748,7 +711,7 @@ const renderSubscriptions = () => {
     if (!data.showTestimonials || !testimonials || testimonials.length === 0) return null;
 
     return (
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-linear-to-r bg-white ">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-14">
             <h2 className="text-3xl font-bold text-[#0a2540] mb-3">
@@ -760,7 +723,7 @@ const renderSubscriptions = () => {
           </div>
           <div className="grid md:grid-cols-2 gap-6">
             {testimonials.slice(0, 4).map((item: any) => (
-              <div key={item._id} className="border border-gray-100 rounded-2xl p-8 hover:border-[#1a7a8a]/30 hover:shadow-md transition-all">
+              <div key={item._id} className="border border-gray-300 rounded-2xl p-8 hover:border-[#1a7a8a]/30 hover:shadow-md transition-all">
                 <div className="flex gap-1 mb-4">
                   {Array.from({ length: item.rating || 5 }).map((_, i) => (
                     <FaStar key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
@@ -1022,6 +985,20 @@ const renderSubscriptions = () => {
                   <div className="absolute inset-0 bg-linear-to-t from-[#0a2540]/20 to-transparent"></div>
                 </div>
 
+                {/* ✅ Text under image - النص تحت الصورة */}
+                <div className="mt-7 text-center">
+                  <p className="text-xl md:text-2xl font-bold text-[#0a2540]">
+                    {lang === "ar"
+                      ? data.heroBottomTextAr || "تعلم الإنجليزية في بريطانيا بخطوات واضحة"
+                      : data.heroBottomText || "Learn English in Britain with Confidence"}
+                  </p>
+                  <p className="mt-1 text-lg md:text-md  text-[#6a7885]">
+                    {lang === "ar"
+                      ? data.heroBottomSmTextAr || "تعلم الإنجليزية في بريطانيا بخطوات واضحة"
+                      : data.heroBottomSmText || "Steps Steps to Learn English in Britain"}
+                  </p>
+                </div>
+
                 {/* Floating Badge - IB/IGCSE */}
                 <div className="absolute -top-4 -right-4 bg-white rounded-2xl shadow-xl px-5 py-3 border border-gray-100">
                   <div className="flex items-center gap-3">
@@ -1040,7 +1017,7 @@ const renderSubscriptions = () => {
                 </div>
 
                 {/* Floating Badge - Live Class */}
-                <div className="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-xl px-5 py-3 border border-gray-100">
+                {/* <div className="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-xl px-5 py-3 border border-gray-100">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-[#e0f5f7] rounded-xl flex items-center justify-center">
                       <svg className="w-5 h-5 text-[#1a7a8a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1054,7 +1031,7 @@ const renderSubscriptions = () => {
                       <p className="text-xs text-red-500 font-medium">● {lang === "ar" ? "مباشر الآن" : "Live Now"}</p>
                     </div>
                   </div>
-                </div>
+                </div> */}
               </div>
 
               {/* Stats floating on image */}
@@ -1069,6 +1046,84 @@ const renderSubscriptions = () => {
         </div>
       </section>
 
+      {/* ── WHY CHOOSE US ────────────────────────────────────────────── */}
+      <section className="py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-bold text-[#0a2540] mb-3">
+              {lang === "ar" ? "لماذا تختارنا؟" : "Why Choose Us?"}
+            </h2>
+            <p className="text-gray-500 max-w-2xl mx-auto">
+              {lang === "ar"
+                ? "نقدم لك تجربة تعليمية متكاملة تجمع بين الجودة والمرونة والدعم المستمر"
+                : "We offer you an integrated educational experience that combines quality, flexibility, and continuous support"}
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Card 1 */}
+            <div className="group bg-[#f7fafa] rounded-2xl p-6 text-center hover:bg-[#e0f5f7] transition-all duration-300 hover:-translate-y-2 hover:shadow-lg">
+              <div className="w-16 h-16 rounded-2xl bg-[#1a7a8a]/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-[#1a7a8a]/20 transition-colors">
+                <IoBookOutline  className="w-7 h-7 text-[#1a7a8a] "  />
+              </div>
+              <h3 className="text-lg font-bold text-[#0a2540] mb-2">
+                {lang === "ar" ? "معلمون خبراء" : "Expert Teachers"}
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                {lang === "ar"
+                  ? "نخبة من المعلمين المتميزين ذوي الخبرة في جميع المواد الدراسية"
+                  : "A select group of distinguished teachers with experience in all subjects"}
+              </p>
+            </div>
+
+            {/* Card 2 */}
+            <div className="group bg-[#f7fafa] rounded-2xl p-6 text-center hover:bg-[#e0f5f7] transition-all duration-300 hover:-translate-y-2 hover:shadow-lg">
+              <div className="w-16 h-16 rounded-2xl bg-[#1a7a8a]/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-[#1a7a8a]/20 transition-colors">
+                <LuClock5 className="w-7 h-7 text-[#1a7a8a] "/>
+              </div>
+              <h3 className="text-lg font-bold text-[#0a2540] mb-2">
+                {lang === "ar" ? "مرونة في المواعيد" : "Flexible Scheduling"}
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                {lang === "ar"
+                  ? "اختر المواعيد التي تناسب جدولك الدراسي والشخصي بكل سهولة"
+                  : "Choose the times that fit your academic and personal schedule with ease"}
+              </p>
+            </div>
+
+            {/* Card 3 */}
+            <div className="group bg-[#f7fafa] rounded-2xl p-6 text-center hover:bg-[#e0f5f7] transition-all duration-300 hover:-translate-y-2 hover:shadow-lg">
+              <div className="w-16 h-16 rounded-2xl bg-[#1a7a8a]/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-[#1a7a8a]/20 transition-colors">
+                <ShieldCheck className="w-7 h-7 text-[#1a7a8a] "/>
+              </div>
+              <h3 className="text-lg font-bold text-[#0a2540] mb-2">
+                {lang === "ar" ? "ضمان الجودة" : "Quality Guarantee"}
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                {lang === "ar"
+                  ? "نضمن لك تجربة تعليمية متميزة مع متابعة مستمرة لتقييم الأداء"
+                  : "We guarantee you a distinguished educational experience with continuous performance evaluation"}
+              </p>
+            </div>
+
+            {/* Card 4 */}
+            <div className="group bg-[#f7fafa] rounded-2xl p-6 text-center hover:bg-[#e0f5f7] transition-all duration-300 hover:-translate-y-2 hover:shadow-lg">
+              <div className="w-16 h-16 rounded-2xl bg-[#1a7a8a]/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-[#1a7a8a]/20 transition-colors">
+                <HiOutlineUserGroup className="w-7 h-7 text-[#1a7a8a] "/>
+              </div>
+              <h3 className="text-lg font-bold text-[#0a2540] mb-2">
+                {lang === "ar" ? "دعم متواصل" : "24/7 Support"}
+              </h3>
+              <p className="text-sm text-gray-500 leading-relaxed">
+                {lang === "ar"
+                  ? "فريق دعم متخصص للإجابة على استفساراتك وحل أي مشكلة تواجهك"
+                  : "A specialized support team to answer your inquiries and solve any problem you face"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Dynamic Sections from Convex ────────────────────────── */}
       {renderSections()}
 
@@ -1078,11 +1133,13 @@ const renderSubscriptions = () => {
       {/* ── SUBSCRIPTIONS ───────────────────────────────────────── */}
       {renderSubscriptions()}
 
+      {/* ── VIDEO TESTIMONIALS ─────────────────────────────────── */}
+      {renderVideoTestimonials()}
+
       {/* ── Courses from Convex ─────────────────────────────────── */}
       {renderCourses()}
 
-      {/* ── VIDEO TESTIMONIALS ─────────────────────────────────── */}
-      {renderVideoTestimonials()}
+
 
 
       {/* ── CONTACT SECTION ────────────────────────────────────────── */}
