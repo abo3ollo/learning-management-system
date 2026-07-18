@@ -42,7 +42,7 @@ export default function TeacherExamsPage() {
   const [editExamId, setEditExamId] = useState<string | null>(null);
 
   // جلب الامتحانات
-  const exams = useQuery(api.exams.exams.getExams, {
+  const exams = useQuery(api.exams.exams.getTeacherExams, {
     status: selectedStatus !== "all" ? (selectedStatus as any) : undefined,
     search: searchQuery || undefined,
   });

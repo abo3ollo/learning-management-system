@@ -1,4 +1,5 @@
 // app/(pages)/(roles)/admin/teachers/page.tsx
+
 "use client";
 
 import { useState } from "react";
@@ -26,11 +27,15 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddTeacherModal } from "@/app/_components/AddTeacherModal";
+
 import { FaMoneyBill } from "react-icons/fa";
+import { EditTeacherModal } from "@/app/_components/EditTeacherModal";
 
 export default function AdminTeachersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
@@ -101,6 +106,11 @@ export default function AdminTeachersPage() {
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleEdit = (teacherId: string) => {
+    setSelectedTeacherId(teacherId);
+    setIsEditModalOpen(true);
   };
 
   const handleExportCSV = () => {
@@ -257,7 +267,6 @@ export default function AdminTeachersPage() {
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">المعلم</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">معلومات الاتصال</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">التخصص</th>
-                  
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">المرتب</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الحالة</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الإجراءات</th>
@@ -309,7 +318,7 @@ export default function AdminTeachersPage() {
                               </p>
                             </div>
                           </div>
-                         </td>
+                        </td>
 
                         <td className="px-6 py-4">
                           <div className="space-y-1">
@@ -341,17 +350,9 @@ export default function AdminTeachersPage() {
                           )}
                         </td>
 
-                        {/* <td className="px-6 py-4">
-                          <div className="flex items-center gap-1.5">
-                            <BookOpen className="h-3.5 w-3.5 text-gray-400" />
-                            <span className="text-sm font-semibold text-[#001f24]">{teacher.subjects || "—"}</span>
-                            <span className="text-xs text-gray-400">مواد</span>
-                          </div>
-                        </td> */}
-                        
                         <td className="px-6 py-4">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-gray-600  font-medium rounded-full `}>
-                            <FaMoneyBill className="h-3 w-3 text-gray-400 " />
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-gray-600 font-medium rounded-full`}>
+                            <FaMoneyBill className="h-3 w-3 text-gray-400" />
                             {teacher.salary ? `${teacher.salary} جنيه` : "—"}
                           </span>
                         </td>
@@ -363,14 +364,15 @@ export default function AdminTeachersPage() {
                           </span>
                         </td>
 
-
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-1">
-                            <Link href={`/admin/teachers/${teacher._id}`}>
-                              <button className="p-2 hover:bg-blue-50 rounded-lg transition-colors group">
-                                <Edit className="h-4 w-4 text-gray-400 group-hover:text-blue-600" />
-                              </button>
-                            </Link>
+                            {/* ✅ زر التعديل - يفتح المودال */}
+                            <button
+                              onClick={() => handleEdit(teacher._id)}
+                              className="p-2 hover:bg-blue-50 rounded-lg transition-colors group"
+                            >
+                              <Edit className="h-4 w-4 text-gray-400 group-hover:text-blue-600" />
+                            </button>
                             <button
                               className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
                               onClick={() => handleDelete(teacher._id)}
@@ -384,7 +386,7 @@ export default function AdminTeachersPage() {
                             </button>
                           </div>
                         </td>
-                       </tr>
+                      </tr>
                     );
                   })
                 )}
@@ -406,6 +408,16 @@ export default function AdminTeachersPage() {
 
       {/* Add Teacher Modal */}
       <AddTeacherModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
+
+      {/* ✅ Edit Teacher Modal */}
+      <EditTeacherModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedTeacherId(null);
+        }}
+        teacherId={selectedTeacherId}
+      />
     </div>
   );
 }

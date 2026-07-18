@@ -194,6 +194,7 @@ export const getTeacherById = query({
       throw new Error("المعلم غير موجود");
     }
 
+    // جلب عدد الدورات للمعلم
     const courses = await ctx.db
       .query("courses")
       .withIndex("by_teacher", (q) => q.eq("teacherId", teacher._id))
@@ -220,6 +221,7 @@ export const updateTeacher = mutation({
     address: v.optional(v.string()),
     status: v.optional(v.union(v.literal("active"), v.literal("inactive"), v.literal("on_leave"))),
     subjects: v.optional(v.array(v.string())),
+    salary: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -249,6 +251,7 @@ export const updateTeacher = mutation({
     if (args.address !== undefined) updateData.address = args.address;
     if (args.status !== undefined) updateData.status = args.status;
     if (args.subjects !== undefined) updateData.subjects = args.subjects;
+    if (args.salary !== undefined) updateData.salary = args.salary;
 
     await ctx.db.patch(args.teacherId, updateData);
 
@@ -366,3 +369,46 @@ export const getAvailableTeachers = query({
     return teachers;
   },
 });
+
+
+
+// ✅ دالة عامة لجلب المعلمين (لا تحتاج إلى تسجيل دخول)
+export const getPublicTeachers = query({
+  args: {
+    search: v.optional(v.string()),
+    subject: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // ✅ لا نتحقق من الصلاحيات - صفحة عامة
+    let teachers = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "teacher"))
+      .collect();
+
+    // فلترة المعلمين النشطين فقط
+    teachers = teachers.filter((t) => t.status === "active");
+
+    // فلترة حسب البحث
+    if (args.search && args.search.trim() !== "") {
+      const searchLower = args.search.toLowerCase();
+      teachers = teachers.filter((teacher) =>
+        teacher.name?.toLowerCase().includes(searchLower) ||
+        teacher.email?.toLowerCase().includes(searchLower) ||
+        teacher.specialization?.toLowerCase().includes(searchLower) ||
+        teacher.subjects?.some((s: string) => s.toLowerCase().includes(searchLower))
+      );
+    }
+
+    // فلترة حسب المادة
+    if (args.subject) {
+      teachers = teachers.filter((teacher) =>
+        teacher.subjects?.includes(args.subject || "")
+      );
+    }
+
+    // ترتيب حسب الاسم
+    return teachers.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  },
+});
+
+

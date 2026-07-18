@@ -6,7 +6,6 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
-import Image from "next/image";
 import {
   ArrowRight,
   Star,
@@ -18,10 +17,7 @@ import {
   User,
   GraduationCap,
   Award,
-  ChevronLeft,
-  ChevronRight,
   Search,
-  Filter,
   Loader2,
   Globe,
   MessageCircle,
@@ -52,160 +48,32 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Id } from "@/convex/_generated/dataModel";
 
-// بيانات تجريبية للمعلمين (سيتم استبدالها بـ Convex لاحقاً)
-const teachersData = [
-  {
-    id: 1,
-    name: "أحمد محمد",
-    nameEn: "Ahmed Mohamed",
-    subjects: ["رياضيات", "فيزياء"],
-    experience: 8,
-    rating: 4.9,
-    students: 156,
-    price: 120,
-    pricePerHour: 150,
-    image: "/images/teacher1.jpg",
-    bio: "خبير في تدريس الرياضيات والفيزياء مع 8 سنوات من الخبرة في المدارس الدولية",
-    bioEn: "Expert in teaching Mathematics and Physics with 8 years of experience in international schools",
-    qualifications: ["ماجستير في الرياضيات", "بكالوريوس في الفيزياء"],
-    specialties: ["الرياضيات المتقدمة", "الفيزياء الكلاسيكية", "التحصيل الدراسي"],
-    available: true,
-    materials: {
-      pdfs: [
-        { id: 1, title: "ملخص رياضيات 1", size: "2.5 MB", url: "#" },
-        { id: 2, title: "مراجعة فيزياء 2", size: "1.8 MB", url: "#" },
-      ],
-      videos: [
-        { id: 1, title: "شرح المعادلات الخطية", duration: "15:30", url: "#" },
-        { id: 2, title: "حل مسائل الفيزياء", duration: "22:45", url: "#" },
-      ],
-      exams: [
-        { id: 1, title: "اختبار رياضيات 1", questions: 20, time: "45 دقيقة", url: "#" },
-        { id: 2, title: "اختبار فيزياء 2", questions: 15, time: "30 دقيقة", url: "#" },
-      ],
-      assignments: [
-        { id: 1, title: "واجب رياضيات 1", deadline: "2024-02-15", url: "#" },
-        { id: 2, title: "واجب فيزياء 2", deadline: "2024-02-20", url: "#" },
-      ],
-      revisions: [
-        { id: 1, title: "مراجعة نهائية رياضيات", url: "#" },
-        { id: 2, title: "مراجعة فيزياء", url: "#" },
-      ],
-    },
-  },
-  {
-    id: 2,
-    name: "سارة علي",
-    nameEn: "Sara Ali",
-    subjects: ["لغة عربية", "لغة إنجليزية"],
-    experience: 6,
-    rating: 4.8,
-    students: 120,
-    price: 100,
-    pricePerHour: 130,
-    image: "/images/teacher2.jpg",
-    bio: "متخصصة في تدريس اللغات مع خبرة في المدارس الأمريكية والبريطانية",
-    bioEn: "Specialized in teaching languages with experience in American and British schools",
-    qualifications: ["ماجستير في اللغة الإنجليزية", "بكالوريوس في اللغة العربية"],
-    specialties: ["القواعد النحوية", "المحادثة", "الكتابة الأكاديمية"],
-    available: true,
-    materials: {
-      pdfs: [
-        { id: 3, title: "قواعد اللغة العربية", size: "3.2 MB", url: "#" },
-        { id: 4, title: "English Grammar", size: "2.1 MB", url: "#" },
-      ],
-      videos: [
-        { id: 3, title: "شرح القواعد النحوية", duration: "18:20", url: "#" },
-        { id: 4, title: "English Conversation", duration: "25:00", url: "#" },
-      ],
-      exams: [
-        { id: 3, title: "اختبار لغة عربية", questions: 25, time: "50 دقيقة", url: "#" },
-      ],
-      assignments: [
-        { id: 3, title: "واجب قواعد", deadline: "2024-02-18", url: "#" },
-      ],
-      revisions: [
-        { id: 3, title: "مراجعة لغة عربية", url: "#" },
-      ],
-    },
-  },
-  {
-    id: 3,
-    name: "محمد خالد",
-    nameEn: "Mohamed Khaled",
-    subjects: ["كيمياء", "أحياء"],
-    experience: 10,
-    rating: 4.9,
-    students: 200,
-    price: 140,
-    pricePerHour: 170,
-    image: "/images/teacher3.jpg",
-    bio: "خبير في العلوم مع 10 سنوات من الخبرة في الجامعات والمدارس",
-    bioEn: "Expert in sciences with 10 years of experience in universities and schools",
-    qualifications: ["دكتوراه في الكيمياء", "ماجستير في الأحياء"],
-    specialties: ["الكيمياء العضوية", "الأحياء الجزيئية", "التحصيل العلمي"],
-    available: true,
-    materials: {
-      pdfs: [
-        { id: 5, title: "ملخص كيمياء عضوية", size: "4.5 MB", url: "#" },
-        { id: 6, title: "مراجعة أحياء", size: "3.8 MB", url: "#" },
-      ],
-      videos: [
-        { id: 5, title: "شرح التفاعلات الكيميائية", duration: "20:15", url: "#" },
-        { id: 6, title: "الخلية والأنسجة", duration: "28:30", url: "#" },
-      ],
-      exams: [
-        { id: 5, title: "اختبار كيمياء", questions: 30, time: "60 دقيقة", url: "#" },
-        { id: 6, title: "اختبار أحياء", questions: 25, time: "50 دقيقة", url: "#" },
-      ],
-      assignments: [
-        { id: 5, title: "واجب كيمياء", deadline: "2024-02-22", url: "#" },
-        { id: 6, title: "واجب أحياء", deadline: "2024-02-25", url: "#" },
-      ],
-      revisions: [
-        { id: 5, title: "مراجعة كيمياء", url: "#" },
-        { id: 6, title: "مراجعة أحياء", url: "#" },
-      ],
-    },
-  },
-  {
-    id: 4,
-    name: "نورة عبدالله",
-    nameEn: "Nora Abdullah",
-    subjects: ["رياضيات", "فيزياء", "كيمياء"],
-    experience: 5,
-    rating: 4.7,
-    students: 98,
-    price: 110,
-    pricePerHour: 140,
-    image: "/images/teacher4.jpg",
-    bio: "معلمة متخصصة في المواد العلمية مع خبرة في المدارس الثانوية",
-    bioEn: "Teacher specialized in scientific subjects with experience in high schools",
-    qualifications: ["ماجستير في الفيزياء", "بكالوريوس في الرياضيات"],
-    specialties: ["الرياضيات التطبيقية", "الفيزياء الحديثة"],
-    available: true,
-    materials: {
-      pdfs: [
-        { id: 7, title: "ملخص رياضيات", size: "2.8 MB", url: "#" },
-      ],
-      videos: [
-        { id: 7, title: "شرح التفاضل", duration: "19:45", url: "#" },
-      ],
-      exams: [
-        { id: 7, title: "اختبار رياضيات", questions: 20, time: "45 دقيقة", url: "#" },
-      ],
-      assignments: [
-        { id: 7, title: "واجب رياضيات", deadline: "2024-02-28", url: "#" },
-      ],
-      revisions: [
-        { id: 7, title: "مراجعة فيزياء", url: "#" },
-      ],
-    },
-  },
-];
+// بيانات تجريبية للمواد (سيتم جلبها من Convex لاحقاً)
+const mockMaterials = {
+  pdfs: [
+    { id: 1, title: "ملخص رياضيات 1", size: "2.5 MB", url: "#" },
+    { id: 2, title: "مراجعة فيزياء 2", size: "1.8 MB", url: "#" },
+  ],
+  videos: [
+    { id: 1, title: "شرح المعادلات الخطية", duration: "15:30", url: "#" },
+    { id: 2, title: "حل مسائل الفيزياء", duration: "22:45", url: "#" },
+  ],
+  exams: [
+    { id: 1, title: "اختبار رياضيات 1", questions: 20, time: "45 دقيقة", url: "#" },
+    { id: 2, title: "اختبار فيزياء 2", questions: 15, time: "30 دقيقة", url: "#" },
+  ],
+  assignments: [
+    { id: 1, title: "واجب رياضيات 1", deadline: "2024-02-15", url: "#" },
+    { id: 2, title: "واجب فيزياء 2", deadline: "2024-02-20", url: "#" },
+  ],
+  revisions: [
+    { id: 1, title: "مراجعة نهائية رياضيات", url: "#" },
+    { id: 2, title: "مراجعة فيزياء", url: "#" },
+  ],
+};
 
-// صفحة القدرات الرئيسية
 export default function AptitudePage() {
   const [lang, setLang] = useState<"en" | "ar">("ar");
   const [searchQuery, setSearchQuery] = useState("");
@@ -213,26 +81,36 @@ export default function AptitudePage() {
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
+
+  // ✅ جلب بيانات المعلمين من Convex
+  const teachersData = useQuery(api.user.teachers.getPublicTeachers, {});
 
   const toggleLang = () => setLang((l) => (l === "en" ? "ar" : "en"));
 
+  // حالة التحميل
+  if (teachersData === undefined) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
+      </div>
+    );
+  }
+
   // فلترة المعلمين حسب البحث
-  const filteredTeachers = teachersData.filter((teacher) => {
+  const filteredTeachers = teachersData.filter((teacher: any) => {
     const search = searchQuery.toLowerCase();
     return (
-      teacher.name.toLowerCase().includes(search) ||
-      teacher.nameEn.toLowerCase().includes(search) ||
-      teacher.subjects.some((s) => s.toLowerCase().includes(search)) ||
-      teacher.bio.toLowerCase().includes(search) ||
-      teacher.bioEn.toLowerCase().includes(search)
+      teacher.name?.toLowerCase().includes(search) ||
+      teacher.email?.toLowerCase().includes(search) ||
+      teacher.specialization?.toLowerCase().includes(search) ||
+      teacher.subjects?.some((s: string) => s.toLowerCase().includes(search))
     );
   });
+  console.log(filteredTeachers);
 
   // اختيار معلم
   const selectTeacher = (teacher: any) => {
     setSelectedTeacher(teacher);
-    setSelectedSubjects(teacher.subjects);
     setIsCheckoutOpen(true);
     setIsPaid(false);
   };
@@ -252,7 +130,8 @@ export default function AptitudePage() {
   const renderMaterials = () => {
     if (!selectedTeacher) return null;
 
-    const materials = selectedTeacher.materials;
+    // استخدام مواد افتراضية أو يمكن جلبها من Convex
+    const materials = mockMaterials;
 
     return (
       <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 overflow-y-auto">
@@ -260,10 +139,10 @@ export default function AptitudePage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl font-bold text-white">
-                {lang === "ar" ? selectedTeacher.name : selectedTeacher.nameEn}
+                {selectedTeacher.name}
               </h2>
               <p className="text-[#a3ced6] text-sm">
-                {lang === "ar" ? "المواد التعليمية" : "Educational Materials"}
+                {selectedTeacher.specialization || selectedTeacher.subjects?.join(" • ")}
               </p>
             </div>
             <button
@@ -275,6 +154,32 @@ export default function AptitudePage() {
             >
               ✕
             </button>
+          </div>
+
+          {/* معلومات المعلم */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6 p-4 bg-white/5 rounded-xl">
+            <div className="text-center">
+              <p className="text-[#a3ced6] text-xs">{lang === "ar" ? "الخبرة" : "Experience"}</p>
+              <p className="text-white font-bold">{selectedTeacher.experience || 0} {lang === "ar" ? "سنوات" : "years"}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-[#a3ced6] text-xs">{lang === "ar" ? "المؤهل" : "Qualification"}</p>
+              <p className="text-white font-bold text-sm truncate">
+                {selectedTeacher.qualification || "—"}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[#a3ced6] text-xs">{lang === "ar" ? "التخصص" : "Specialization"}</p>
+              <p className="text-white font-bold text-sm truncate">
+                {selectedTeacher.specialization || "—"}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[#a3ced6] text-xs">{lang === "ar" ? "الحالة" : "Status"}</p>
+              <Badge className={selectedTeacher.status === "active" ? "bg-green-500" : "bg-gray-500"}>
+                {selectedTeacher.status === "active" ? (lang === "ar" ? "نشط" : "Active") : (lang === "ar" ? "غير نشط" : "Inactive")}
+              </Badge>
+            </div>
           </div>
 
           <Tabs defaultValue="pdfs" className="w-full">
@@ -339,7 +244,7 @@ export default function AptitudePage() {
                   <div key={exam.id} className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-all">
                     <p className="text-white font-medium">{exam.title}</p>
                     <div className="flex items-center gap-3 text-[#a3ced6] text-sm mt-1">
-                      <span>{exam.questions} سؤال</span>
+                      <span>{exam.questions} {lang === "ar" ? "سؤال" : "questions"}</span>
                       <span>•</span>
                       <span>{exam.time}</span>
                     </div>
@@ -356,7 +261,7 @@ export default function AptitudePage() {
                 {materials.assignments.map((assignment: any) => (
                   <div key={assignment.id} className="bg-white/5 rounded-xl p-4 hover:bg-white/10 transition-all">
                     <p className="text-white font-medium">{assignment.title}</p>
-                    <p className="text-[#a3ced6] text-sm">تسليم: {assignment.deadline}</p>
+                    <p className="text-[#a3ced6] text-sm">{lang === "ar" ? "تسليم" : "Deadline"}: {assignment.deadline}</p>
                     <Button className="mt-2 w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white">
                       {lang === "ar" ? "تقديم الواجب" : "Submit Assignment"}
                     </Button>
@@ -414,6 +319,32 @@ export default function AptitudePage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+        {/* Stats */}
+        {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-xl p-4 border border-gray-100">
+            <p className="text-2xl font-bold text-[#1a7a8a]">{teachersData.length}</p>
+            <p className="text-xs text-gray-500">{lang === "ar" ? "إجمالي المعلمين" : "Total Teachers"}</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 border border-gray-100">
+            <p className="text-2xl font-bold text-green-500">
+              {teachersData.filter((t: any) => t.status === "active").length}
+            </p>
+            <p className="text-xs text-gray-500">{lang === "ar" ? "معلمين نشطين" : "Active Teachers"}</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 border border-gray-100">
+            <p className="text-2xl font-bold text-amber-500">
+              {teachersData.reduce((acc: number, t: any) => acc + (t.experience || 0), 0)}
+            </p>
+            <p className="text-xs text-gray-500">{lang === "ar" ? "إجمالي سنوات الخبرة" : "Total Experience Years"}</p>
+          </div>
+          <div className="bg-white rounded-xl p-4 border border-gray-100">
+            <p className="text-2xl font-bold text-purple-500">
+              {new Set(teachersData.flatMap((t: any) => t.subjects || [])).size}
+            </p>
+            <p className="text-xs text-gray-500">{lang === "ar" ? "مواد متنوعة" : "Diverse Subjects"}</p>
+          </div>
+        </div> */}
+
         {/* Search */}
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
@@ -428,63 +359,69 @@ export default function AptitudePage() {
         </div>
 
         {/* Teachers Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredTeachers.map((teacher) => (
-            <Card key={teacher.id} className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100 bg-white">
-              <div className="p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-[#e0f5f7] flex items-center justify-center">
-                    <span className="text-2xl font-bold text-[#1a7a8a]">
-                      {teacher.name.charAt(0)}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-[#0a2540] text-lg">
-                      {lang === "ar" ? teacher.name : teacher.nameEn}
-                    </h3>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                      <span>{teacher.rating}</span>
-                      <span>•</span>
-                      <span>{teacher.students} {lang === "ar" ? "طالب" : "students"}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-4 space-y-2">
-                  <div className="flex flex-wrap gap-2">
-                    {teacher.subjects.map((subject) => (
-                      <Badge key={subject} className="bg-[#1a7a8a]/10 text-[#1a7a8a] border-none">
-                        {subject}
-                      </Badge>
-                    ))}
-                  </div>
-                  <p className="text-sm text-gray-600 line-clamp-2">
-                    {lang === "ar" ? teacher.bio : teacher.bioEn}
-                  </p>
-                  <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Clock className="h-4 w-4" />
-                    <span>{teacher.experience} {lang === "ar" ? "سنوات خبرة" : "years experience"}</span>
-                  </div>
-                </div>
-
-                <Button
-                  className="w-full mt-4 bg-[#0a2540] hover:bg-[#1a3a5c] text-white"
-                  onClick={() => selectTeacher(teacher)}
-                >
-                  {lang === "ar" ? "عرض المواد" : "View Materials"}
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-
-        {filteredTeachers.length === 0 && (
+        {filteredTeachers.length === 0 ? (
           <div className="text-center py-12">
+            <Users className="h-12 w-12 mx-auto text-gray-300 mb-3" />
             <p className="text-gray-500">
               {lang === "ar" ? "لا توجد نتائج مطابقة للبحث" : "No results match your search"}
             </p>
+          </div>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredTeachers.map((teacher: any) => (
+              <Card key={teacher._id} className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100 bg-white">
+                <div className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-[#e0f5f7] flex items-center justify-center">
+                      <span className="text-2xl font-bold text-[#1a7a8a]">
+                        {teacher.name?.charAt(0) || "?"}
+                      </span>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-[#0a2540] text-lg line-clamp-1">
+                        {teacher.name}
+                      </h3>
+                      <p className="text-sm text-gray-500 line-clamp-1">
+                        {teacher.specialization || teacher.subjects?.join(" • ")}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {teacher.subjects?.slice(0, 3).map((subject: string) => (
+                        <Badge key={subject} className="bg-[#1a7a8a]/10 text-[#1a7a8a] border-none text-xs">
+                          {subject}
+                        </Badge>
+                      ))}
+                      {teacher.subjects?.length > 3 && (
+                        <Badge className="bg-gray-100 text-gray-500 border-none text-xs">
+                          +{teacher.subjects.length - 3}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <Clock className="h-4 w-4" />
+                      <span>{teacher.experience || 0} {lang === "ar" ? "سنوات خبرة" : "years experience"}</span>
+                    </div>
+                    {teacher.qualification && (
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <GraduationCap className="h-4 w-4" />
+                        <span className="line-clamp-1">{teacher.qualification}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    className="w-full mt-4 bg-[#0a2540] hover:bg-[#1a3a5c] text-white"
+                    onClick={() => selectTeacher(teacher)}
+                  >
+                    {lang === "ar" ? "عرض المواد" : "View Materials"}
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </div>
+              </Card>
+            ))}
           </div>
         )}
       </div>
@@ -504,15 +441,15 @@ export default function AptitudePage() {
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-[#e0f5f7] flex items-center justify-center">
                     <span className="text-lg font-bold text-[#1a7a8a]">
-                      {selectedTeacher.name.charAt(0)}
+                      {selectedTeacher.name?.charAt(0) || "?"}
                     </span>
                   </div>
                   <div>
                     <p className="font-semibold text-[#0a2540]">
-                      {lang === "ar" ? selectedTeacher.name : selectedTeacher.nameEn}
+                      {selectedTeacher.name}
                     </p>
                     <p className="text-sm text-gray-500">
-                      {selectedTeacher.subjects.join(" • ")}
+                      {selectedTeacher.specialization || selectedTeacher.subjects?.join(" • ")}
                     </p>
                   </div>
                 </div>
@@ -526,7 +463,7 @@ export default function AptitudePage() {
                   <span className="text-gray-500">
                     {lang === "ar" ? "سعر المواد" : "Materials Price"}
                   </span>
-                  <span className="font-semibold">{selectedTeacher.price} ر.س</span>
+                  <span className="font-semibold">150 ر.س</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-500">
@@ -536,7 +473,7 @@ export default function AptitudePage() {
                 </div>
                 <div className="border-t border-gray-200 pt-2 flex justify-between text-sm font-bold">
                   <span>{lang === "ar" ? "الإجمالي" : "Total"}</span>
-                  <span className="text-[#1a7a8a]">{selectedTeacher.price + 20} ر.س</span>
+                  <span className="text-[#1a7a8a]">170 ر.س</span>
                 </div>
               </div>
 

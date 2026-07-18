@@ -23,6 +23,18 @@ export const getSubmissionsByAssignment = query({
       throw new Error("مطلوب صلاحيات مشرف أو معلم");
     }
 
+    // ✅ إذا كان المستخدم معلم، تحقق من صلاحيته على الواجب
+    if (user.role === "teacher") {
+      const assignment = await ctx.db.get(args.assignmentId);
+      if (!assignment) throw new Error("الواجب غير موجود");
+      
+      // التحقق من أن المعلم له صلاحية على هذا الواجب
+      const canAccess = await canTeacherAccessAssignment(ctx, user._id, assignment);
+      if (!canAccess) {
+        throw new Error("غير مصرح لك بمشاهدة تسليمات هذا الواجب");
+      }
+    }
+
     const submissions = await ctx.db
       .query("submissions")
       .withIndex("by_assignment", (q) => q.eq("assignmentId", args.assignmentId))
@@ -42,6 +54,28 @@ export const getSubmissionsByAssignment = query({
     return submissionsWithStudent.sort((a, b) => b.submittedAt - a.submittedAt);
   },
 });
+
+// ✅ دالة مساعدة للتحقق من صلاحية المعلم على الواجب
+async function canTeacherAccessAssignment(ctx: any, teacherId: Id<"users">, assignment: any): Promise<boolean> {
+  // 1. هل المعلم هو منشئ الواجب؟
+  if (assignment.createdBy === teacherId) return true;
+
+  // 2. هل المعلم مشرف أو مدرس في أي من المجموعات المستهدفة؟
+  if (assignment.groupIds && assignment.groupIds.length > 0) {
+    for (const groupId of assignment.groupIds) {
+      const group = await ctx.db.get(groupId);
+      if (group) {
+        const isSupervisor = group.supervisorId === teacherId;
+        const isTeacher = group.teachers && group.teachers.includes(teacherId);
+        if (isSupervisor || isTeacher) {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
 
 // ✅ تصحيح تسليم
 export const gradeSubmission = mutation({
@@ -66,12 +100,15 @@ export const gradeSubmission = mutation({
     const submission = await ctx.db.get(args.submissionId);
     if (!submission) throw new Error("التسليم غير موجود");
 
-    // التحقق من أن المعلم لديه صلاحية على هذا التسليم
+    // ✅ التحقق من صلاحية المعلم على الواجب
     const assignment = await ctx.db.get(submission.assignmentId);
     if (!assignment) throw new Error("الواجب غير موجود");
 
-    if (user.role === "teacher" && assignment.createdBy !== user._id) {
-      throw new Error("غير مصرح لك بتصحيح هذا التسليم");
+    if (user.role === "teacher") {
+      const canAccess = await canTeacherAccessAssignment(ctx, user._id, assignment);
+      if (!canAccess) {
+        throw new Error("غير مصرح لك بتصحيح هذا التسليم");
+      }
     }
 
     // التحقق من أن الدرجة لا تتجاوز الدرجة الكاملة
@@ -79,6 +116,7 @@ export const gradeSubmission = mutation({
       throw new Error(`الدرجة لا يمكن أن تتجاوز ${assignment.fullGrade}`);
     }
 
+    // ✅ تحديث التسليم
     await ctx.db.patch(args.submissionId, {
       grade: args.grade,
       feedback: args.feedback,

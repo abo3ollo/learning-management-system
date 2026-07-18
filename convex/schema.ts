@@ -24,6 +24,7 @@ export default defineSchema({
       v.literal("inactive"),
       v.literal("on_leave"), // ✅ إضافة حالة الإجازة للمعلمين
     ),
+    
     rejectionReason: v.optional(v.string()),
     approvedAt: v.optional(v.number()),
     approvedBy: v.optional(v.id("users")),
@@ -861,4 +862,43 @@ export default defineSchema({
     .index("by_order", ["displayOrder"])
     .index("by_published", ["isPublished"])
     .index("by_grade", ["grade"]),
+
+
+teacherMaterials: defineTable({
+  teacherId: v.id("users"),
+  title: v.string(),
+  titleAr: v.string(),
+  description: v.optional(v.string()),
+  descriptionAr: v.optional(v.string()),
+  type: v.union(
+    v.literal("pdf"),
+    v.literal("video"),
+    v.literal("exam"),
+    v.literal("assignment"),
+    v.literal("revision")
+  ),
+  fileUrl: v.optional(v.string()), // رابط الملف أو الفيديو
+  fileSize: v.optional(v.string()), // حجم الملف
+  duration: v.optional(v.string()), // مدة الفيديو
+  subject: v.string(),
+  grade: v.string(),
+  questions: v.optional(v.array(
+    v.object({
+      id: v.string(),
+      text: v.string(),
+      options: v.optional(v.array(v.string())),
+      correctAnswer: v.optional(v.string()),
+      marks: v.number(),
+    })
+  )), // للامتحانات
+  deadline: v.optional(v.number()), // للواجبات
+  isPublished: v.boolean(),
+  displayOrder: v.number(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_teacher", ["teacherId"])
+  .index("by_type", ["type"])
+  .index("by_subject", ["subject"])
+  .index("by_published", ["isPublished"]),
 });

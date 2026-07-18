@@ -63,13 +63,13 @@ export default function TeacherAssignmentsPage() {
   );
 
   // ✅ جلب الواجبات
-  const assignments = useQuery(api.assignments.assignments.getAssignments, {
+  const assignments = useQuery(api.assignments.assignments.getTeacherAssignments, {
     search: searchQuery || undefined,
     status: selectedStatus !== "all" ? (selectedStatus as any) : undefined,
   });
 
   // ✅ جلب إحصائيات الواجبات
-  const stats = useQuery(api.assignments.assignments.getAssignmentsStats);
+  const stats = useQuery(api.assignments.assignments.getTeacherAssignmentsStats);
 
   // ✅ Mutations
   const deleteAssignment = useMutation(api.assignments.assignments.deleteAssignment);

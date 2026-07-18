@@ -91,6 +91,8 @@ export const getGroups = query({
 
 
 // ✅ تحديث getGroupById لجلب الطلاب مع بياناتهم الكاملة
+// convex/groups/groups.ts
+
 export const getGroupById = query({
   args: { groupId: v.id("groups") },
   handler: async (ctx, args) => {
@@ -109,9 +111,17 @@ export const getGroupById = query({
     const group = await ctx.db.get(args.groupId);
     if (!group) throw new Error("المجموعة غير موجودة");
 
-    // ✅ التحقق من صلاحية المعلم
-    if (user.role === "teacher" && group.createdBy !== user._id) {
-      throw new Error("غير مصرح لك بمشاهدة هذه المجموعة");
+    // ✅ التحقق من صلاحية المعلم:
+    // - إذا كان أدمن: يسمح له بكل شيء
+    // - إذا كان معلم: يسمح له فقط إذا كان منشئ أو مشرف أو مدرس
+    if (user.role === "teacher") {
+      const isCreator = group.createdBy === user._id;
+      const isSupervisor = group.supervisorId === user._id;
+      const isTeacher = group.teachers && group.teachers.includes(user._id);
+      
+      if (!isCreator && !isSupervisor && !isTeacher) {
+        throw new Error("غير مصرح لك بمشاهدة هذه المجموعة");
+      }
     }
 
     const grade = await ctx.db.get(group.gradeId);
@@ -128,12 +138,25 @@ export const getGroupById = query({
       })
     );
 
+    // ✅ جلب أسماء المعلمين في المجموعة
+    let teacherNames: string[] = [];
+    if (group.teachers && group.teachers.length > 0) {
+      const teachers = await Promise.all(
+        group.teachers.map(async (teacherId) => {
+          const teacher = await ctx.db.get(teacherId);
+          return teacher?.name || null;
+        })
+      );
+      teacherNames = teachers.filter((name): name is string => name !== null);
+    }
+
     return {
       ...group,
       gradeName: grade?.name || "غير معروف",
       creatorName: creator?.name || "غير معروف",
       supervisorName: supervisor?.name || "غير محدد",
-      students: students.filter(Boolean), // ✅ فقط الطلاب الموجودين
+      teacherNames: teacherNames,
+      students: students.filter(Boolean),
     };
   },
 });
@@ -774,6 +797,8 @@ export const getAvailableStudentsForGroup = query({
 
 
 // ✅ جلب مجموعات المعلم مع الجدول والمشرف
+
+
 export const getTeacherGroups = query({
   args: {
     status: v.optional(
@@ -799,7 +824,16 @@ export const getTeacherGroups = query({
     }
 
     let groups = await ctx.db.query("groups").collect();
-    groups = groups.filter((g) => g.createdBy === user._id);
+    
+    // ✅ جلب المجموعات التي:
+    // 1. أنشأها المعلم (createdBy)
+    // 2. أو هو مشرف عليها (supervisorId)
+    // 3. أو هو مدرس فيها (teachers array)
+    groups = groups.filter((g) => 
+      g.createdBy === user._id || 
+      g.supervisorId === user._id ||
+      (g.teachers && g.teachers.includes(user._id))
+    );
 
     if (args.status) {
       groups = groups.filter((g) => g.status === args.status);
@@ -829,6 +863,15 @@ export const getTeacherGroups = query({
           }
         }
 
+        // جلب المنشئ
+        let creatorName = "غير محدد";
+        if (group.createdBy) {
+          const creator = await ctx.db.get(group.createdBy);
+          if (creator) {
+            creatorName = creator.name || "غير محدد";
+          }
+        }
+
         // ✅ جلب الجدول
         const schedule = await ctx.db
           .query("schedules")
@@ -853,10 +896,24 @@ export const getTeacherGroups = query({
           }
         }
 
+        // ✅ جلب أسماء المعلمين في المجموعة
+        let teacherNames: string[] = [];
+        if (group.teachers && group.teachers.length > 0) {
+          const teachers = await Promise.all(
+            group.teachers.map(async (teacherId) => {
+              const teacher = await ctx.db.get(teacherId);
+              return teacher?.name || null;
+            })
+          );
+          teacherNames = teachers.filter((name): name is string => name !== null);
+        }
+
         return {
           ...group,
           gradeName: grade?.name || "غير معروف",
           supervisorName: supervisorName,
+          creatorName: creatorName,
+          teacherNames: teacherNames,
           schedule: scheduleWithNames,
         };
       }),

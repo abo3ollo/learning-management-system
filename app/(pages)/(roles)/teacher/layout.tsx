@@ -5,7 +5,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth, UserButton } from "@clerk/nextjs";
+import { useAuth, UserButton, SignOutButton } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -55,7 +55,7 @@ export default function TeacherLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isLoaded, isSignedIn, userId } = useAuth();
+  const { isLoaded, isSignedIn, userId, signOut } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -83,24 +83,24 @@ export default function TeacherLayout({
 
   // قائمة الروابط
   const menuItems = [
-    { label: "لوحة التحكم", icon: LayoutDashboard, href: "/teacher/dashboard" },
-    { label: "فصولي", icon: School, href: "/teacher/classes" },
+    { label: "لوحة التحكم", icon: LayoutDashboard, href: "/teacher" },
     { label: "مجموعاتي", icon: FolderOpen, href: "/teacher/groups" },
-    { label: "المواد", icon: BookOpen, href: "/teacher/subjects" },
-    { label: "الواجبات", icon: FileText, href: "/teacher/assignments" },
     { label: "الامتحانات", icon: ClipboardList, href: "/teacher/exams" },
-    { label: "الحضور", icon: CheckSquare, href: "/teacher/attendance" },
-    { label: "التقارير", icon: BarChart3, href: "/teacher/reports" },
-    { label: "الطلاب", icon: Users, href: "/teacher/students" },
-    { label: "الإشعارات", icon: Bell, href: "/teacher/notifications" },
-    { label: "الإعدادات", icon: Settings, href: "/teacher/settings" },
+    { label: "الواجبات", icon: FileText, href: "/teacher/assignments" },
+    { label: "التحصيلات", icon: School, href: "/teacher/materials" },
   ];
 
   const isActive = (href: string) => {
-    if (href === "/teacher/dashboard") {
+    if (href === "/teacher") {
       return pathname === href;
     }
     return pathname?.startsWith(href);
+  };
+
+  // ✅ دالة تسجيل الخروج
+  const handleSignOut = () => {
+    signOut();
+    router.push("/");
   };
 
   return (
@@ -128,7 +128,6 @@ export default function TeacherLayout({
           <div className="p-4 border-b border-[#c0c8c9]">
             <div className="flex items-center gap-3">
               <Avatar className="h-10 w-10">
-                
                 <AvatarFallback className="bg-[#e0f5f7] text-[#1a7a8a]">
                   {teacher.name?.charAt(0)?.toUpperCase() || "م"}
                 </AvatarFallback>
@@ -144,7 +143,7 @@ export default function TeacherLayout({
         )}
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-120px)]">
+        <nav className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-200px)]">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -168,6 +167,21 @@ export default function TeacherLayout({
             );
           })}
         </nav>
+
+        {/* ✅ Logout Button - في أسفل الـ Sidebar */}
+        <div className="absolute bottom-0 right-0 left-0 p-4 border-t border-[#c0c8c9] bg-white">
+          <button
+            onClick={handleSignOut}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-red-600 hover:bg-red-50 hover:text-red-700 ${
+              !isSidebarOpen && "justify-center"
+            }`}
+          >
+            <LogOut className="h-5 w-5" />
+            {isSidebarOpen && (
+              <span className="text-sm font-medium">تسجيل الخروج</span>
+            )}
+          </button>
+        </div>
 
         {/* Toggle Button */}
         <button
@@ -222,7 +236,7 @@ export default function TeacherLayout({
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Notifications - ✅ بدون Button مكرر */}
+              {/* Notifications */}
               <DropdownMenu>
                 <DropdownMenuTrigger>
                   <div className="relative p-2 hover:bg-[#f0f4f4] rounded-lg transition-colors">
@@ -253,7 +267,7 @@ export default function TeacherLayout({
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* User Menu - ✅ بدون Button مكرر */}
+              {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger>
                   <div className="flex items-center gap-2 hover:bg-[#f0f4f4] rounded-lg px-2 py-1.5 transition-colors">
@@ -280,7 +294,10 @@ export default function TeacherLayout({
                     الإعدادات
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-red-600">
+                  <DropdownMenuItem 
+                    className="text-red-600 cursor-pointer"
+                    onClick={handleSignOut}
+                  >
                     <LogOut className="h-4 w-4 ml-2" />
                     تسجيل الخروج
                   </DropdownMenuItem>

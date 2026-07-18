@@ -597,6 +597,204 @@ export const getStudentAssignmentStats = query({
   },
 });
 
+
+// ✅ جلب واجبات المعلم (الخاصة بمجموعاته فقط)
+export const getTeacherAssignments = query({
+  args: {
+    status: v.optional(v.union(v.literal("draft"), v.literal("published"), v.literal("archived"))),
+    search: v.optional(v.string()),
+    gradeId: v.optional(v.id("grades")),
+    groupId: v.optional(v.id("groups")),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || user.role !== "teacher") {
+      throw new Error("مطلوب صلاحيات معلم");
+    }
+
+    // ✅ جلب جميع المجموعات التي يتبعها المعلم (مشرف أو مدرس)
+    const allGroups = await ctx.db.query("groups").collect();
+    const teacherGroupIds = allGroups
+      .filter((g) => 
+        g.supervisorId === user._id || 
+        (g.teachers && g.teachers.includes(user._id))
+      )
+      .map((g) => g._id);
+
+    // ✅ جلب جميع الواجبات
+    let assignments = await ctx.db.query("assignments").collect();
+
+    // ✅ فلترة الواجبات:
+    // 1. التي أنشأها المعلم
+    // 2. أو التي تخص مجموعاته
+    assignments = assignments.filter((assignment) => {
+      const isCreatedByTeacher = assignment.createdBy === user._id;
+      const isForTeacherGroup = assignment.groupIds && assignment.groupIds.some((groupId) => 
+        teacherGroupIds.includes(groupId)
+      );
+      return isCreatedByTeacher || isForTeacherGroup;
+    });
+
+    // ✅ فلترة حسب الحالة
+    if (args.status) {
+      assignments = assignments.filter((a) => a.status === args.status);
+    }
+
+    // ✅ فلترة حسب الصف
+    if (args.gradeId) {
+      assignments = assignments.filter((a) => a.gradeId === args.gradeId);
+    }
+
+    // ✅ فلترة حسب المجموعة
+    if (args.groupId) {
+      assignments = assignments.filter((a) => 
+        a.groupIds && a.groupIds.some(id => id === args.groupId)
+      );
+    }
+
+    // ✅ فلترة حسب البحث
+    if (args.search && args.search.trim() !== "") {
+      const searchLower = args.search.toLowerCase();
+      assignments = assignments.filter((a) =>
+        a.title.toLowerCase().includes(searchLower) ||
+        a.description?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // ✅ جلب معلومات إضافية
+    const assignmentsWithDetails = await Promise.all(
+      assignments.map(async (assignment) => {
+        // جلب أسماء المجموعات
+        const groupNames = await Promise.all(
+          (assignment.groupIds || []).map(async (groupId) => {
+            const group = await ctx.db.get(groupId);
+            return group?.name || "مجموعة غير معروفة";
+          })
+        );
+
+        // جلب اسم الصف
+        let gradeName = "غير محدد";
+        if (assignment.gradeId) {
+          const grade = await ctx.db.get(assignment.gradeId);
+          if (grade) {
+            gradeName = grade.name;
+          }
+        }
+
+        const creator = await ctx.db.get(assignment.createdBy);
+        
+        // جلب عدد التسليمات
+        const submissions = await ctx.db
+          .query("submissions")
+          .withIndex("by_assignment", (q) => q.eq("assignmentId", assignment._id))
+          .collect();
+
+        // جلب عدد الطلاب في المجموعات المستهدفة
+        let totalStudents = 0;
+        if (assignment.groupIds) {
+          for (const groupId of assignment.groupIds) {
+            const group = await ctx.db.get(groupId);
+            if (group) {
+              totalStudents += group.students?.length || 0;
+            }
+          }
+        }
+
+        // حساب عدد الذين سلموا
+        const submittedCount = submissions.length;
+
+        return {
+          ...assignment,
+          groupNames: groupNames,
+          gradeName: gradeName,
+          creatorName: creator?.name || "غير معروف",
+          submissionsCount: submittedCount,
+          totalStudents: totalStudents,
+          submissionRate: totalStudents > 0 ? Math.round((submittedCount / totalStudents) * 100) : 0,
+        };
+      })
+    );
+
+    return assignmentsWithDetails.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
+// ✅ جلب إحصائيات واجبات المعلم
+export const getTeacherAssignmentsStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || user.role !== "teacher") {
+      throw new Error("مطلوب صلاحيات معلم");
+    }
+
+    // جلب المجموعات التي يتبعها المعلم
+    const allGroups = await ctx.db.query("groups").collect();
+    const teacherGroupIds = allGroups
+      .filter((g) => 
+        g.supervisorId === user._id || 
+        (g.teachers && g.teachers.includes(user._id))
+      )
+      .map((g) => g._id);
+
+    let assignments = await ctx.db.query("assignments").collect();
+
+    // فلترة الواجبات الخاصة بالمعلم
+    assignments = assignments.filter((assignment) => {
+      const isCreatedByTeacher = assignment.createdBy === user._id;
+      const isForTeacherGroup = assignment.groupIds && assignment.groupIds.some((groupId) => 
+        teacherGroupIds.includes(groupId)
+      );
+      return isCreatedByTeacher || isForTeacherGroup;
+    });
+
+    const now = Date.now();
+    const total = assignments.length;
+    const published = assignments.filter((a) => a.status === "published").length;
+    const draft = assignments.filter((a) => a.status === "draft").length;
+    const archived = assignments.filter((a) => a.status === "archived").length;
+
+    // الواجبات القادمة (منشورة ولم يحن وقتها بعد)
+    const upcoming = assignments.filter(
+      (a) => a.status === "published" && a.startDate > now
+    ).length;
+
+    // الواجبات المتأخرة (انتهى وقتها)
+    const overdue = assignments.filter(
+      (a) => a.status === "published" && a.dueDate < now
+    ).length;
+
+    // الواجبات النشطة (منشورة وجارية)
+    const active = assignments.filter(
+      (a) => a.status === "published" && a.startDate <= now && a.dueDate >= now
+    ).length;
+
+    return {
+      total,
+      published,
+      draft,
+      archived,
+      upcoming,
+      overdue,
+      active,
+    };
+  },
+});
+
 // ============================================
 // HELPER FUNCTIONS
 // ============================================
@@ -984,4 +1182,6 @@ export const assignments = {
   publishAssignment,
   enrollStudentsInGroups,
    getUpcomingForStudent,
+   getTeacherAssignments,
+   getTeacherAssignmentsStats
 };

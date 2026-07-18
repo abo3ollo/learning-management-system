@@ -1,110 +1,125 @@
+
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 
-// convex/user/auth.ts
+// دالة مساعدة لتوليد رقم معلم فريد
+async function generateTeacherId(ctx: any): Promise<string> {
+  const teachers = await ctx.db
+    .query("users")
+    .withIndex("by_role", (q:any) => q.eq("role", "teacher"))
+    .collect();
+  
+  const nextNumber = teachers.length + 1;
+  return `TCH-${String(nextNumber).padStart(5, '0')}`;
+}
 
+// دالة مساعدة لتوليد رقم طالب فريد
+async function generateStudentId(ctx: any): Promise<string> {
+  const students = await ctx.db
+    .query("users")
+    .withIndex("by_role", (q:any) => q.eq("role", "student"))
+    .collect();
+  
+  const nextNumber = students.length + 1;
+  return `STU-${String(nextNumber).padStart(5, '0')}`;
+}
+
+// ✅ إنشاء مستخدم جديد (مع دعم حقول المعلم والطالب)
 export const createUser = mutation({
   args: {
-    clerkId: v.string(),
-    name: v.string(),
-    email: v.string(),
-    role: v.union(
+    clerkId:      v.string(),
+    email:        v.string(),
+    name:         v.string(),
+    phoneNumber:  v.optional(v.string()),
+    role:         v.union(
       v.literal("student"),
       v.literal("teacher"),
       v.literal("parent"),
-      v.literal("admin")
+      v.literal("admin"),
     ),
-    phoneNumber: v.optional(v.string()),
+ 
+    // Student fields
+    studentId:      v.optional(v.string()),
+    birthDate:      v.optional(v.number()),
+    gender:         v.optional(v.union(v.literal("male"), v.literal("female"))),
+    address:        v.optional(v.string()),
+    grade:          v.optional(v.string()),
+    gradeId:        v.optional(v.id("grades")),
+    groupId:        v.optional(v.id("groups")),
+    classId:        v.optional(v.id("classes")),
+    enrollmentDate: v.optional(v.number()),
+ 
+    // Teacher fields
+    teacherId:      v.optional(v.string()),
+    specialization: v.optional(v.string()),
+    qualification:  v.optional(v.string()),
+    experience:     v.optional(v.number()),
+    hireDate:       v.optional(v.number()),
+    salary:         v.optional(v.number()),
+    subjects:       v.optional(v.array(v.string())),
+ 
+    // Parent fields
+    parentId:       v.optional(v.string()),
+    workPhone:      v.optional(v.string()),
+    workAddress:    v.optional(v.string()),
+    jobTitle:       v.optional(v.string()),
+    nationalId:     v.optional(v.string()),
+    relationship:   v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // ✅ التحقق من وجود المستخدم بواسطة clerkId
-    const existingByClerkId = await ctx.db
+    // Prevent duplicates
+    const existing = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
       .first();
-
-    if (existingByClerkId) {
-      if (existingByClerkId.role !== args.role) {
-        await ctx.db.patch(existingByClerkId._id, {
-          role: args.role,
-          updatedAt: Date.now(),
-        });
-      }
-      return existingByClerkId._id;
-    }
-
-    // ✅ التحقق من وجود المستخدم بواسطة البريد الإلكتروني
-    const existingByEmail = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", args.email))
-      .first();
-
-    if (existingByEmail) {
-      // ✅ لو المستخدم موجود وطالب و active (أضافه الأدمن)، نربطه بحساب Clerk
-      if (existingByEmail.role === "student" && existingByEmail.status === "active") {
-        await ctx.db.patch(existingByEmail._id, {
-          clerkId: args.clerkId,
-          updatedAt: Date.now(),
-        });
-        return existingByEmail._id;
-      }
-
-      // ✅ لو المستخدم موجود بحالة pending، نرفض ونقول يستنى موافقة
-      if (existingByEmail.status === "pending") {
-        throw new Error("هذا البريد الإلكتروني قيد الانتظار للموافقة");
-      }
-
-      // ✅ لو المستخدم موجود بدور تاني (معلم، ولي أمر، أدمن)
-      throw new Error("هذا البريد الإلكتروني مستخدم من قبل");
-    }
-
-    // ✅ كل الأدوار تتسجل pending (ما عدا الأدمن)
-    let status: "pending" | "approved" | "rejected" | "active" | "inactive" | "on_leave" = "pending";
-    
-    // ✅ الأدمن لازم pending عشان يوافق عليه أدمن تاني
-    if (args.role === "admin") {
-      status = "pending";
-    }
-
-    // ✅ المعلم وولي الأمر pending
-    if (args.role === "teacher" || args.role === "parent") {
-      status = "pending";
-    }
-
-    // ✅ الطالب pending برضه (هيكمل بياناته في المودال)
-    if (args.role === "student") {
-      status = "pending";
-    }
-
-    // ✅ إنشاء مستخدم جديد
-    const userId = await ctx.db.insert("users", {
-      clerkId: args.clerkId,
-      name: args.name,
-      email: args.email,
+ 
+    if (existing) return existing._id;
+ 
+    const now = Date.now();
+ 
+    return await ctx.db.insert("users", {
+      // Core
+      clerkId:     args.clerkId,
+      email:       args.email,
+      name:        args.name,
       phoneNumber: args.phoneNumber,
-      role: args.role,
-      status: status,
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      role:        args.role,
+      status:      "pending",
+      createdAt:   now,
+      updatedAt:   now,
+ 
+      // Student
+      studentId:      args.studentId,
+      birthDate:      args.birthDate,
+      gender:         args.gender,
+      address:        args.address,
+      grade:          args.grade,
+      gradeId:        args.gradeId,
+      groupId:        args.groupId,
+      classId:        args.classId,
+      enrollmentDate: args.enrollmentDate,
+ 
+      // Teacher
+      teacherId:      args.teacherId,
+      specialization: args.specialization,
+      qualification:  args.qualification,
+      experience:     args.experience,
+      hireDate:       args.hireDate,
+      salary:         args.salary,
+      subjects:       args.subjects,
+ 
+      // Parent
+      parentId:     args.parentId,
+      workPhone:    args.workPhone,
+      workAddress:  args.workAddress,
+      jobTitle:     args.jobTitle,
+      nationalId:   args.nationalId,
+      relationship: args.relationship,
     });
-
-    await ctx.db.insert("auditLogs", {
-      userId,
-      action: "REGISTER",
-      resourceType: "user",
-      resourceId: userId,
-      details: {
-        role: args.role,
-        email: args.email,
-        name: args.name,
-      },
-      createdAt: Date.now(),
-    });
-
-    return userId;
   },
 });
 
+// ✅ جلب المستخدم الحالي
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
@@ -116,10 +131,11 @@ export const getCurrentUser = query({
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .first();
 
-    return user;
+    return user || null;
   },
 });
 
+// ✅ جلب المستخدم بواسطة البريد الإلكتروني
 export const getUserByEmail = mutation({
   args: { email: v.string() },
   handler: async (ctx, args) => {
@@ -127,10 +143,18 @@ export const getUserByEmail = mutation({
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", args.email))
       .first();
-    return user;
+
+    return user || null;
   },
 });
 
+
+// ✅ تصدير الدوال
+export const auth = {
+  createUser,
+  getCurrentUser,
+  getUserByEmail,
+};
 // التحقق من حالة التسجيل
 export const checkRegistrationStatus = query({
   args: {},

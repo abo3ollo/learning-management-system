@@ -12,6 +12,7 @@ import { RiParentFill } from "react-icons/ri";
 import { MdAdminPanelSettings } from "react-icons/md";
 import { StudentRegistrationModal } from "@/app/_components/StudentRegistrationModal";
 import { Loader2 } from "lucide-react";
+import { TeacherRegistrationModal } from "@/app/_components/TeacherRegistrationModal";
 
 type Role = "student" | "teacher" | "parent" | "admin";
 
@@ -65,6 +66,7 @@ export default function RoleSelector() {
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [isExistingUser, setIsExistingUser] = useState(false);
+  const [showTeacherModal, setShowTeacherModal] = useState(false);
 
   useEffect(() => {
     if (!isAuthLoaded || !isUserLoaded) return;
@@ -138,6 +140,12 @@ const handleContinue = async () => {
     setShowStudentModal(true);
     return;
   }
+
+  // ✅ لو اختار Teacher، نفتح مودال المعلم
+    if (selectedRole === "teacher") {
+      setShowTeacherModal(true);
+      return;
+    }
 
   setIsLoading(true);
   setError(null);
@@ -261,6 +269,10 @@ const handleContinue = async () => {
       <StudentRegistrationModal 
         isOpen={showStudentModal} 
         onClose={() => setShowStudentModal(false)} 
+      />
+      <TeacherRegistrationModal 
+        isOpen={showTeacherModal} 
+        onClose={() => setShowTeacherModal(false)} 
       />
     </>
   );

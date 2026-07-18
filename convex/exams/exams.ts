@@ -269,6 +269,119 @@ export const getUpcomingForStudent = query({
   },
 });
 
+
+
+// ✅ جلب امتحانات المعلم (الخاصة بمجموعاته فقط)
+export const getTeacherExams = query({
+  args: {
+    status: v.optional(v.union(
+      v.literal("draft"),
+      v.literal("published"),
+      v.literal("archived"),
+    )),
+    search: v.optional(v.string()),
+    gradeId: v.optional(v.id("grades")),
+    groupId: v.optional(v.id("groups")),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user || user.role !== "teacher") {
+      throw new Error("مطلوب صلاحيات معلم");
+    }
+
+    // ✅ جلب جميع المجموعات التي يتبعها المعلم (مشرف أو مدرس)
+    const allGroups = await ctx.db.query("groups").collect();
+    const teacherGroupIds = allGroups
+      .filter((g) => 
+        g.supervisorId === user._id || 
+        (g.teachers && g.teachers.includes(user._id))
+      )
+      .map((g) => g._id);
+
+    // ✅ جلب جميع الامتحانات
+    let exams = await ctx.db.query("exams").collect();
+
+    // ✅ فلترة الامتحانات:
+    // 1. التي أنشأها المعلم
+    // 2. أو التي تخص مجموعاته (groupIds تتضمن مجموعة من مجموعاته)
+    exams = exams.filter((exam) => {
+      // الامتحان منشأ بواسطة المعلم
+      const isCreatedByTeacher = exam.createdBy === user._id;
+      
+      // الامتحان يخص مجموعة من مجموعات المعلم
+      const isForTeacherGroup = exam.groupIds && exam.groupIds.some((groupId) => 
+        teacherGroupIds.includes(groupId)
+      );
+
+      return isCreatedByTeacher || isForTeacherGroup;
+    });
+
+    // فلترة حسب الحالة
+    if (args.status) {
+      exams = exams.filter((e) => e.status === args.status);
+    }
+
+    // فلترة حسب الصف
+    if (args.gradeId) {
+      exams = exams.filter((e) => e.gradeId === args.gradeId);
+    }
+
+    // فلترة حسب المجموعة
+    if (args.groupId) {
+      exams = exams.filter((e) => 
+        e.groupIds && e.groupIds.includes(args.groupId as Id<"groups">)
+      );
+    }
+
+    // فلترة حسب البحث
+    if (args.search) {
+      const searchLower = args.search.toLowerCase();
+      exams = exams.filter((e) =>
+        e.title.toLowerCase().includes(searchLower) ||
+        e.subject.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // جلب معلومات إضافية
+    const examsWithDetails = await Promise.all(
+      exams.map(async (exam) => {
+        const creator = await ctx.db.get(exam.createdBy);
+        
+        // جلب عدد الطلاب الذين سلموا
+        const submissions = await ctx.db
+          .query("examSubmissions")
+          .withIndex("by_exam", (q) => q.eq("examId", exam._id))
+          .collect();
+
+        // جلب أسماء المجموعات
+        const groupNames = await Promise.all(
+          (exam.groupIds || []).map(async (groupId) => {
+            const group = await ctx.db.get(groupId);
+            return group?.name || "مجموعة غير معروفة";
+          })
+        );
+
+        return {
+          ...exam,
+          questionsCount: exam.questions.length,
+          submissionsCount: submissions.length,
+          creatorName: creator?.name || "غير معروف",
+          groupNames: groupNames.join("، "),
+        };
+      })
+    );
+
+    return examsWithDetails.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
 // ============================================
 // MUTATIONS
 // ============================================
@@ -737,5 +850,6 @@ export const exams = {
   updateExam,
   deleteExam,
   publishExam,
-  getUpcomingForStudent
+  getUpcomingForStudent,
+  getTeacherExams
 };
