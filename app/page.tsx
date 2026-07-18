@@ -438,115 +438,115 @@ export default function LandingPage() {
   };
 
   // ── VIDEO TESTIMONIALS SECTION ──────────────────────────────
-const renderVideoTestimonials = () => {
-  if (!videoTestimonials || videoTestimonials.length === 0) return null;
+  const renderVideoTestimonials = () => {
+    if (!videoTestimonials || videoTestimonials.length === 0) return null;
 
-  return (
-    <section className="py-20 bg-linear-to-r from-[#001f24] to-[#03363d]">
-      <div className="max-w-7xl mx-auto px-6">
-        <div className="text-center mb-14">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-1 h-8 bg-[#1a7a8a] rounded-full"></div>
-            <h2 className="text-3xl font-bold text-white">
-              {lang === "ar" ? "لا تسمع منا... اسمع من طلابنا" : "Don't just take our word for it... hear from our students."}
-            </h2>
-            <div className="w-1 h-8 bg-[#1a7a8a] rounded-full"></div>
+    return (
+      <section className="py-20 bg-linear-to-r from-[#001f24] to-[#03363d]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-14">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="w-1 h-8 bg-[#1a7a8a] rounded-full"></div>
+              <h2 className="text-3xl font-bold text-white">
+                {lang === "ar" ? "لا تسمع منا... اسمع من طلابنا" : "Don't just take our word for it... hear from our students."}
+              </h2>
+              <div className="w-1 h-8 bg-[#1a7a8a] rounded-full"></div>
+            </div>
+            <p className="text-[#a3ced6]">
+              {lang === "ar" ? "شاهد تجارب طلابنا مع المدرسين الخصوصيين" : "Watch our students' experiences with private tutors"}
+            </p>
           </div>
-          <p className="text-[#a3ced6]">
-            {lang === "ar" ? "شاهد تجارب طلابنا مع المدرسين الخصوصيين" : "Watch our students' experiences with private tutors"}
-          </p>
-        </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {videoTestimonials.map((video: any) => {
-            const isYouTube = video.embedType === "youtube";
-            const videoId = getYouTubeId(video.videoUrl);
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {videoTestimonials.map((video: any) => {
+              const isYouTube = video.embedType === "youtube";
+              const videoId = getYouTubeId(video.videoUrl);
 
-            // ✅ عدة مصادر لغلاف اليوتيوب
-            const getYouTubeThumbnail = (id: string) => {
-              const sources = [
-                `https://img.youtube.com/vi/${id}/maxresdefault.jpg`,
-                `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
-                `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
-                `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`,
-                `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
-              ];
-              return sources;
-            };
+              // ✅ عدة مصادر لغلاف اليوتيوب
+              const getYouTubeThumbnail = (id: string) => {
+                const sources = [
+                  `https://img.youtube.com/vi/${id}/maxresdefault.jpg`,
+                  `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
+                  `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
+                  `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`,
+                  `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+                ];
+                return sources;
+              };
 
-            const thumbnailSources = isYouTube && videoId
-              ? getYouTubeThumbnail(videoId)
-              : [video.thumbnailUrl || '/images/video-placeholder.jpg'];
+              const thumbnailSources = isYouTube && videoId
+                ? getYouTubeThumbnail(videoId)
+                : [video.thumbnailUrl || '/images/video-placeholder.jpg'];
 
-            const thumbnailUrl = thumbnailSources[0];
+              const thumbnailUrl = thumbnailSources[0];
 
-            const embedUrl = isYouTube
-              ? `https://www.youtube.com/embed/${videoId}`
-              : video.videoUrl;
+              const embedUrl = isYouTube
+                ? `https://www.youtube.com/embed/${videoId}`
+                : video.videoUrl;
 
-            return (
-              <div
-                key={video._id}
-                className="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer bg-gray-800 border border-white/10 hover:border-[#1a7a8a]/50"
-                style={{ aspectRatio: '4/5' }}
-                onClick={() => openVideo(embedUrl, video.embedType)}
-              >
-                {/* Thumbnail with fallback */}
-                <img
-                  src={thumbnailUrl}
-                  alt=""
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  onError={(e) => {
-                    const img = e.target as HTMLImageElement;
-                    const currentSrc = img.src;
-                    const currentIndex = thumbnailSources.indexOf(currentSrc);
+              return (
+                <div
+                  key={video._id}
+                  className="group relative rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer bg-gray-800 border border-white/10 hover:border-[#1a7a8a]/50"
+                  style={{ aspectRatio: '4/5' }}
+                  onClick={() => openVideo(embedUrl, video.embedType)}
+                >
+                  {/* Thumbnail with fallback */}
+                  <img
+                    src={thumbnailUrl}
+                    alt=""
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                    onError={(e) => {
+                      const img = e.target as HTMLImageElement;
+                      const currentSrc = img.src;
+                      const currentIndex = thumbnailSources.indexOf(currentSrc);
 
-                    if (currentIndex < thumbnailSources.length - 1) {
-                      img.src = thumbnailSources[currentIndex + 1];
-                    } else {
-                      img.src = '/images/video-placeholder.jpg';
-                    }
-                  }}
-                  loading="lazy"
-                />
+                      if (currentIndex < thumbnailSources.length - 1) {
+                        img.src = thumbnailSources[currentIndex + 1];
+                      } else {
+                        img.src = '/images/video-placeholder.jpg';
+                      }
+                    }}
+                    loading="lazy"
+                  />
 
-                {/* YouTube watermark indicator */}
-                {isYouTube && (
-                  <div className="absolute top-3 right-3 bg-red-600 text-white text-xs px-2 py-1 rounded flex items-center gap-1 shadow-lg">
-                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-                    </svg>
-                    YouTube
+                  {/* YouTube watermark indicator */}
+                  {isYouTube && (
+                    <div className="absolute top-3 right-3 bg-red-600 text-white text-xs px-2 py-1 rounded flex items-center gap-1 shadow-lg">
+                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                      </svg>
+                      YouTube
+                    </div>
+                  )}
+
+                  {/* Overlay with Play Button */}
+                  <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
+                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110">
+                      <svg
+                        className="w-8 h-8 md:w-10 md:h-10 text-[#0a2540] ml-1"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </div>
                   </div>
-                )}
 
-                {/* Overlay with Play Button */}
-                <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
-                  <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110">
-                    <svg
-                      className="w-8 h-8 md:w-10 md:h-10 text-[#0a2540] ml-1"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
+                  {/* Title overlay at bottom */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/80 to-transparent">
+                    <p className="text-white text-sm font-medium line-clamp-2">
+                      {lang === "ar" ? video.titleAr || video.title : video.title}
+                    </p>
                   </div>
                 </div>
-
-                {/* Title overlay at bottom */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/80 to-transparent">
-                  <p className="text-white text-sm font-medium line-clamp-2">
-                    {lang === "ar" ? video.titleAr || video.title : video.title}
-                  </p>
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-      </div>
-    </section>
-  );
-};
+      </section>
+    );
+  };
 
   // ── SUBSCRIPTIONS SECTION ──────────────────────────────────────
   const renderSubscriptions = () => {
@@ -1046,6 +1046,139 @@ const renderVideoTestimonials = () => {
         </div>
       </section>
 
+      {/* ── REGISTRATION SECTION ────────────────────────────────────── */}
+      <section className="py-25 bg-linear-to-r from-[#001f24] to-[#03363d]">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-14">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <div className="w-1 h-8 bg-[#1a7a8a] rounded-full"></div>
+              <h2 className="text-3xl font-bold text-white">
+                {lang === "ar" ? "سجل الآن وابدأ رحلتك" : "Register Now and Start Your Journey"}
+              </h2>
+              <div className="w-1 h-8 bg-[#1a7a8a] rounded-full"></div>
+            </div>
+            <p className="text-[#a3ced6]">
+              {lang === "ar"
+                ? "اختر المسار المناسب لك وسجل في الخدمة التي تناسب احتياجاتك"
+                : "Choose the right path for you and register for the service that suits your needs"}
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Card 1 - التسجيل في المنصة */}
+            <div className="group bg-white/10 backdrop-blur-md rounded-2xl p-6 text-center hover:bg-white/20 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl border border-white/10 hover:border-[#1a7a8a]/50">
+              <div className="w-16 h-16 rounded-2xl bg-[#1a7a8a]/20 flex items-center justify-center mx-auto mb-4 group-hover:bg-[#1a7a8a]/40 transition-colors">
+                <svg className="w-8 h-8 text-[#1a7a8a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">
+                {lang === "ar" ? "حصص اونلاين" : "Online classes"}
+              </h3>
+              <p className="text-sm text-[#a3ced6] leading-relaxed mb-4">
+                {lang === "ar"
+                  ? "أنشئ حسابك في المنصة واستفد من جميع الخدمات التعليمية"
+                  : "Create your account on the platform and benefit from all educational services"}
+              </p>
+              {isSignedIn ? (
+              <Link href="/onboarding">
+                <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
+                  {lang === "ar" ? "سجل الآن" : "Register Now"}
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            ) : (
+              <SignInButton mode="modal">
+                <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
+                  {lang === "ar" ? "سجل الآن" : "Register Now"}
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </SignInButton>
+            )}
+            </div>
+
+            {/* Card 2 - التسجيل في التحصيل الدراسي */}
+            <div className="group bg-white/10 backdrop-blur-md rounded-2xl p-6 text-center hover:bg-white/20 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl border border-white/10 hover:border-[#1a7a8a]/50">
+              <div className="w-16 h-16 rounded-2xl bg-[#1a7a8a]/20 flex items-center justify-center mx-auto mb-4 group-hover:bg-[#1a7a8a]/40 transition-colors">
+                <svg className="w-8 h-8 text-[#1a7a8a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">
+                {lang === "ar" ? "التحصيل الدراسي" : "Academic Achievement"}
+              </h3>
+              <p className="text-sm text-[#a3ced6] leading-relaxed mb-4">
+                {lang === "ar"
+                  ? "سجل في برامج التحصيل الدراسي لتحسين مستواك الأكاديمي"
+                  : "Register for academic achievement programs to improve your academic level"}
+              </p>
+              <Link href="/aptitude">
+                <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
+                  {lang === "ar" ? "سجل الآن" : "Register Now"}
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
+
+            {/* Card 3 - التسجيل في القدرات */}
+            <div className="group bg-white/10 backdrop-blur-md rounded-2xl p-6 text-center hover:bg-white/20 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl border border-white/10 hover:border-[#1a7a8a]/50">
+              <div className="w-16 h-16 rounded-2xl bg-[#1a7a8a]/20 flex items-center justify-center mx-auto mb-4 group-hover:bg-[#1a7a8a]/40 transition-colors">
+                <svg className="w-8 h-8 text-[#1a7a8a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">
+                {lang === "ar" ? "برامج القدرات" : "Aptitude Programs"}
+              </h3>
+              <p className="text-sm text-[#a3ced6] leading-relaxed mb-4">
+                {lang === "ar"
+                  ? "استعد لاختبارات القدرات مع أفضل المدربين والمواد التدريبية"
+                  : "Prepare for aptitude tests with the best trainers and training materials"}
+              </p>
+              <Link href={isSignedIn ? "/subscriptions?type=aptitude" : "/sign-in"}>
+                <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
+                  {lang === "ar" ? "سجل الآن" : "Register Now"}
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
+
+            {/* Card 4 - التسجيل في الرحلات */}
+            <div className="group bg-white/10 backdrop-blur-md rounded-2xl p-6 text-center hover:bg-white/20 transition-all duration-300 hover:-translate-y-2 hover:shadow-xl border border-white/10 hover:border-[#1a7a8a]/50">
+              <div className="w-16 h-16 rounded-2xl bg-[#1a7a8a]/20 flex items-center justify-center mx-auto mb-4 group-hover:bg-[#1a7a8a]/40 transition-colors">
+                <svg className="w-8 h-8 text-[#1a7a8a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-white mb-2">
+                {lang === "ar" ? "تعلم الانجليزيه" : "Learn English"}
+              </h3>
+              <p className="text-sm text-[#a3ced6] leading-relaxed mb-4">
+                {lang === "ar"
+                  ? " انضم إلى رحلاتنا التعليمية المميزه و سفر الي  بريطانيا للتعلم"
+                  : "Join our educational trips and Travel to Britain"}
+              </p>
+              <Link href="/trips"  >
+                <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
+                  {lang === "ar" ? "سجل الآن" : "Register Now"}
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          {/* ✅ زر عرض جميع الباقات */}
+          {/* <div className="text-center mt-10">
+            <Link href="/subscriptions">
+              <Button className="bg-white text-[#0a2540] hover:bg-gray-100 px-8 py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+                {lang === "ar" ? "عرض جميع الباقات" : "View All Packages"}
+                <ArrowRight className="h-5 w-5 ml-2" />
+              </Button>
+            </Link>
+          </div> */}
+        </div>
+      </section>
+
       {/* ── WHY CHOOSE US ────────────────────────────────────────────── */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-6">
@@ -1064,7 +1197,7 @@ const renderVideoTestimonials = () => {
             {/* Card 1 */}
             <div className="group bg-[#f7fafa] rounded-2xl p-6 text-center hover:bg-[#e0f5f7] transition-all duration-300 hover:-translate-y-2 hover:shadow-lg">
               <div className="w-16 h-16 rounded-2xl bg-[#1a7a8a]/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-[#1a7a8a]/20 transition-colors">
-                <IoBookOutline  className="w-7 h-7 text-[#1a7a8a] "  />
+                <IoBookOutline className="w-7 h-7 text-[#1a7a8a] " />
               </div>
               <h3 className="text-lg font-bold text-[#0a2540] mb-2">
                 {lang === "ar" ? "معلمون خبراء" : "Expert Teachers"}
@@ -1079,7 +1212,7 @@ const renderVideoTestimonials = () => {
             {/* Card 2 */}
             <div className="group bg-[#f7fafa] rounded-2xl p-6 text-center hover:bg-[#e0f5f7] transition-all duration-300 hover:-translate-y-2 hover:shadow-lg">
               <div className="w-16 h-16 rounded-2xl bg-[#1a7a8a]/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-[#1a7a8a]/20 transition-colors">
-                <LuClock5 className="w-7 h-7 text-[#1a7a8a] "/>
+                <LuClock5 className="w-7 h-7 text-[#1a7a8a] " />
               </div>
               <h3 className="text-lg font-bold text-[#0a2540] mb-2">
                 {lang === "ar" ? "مرونة في المواعيد" : "Flexible Scheduling"}
@@ -1094,7 +1227,7 @@ const renderVideoTestimonials = () => {
             {/* Card 3 */}
             <div className="group bg-[#f7fafa] rounded-2xl p-6 text-center hover:bg-[#e0f5f7] transition-all duration-300 hover:-translate-y-2 hover:shadow-lg">
               <div className="w-16 h-16 rounded-2xl bg-[#1a7a8a]/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-[#1a7a8a]/20 transition-colors">
-                <ShieldCheck className="w-7 h-7 text-[#1a7a8a] "/>
+                <ShieldCheck className="w-7 h-7 text-[#1a7a8a] " />
               </div>
               <h3 className="text-lg font-bold text-[#0a2540] mb-2">
                 {lang === "ar" ? "ضمان الجودة" : "Quality Guarantee"}
@@ -1109,7 +1242,7 @@ const renderVideoTestimonials = () => {
             {/* Card 4 */}
             <div className="group bg-[#f7fafa] rounded-2xl p-6 text-center hover:bg-[#e0f5f7] transition-all duration-300 hover:-translate-y-2 hover:shadow-lg">
               <div className="w-16 h-16 rounded-2xl bg-[#1a7a8a]/10 flex items-center justify-center mx-auto mb-4 group-hover:bg-[#1a7a8a]/20 transition-colors">
-                <HiOutlineUserGroup className="w-7 h-7 text-[#1a7a8a] "/>
+                <HiOutlineUserGroup className="w-7 h-7 text-[#1a7a8a] " />
               </div>
               <h3 className="text-lg font-bold text-[#0a2540] mb-2">
                 {lang === "ar" ? "دعم متواصل" : "24/7 Support"}
