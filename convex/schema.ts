@@ -24,7 +24,7 @@ export default defineSchema({
       v.literal("inactive"),
       v.literal("on_leave"), // ✅ إضافة حالة الإجازة للمعلمين
     ),
-    
+
     rejectionReason: v.optional(v.string()),
     approvedAt: v.optional(v.number()),
     approvedBy: v.optional(v.id("users")),
@@ -863,42 +863,72 @@ export default defineSchema({
     .index("by_published", ["isPublished"])
     .index("by_grade", ["grade"]),
 
+  teacherMaterials: defineTable({
+    teacherId: v.id("users"),
+    title: v.string(),
+    titleAr: v.string(),
+    description: v.optional(v.string()),
+    descriptionAr: v.optional(v.string()),
+    type: v.union(
+      v.literal("pdf"),
+      v.literal("video"),
+      v.literal("exam"),
+      v.literal("assignment"),
+      v.literal("revision"),
+    ),
+    fileUrl: v.optional(v.string()), // رابط الملف أو الفيديو
+    fileSize: v.optional(v.string()), // حجم الملف
+    duration: v.optional(v.string()), // مدة الفيديو
+    subject: v.string(),
+    grade: v.string(),
+    questions: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          text: v.string(),
+          options: v.optional(v.array(v.string())),
+          correctAnswer: v.optional(v.string()),
+          marks: v.number(),
+        }),
+      ),
+    ), // للامتحانات
+    deadline: v.optional(v.number()), // للواجبات
+    isPublished: v.boolean(),
+    displayOrder: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_teacher", ["teacherId"])
+    .index("by_type", ["type"])
+    .index("by_subject", ["subject"])
+    .index("by_published", ["isPublished"]),
 
-teacherMaterials: defineTable({
-  teacherId: v.id("users"),
-  title: v.string(),
-  titleAr: v.string(),
-  description: v.optional(v.string()),
-  descriptionAr: v.optional(v.string()),
-  type: v.union(
-    v.literal("pdf"),
-    v.literal("video"),
-    v.literal("exam"),
-    v.literal("assignment"),
-    v.literal("revision")
-  ),
-  fileUrl: v.optional(v.string()), // رابط الملف أو الفيديو
-  fileSize: v.optional(v.string()), // حجم الملف
-  duration: v.optional(v.string()), // مدة الفيديو
-  subject: v.string(),
-  grade: v.string(),
-  questions: v.optional(v.array(
-    v.object({
-      id: v.string(),
-      text: v.string(),
-      options: v.optional(v.array(v.string())),
-      correctAnswer: v.optional(v.string()),
-      marks: v.number(),
-    })
-  )), // للامتحانات
-  deadline: v.optional(v.number()), // للواجبات
-  isPublished: v.boolean(),
-  displayOrder: v.number(),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-})
-  .index("by_teacher", ["teacherId"])
-  .index("by_type", ["type"])
-  .index("by_subject", ["subject"])
-  .index("by_published", ["isPublished"]),
+  payments: defineTable({
+    parentId: v.id("users"),
+    studentId: v.id("users"),
+    amount: v.number(),
+    currency: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("refunded"),
+    ),
+    paymentMethod: v.union(
+      v.literal("card"),
+      v.literal("bank_transfer"),
+      v.literal("wallet"),
+      v.literal("cash"),
+    ),
+    description: v.string(),
+    transactionId: v.optional(v.string()),
+    paymentDate: v.optional(v.number()),
+    dueDate: v.optional(v.number()),
+    invoiceUrl: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_parent", ["parentId"])
+    .index("by_student", ["studentId"])
+    .index("by_status", ["status"]),
 });

@@ -2,6 +2,17 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 
+
+// ── Auth helper ───────────────────────────────────────────────────
+async function getAuthUser(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity();
+  // ✅ Return null instead of throwing — lets useQuery return null gracefully
+  if (!identity) return null;
+  return await ctx.db
+    .query("users")
+    .withIndex("by_clerkId", (q: any) => q.eq("clerkId", identity.subject))
+    .first();
+}
 // ربط ولي أمر بطالب
 export const linkParentToStudent = mutation({
   args: {
@@ -137,52 +148,56 @@ export const unlinkParentFromStudent = mutation({
 export const getChildrenByParent = query({
   args: { parentId: v.id("users") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("غير مصرح");
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!currentUser) throw new Error("المستخدم غير موجود");
-    
+    const currentUser = await getAuthUser(ctx);
+    // ✅ Return [] instead of throwing — page renders empty not crashed
+    if (!currentUser) return [];
+ 
     const isAdmin = currentUser.role === "admin";
-    const isSelf = currentUser._id === args.parentId;
-
-    if (!isAdmin && !isSelf) {
-      throw new Error("غير مصرح بعرض هذه البيانات");
-    }
-    
+    const isSelf  = currentUser._id === args.parentId;
+ 
+    if (!isAdmin && !isSelf) return [];
+ 
     const links = await ctx.db
       .query("parentStudentLinks")
-      .withIndex("by_parent", (q) => q.eq("parentId", args.parentId))
+      .withIndex("by_parent", (q: any) => q.eq("parentId", args.parentId))
       .collect();
-    
+ 
     const students = await Promise.all(
       links.map(async (link) => {
         const student = await ctx.db.get(link.studentId);
         if (!student) return null;
-        
-        if (!isAdmin && isSelf) {
-          return {
-            _id: student._id,
-            name: student.name,
-            studentId: student.studentId,
-            relationship: link.relationship,
-            isPrimary: link.isPrimary,
-          };
+ 
+        // ✅ Resolve grade name — check gradeId first, then grade string
+        let gradeName = "غير محدد";
+        if (student.gradeId) {
+          const grade = await ctx.db.get(student.gradeId);
+          if (grade) gradeName = grade.name || grade.nameEn || "غير محدد";
+        } else if (student.grade) {
+          gradeName = student.grade;
         }
-        
+ 
+        // ✅ Resolve group name
+        let groupName = "غير محدد";
+        if (student.groupId) {
+          const group = await ctx.db.get(student.groupId);
+          if (group) groupName = group.name || "غير محدد";
+        }
+ 
         return {
-          ...student,
+          _id:          student._id,
+          name:         student.name,
+          studentId:    student.studentId,
+          status:       student.status ?? "غير نشط",
+          grade:        gradeName,
+          gradeName,
+          groupName,
           relationship: link.relationship,
-          isPrimary: link.isPrimary,
-          permissions: link.permissions,
+          isPrimary:    link.isPrimary,
+          permissions:  link.permissions,
         };
       })
     );
-    
+ 
     return students.filter(Boolean);
   },
 });

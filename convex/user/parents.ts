@@ -327,3 +327,241 @@ export const getParentsStats = query({
     };
   },
 });
+
+
+
+// ✅ جلب درجات الطالب (لولي الأمر)
+export const getStudentGrades = query({
+  args: { studentId: v.id("users") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const parent = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!parent || parent.role !== "parent") {
+      throw new Error("مطلوب صلاحيات ولي أمر");
+    }
+
+    // التحقق من أن الطالب هو ابن ولي الأمر
+    const link = await ctx.db
+      .query("parentStudentLinks")
+      .withIndex("by_parent_student", (q) =>
+        q.eq("parentId", parent._id).eq("studentId", args.studentId)
+      )
+      .first();
+
+    if (!link) {
+      throw new Error("غير مصرح لك بمشاهدة درجات هذا الطالب");
+    }
+
+    // جلب درجات الامتحانات
+    const examSubmissions = await ctx.db
+      .query("examSubmissions")
+      .withIndex("by_student", (q) => q.eq("studentId", args.studentId))
+      .collect();
+
+    const examGrades = await Promise.all(
+      examSubmissions.map(async (sub) => {
+        const exam = await ctx.db.get(sub.examId);
+        return {
+          ...sub,
+          examTitle: exam?.title || "امتحان غير معروف",
+          examSubject: exam?.subject || "غير محدد",
+          examDate: exam?.date,
+        };
+      })
+    );
+
+    // جلب درجات الواجبات
+    const assignmentSubmissions = await ctx.db
+      .query("submissions")
+      .withIndex("by_student", (q) => q.eq("studentId", args.studentId))
+      .collect();
+
+    const assignmentGrades = await Promise.all(
+      assignmentSubmissions.map(async (sub) => {
+        const assignment = await ctx.db.get(sub.assignmentId);
+        return {
+          ...sub,
+          assignmentTitle: assignment?.title || "واجب غير معروف",
+          assignmentDueDate: assignment?.dueDate,
+        };
+      })
+    );
+
+    return {
+      examGrades,
+      assignmentGrades,
+    };
+  },
+});
+
+// ✅ جلب المدفوعات
+export const getPayments = query({
+  args: {
+    studentId: v.optional(v.id("users")),
+    status: v.optional(v.union(
+      v.literal("pending"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("refunded")
+    )),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const parent = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!parent || parent.role !== "parent") {
+      throw new Error("مطلوب صلاحيات ولي أمر");
+    }
+
+    let payments = await ctx.db
+      .query("payments")
+      .withIndex("by_parent", (q) => q.eq("parentId", parent._id))
+      .collect();
+
+    if (args.studentId) {
+      payments = payments.filter((p) => p.studentId === args.studentId);
+    }
+
+    if (args.status) {
+      payments = payments.filter((p) => p.status === args.status);
+    }
+
+    // جلب أسماء الطلاب
+    const paymentsWithStudent = await Promise.all(
+      payments.map(async (payment) => {
+        const student = await ctx.db.get(payment.studentId);
+        return {
+          ...payment,
+          studentName: student?.name || "طالب غير معروف",
+        };
+      })
+    );
+
+    return paymentsWithStudent.sort((a, b) => b.createdAt - a.createdAt);
+  },
+});
+
+// ✅ إنشاء دفعة جديدة
+export const createPayment = mutation({
+  args: {
+    studentId: v.id("users"),
+    amount: v.number(),
+    currency: v.string(),
+    paymentMethod: v.union(
+      v.literal("card"),
+      v.literal("bank_transfer"),
+      v.literal("wallet"),
+      v.literal("cash")
+    ),
+    description: v.string(),
+    dueDate: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const parent = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!parent || parent.role !== "parent") {
+      throw new Error("مطلوب صلاحيات ولي أمر");
+    }
+
+    // التحقق من أن الطالب هو ابن ولي الأمر
+    const link = await ctx.db
+      .query("parentStudentLinks")
+      .withIndex("by_parent_student", (q) =>
+        q.eq("parentId", parent._id).eq("studentId", args.studentId)
+      )
+      .first();
+
+    if (!link) {
+      throw new Error("غير مصرح لك بالدفع لهذا الطالب");
+    }
+
+    const paymentId = await ctx.db.insert("payments", {
+      parentId: parent._id,
+      studentId: args.studentId,
+      amount: args.amount,
+      currency: args.currency || "SAR",
+      status: "pending",
+      paymentMethod: args.paymentMethod,
+      description: args.description,
+      dueDate: args.dueDate,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    return { success: true, paymentId };
+  },
+});
+
+// ✅ تحديث حالة الدفعة
+export const updatePaymentStatus = mutation({
+  args: {
+    paymentId: v.id("payments"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("completed"),
+      v.literal("failed"),
+      v.literal("refunded")
+    ),
+    transactionId: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const parent = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!parent || parent.role !== "parent") {
+      throw new Error("مطلوب صلاحيات ولي أمر");
+    }
+
+    const payment = await ctx.db.get(args.paymentId);
+    if (!payment) throw new Error("الدفعة غير موجودة");
+
+    if (payment.parentId !== parent._id) {
+      throw new Error("غير مصرح لك بتحديث هذه الدفعة");
+    }
+
+    await ctx.db.patch(args.paymentId, {
+      status: args.status,
+      transactionId: args.transactionId,
+      paymentDate: args.status === "completed" ? Date.now() : undefined,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ تصدير الدوال
+export const parents = {
+  createParent,
+  getParents,
+  getParentById,
+  updateParent,
+  deleteParent,
+  getParentsStats,
+  getStudentGrades,
+  getPayments,
+  createPayment,
+  updatePaymentStatus,
+};
