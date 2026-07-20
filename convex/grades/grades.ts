@@ -263,8 +263,15 @@ export const deleteGrade = mutation({
 export const getActiveGrades = query({
   args: {},
   handler: async (ctx) => {
-    const grades = await ctx.db.query("grades").collect();
-    return grades.filter((g) => g.status === "active");
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const grades = await ctx.db
+      .query("grades")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect();
+
+    return grades.sort((a, b) => a.gradeLevel - b.gradeLevel);
   },
 });
 

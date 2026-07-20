@@ -29,9 +29,10 @@ import {
   ChevronDown,
   ChevronUp,
   Ban,
+  X,
 } from "lucide-react";
 import Link from "next/link";
-import { AddGroupModal } from "@/app/_components/Admin/AddGroupModal";
+
 import {
   Dialog,
   DialogContent,
@@ -47,6 +48,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import AddGroupModalTeacher from "@/app/_components/Teacher/AddGroupModalTeacher";
 
 // أيام الأسبوع
 const DAYS: Record<string, string> = {
@@ -59,13 +61,13 @@ const DAYS: Record<string, string> = {
   friday: "الجمعة",
 };
 
-function TeacherGroupCard({ 
-  group, 
-  onDelete, 
+function TeacherGroupCard({
+  group,
+  onDelete,
   onAddStudent,
-  currentUser 
-}: { 
-  group: any; 
+  currentUser
+}: {
+  group: any;
   onDelete: (id: string) => void;
   onAddStudent: (groupId: string) => void;
   currentUser: any;
@@ -160,15 +162,15 @@ function TeacherGroupCard({
               group.status === "active"
                 ? "bg-green-100 text-green-700"
                 : group.status === "completed"
-                ? "bg-blue-100 text-blue-700"
-                : "bg-gray-100 text-gray-700"
+                  ? "bg-blue-100 text-blue-700"
+                  : "bg-gray-100 text-gray-700"
             }
           >
             {group.status === "active"
               ? "نشط"
               : group.status === "completed"
-              ? "مكتمل"
-              : "غير نشط"}
+                ? "مكتمل"
+                : "غير نشط"}
           </Badge>
         </div>
       </CardHeader>
@@ -233,11 +235,11 @@ function TeacherGroupCard({
                 الجدول
               </Button>
             </Link>
-            
+
             {/* ✅ زر إضافة طالب */}
-            <Button 
-              size="sm" 
-              variant="outline" 
+            <Button
+              size="sm"
+              variant="outline"
               className="flex-1 gap-1"
               onClick={() => onAddStudent(group._id)}
             >
@@ -258,6 +260,7 @@ export default function TeacherGroupsPage() {
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const [selectedStudentId, setSelectedStudentId] = useState<string>("");
   const [isAdding, setIsAdding] = useState(false);
+  const [searchStudent, setSearchStudent] = useState("");
 
   // جلب مجموعات المعلم
   const groups = useQuery(api.groups.groups.getTeacherGroups, {
@@ -278,6 +281,12 @@ export default function TeacherGroupsPage() {
 
   const deleteGroup = useMutation(api.groups.groups.deleteGroup);
   const addStudent = useMutation(api.groups.groups.addStudentToGroup);
+
+
+// ✅ دالة لإعادة تعيين البحث
+const handleSearchClear = () => {
+  setSearchStudent("");
+};
 
   if (groups === undefined || grades === undefined || currentUser === undefined) {
     return (
@@ -430,7 +439,7 @@ export default function TeacherGroupsPage() {
       )}
 
       {/* Add Group Modal */}
-      <AddGroupModal
+      <AddGroupModalTeacher
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         onSuccess={() => {
@@ -438,69 +447,168 @@ export default function TeacherGroupsPage() {
         }}
       />
 
-      {/* Add Student Dialog */}
+      {/* ✅ Add Student Dialog - تصميم مشابه للصورة */}
       <Dialog open={isAddStudentOpen} onOpenChange={setIsAddStudentOpen}>
-        <DialogContent className="max-w-md" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#001f24]">
-              <UserPlus className="h-5 w-5 inline ml-2" />
-              إضافة طالب
-            </DialogTitle>
-            <p className="text-sm text-gray-500">
-              اختر طالباً لإضافته إلى المجموعة
-            </p>
-          </DialogHeader>
+        <DialogContent className="max-w-md p-0 overflow-hidden" dir="rtl">
+          {/* ✅ Header */}
+          <div className="p-6 pb-4 border-b">
+            <DialogHeader className="space-y-1">
+              <DialogTitle className="text-xl font-bold text-[#001f24] flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[#1a7a8a]/10 flex items-center justify-center">
+                  <UserPlus className="h-4 w-4 text-[#1a7a8a]" />
+                </div>
+                إضافة طالب
+              </DialogTitle>
+              <p className="text-sm text-gray-500 pr-10">
+                اختر طالباً لإضافته إلى المجموعة
+              </p>
+            </DialogHeader>
+          </div>
 
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>اختر الطالب</Label>
-              <Select
-                value={selectedStudentId}
-                onValueChange={(value: string | null) => {
-                  setSelectedStudentId(value || "");
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="اختر طالب" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableStudents?.map((student: any) => (
-                    <SelectItem key={student._id} value={student._id}>
-                      {student.name} - {student.email}
-                    </SelectItem>
-                  ))}
-                  {(!availableStudents || availableStudents.length === 0) && (
-                    <div className="p-2 text-sm text-gray-500 text-center">
-                      لا يوجد طلاب متاحون
-                    </div>
-                  )}
-                </SelectContent>
-              </Select>
+          {/* ✅ Search Bar */}
+          <div className="px-6 pt-4 pb-2">
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="بحث عن طالب..."
+                value={searchStudent}
+                onChange={(e) => setSearchStudent(e.target.value)}
+                className="pr-10 pl-10 h-11 bg-gray-50 border-gray-200 rounded-xl focus:bg-white transition-colors"
+              />
+              {searchStudent && (
+                <button
+                  onClick={handleSearchClear}
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsAddStudentOpen(false)}>
-              إلغاء
-            </Button>
-            <Button
-              onClick={handleAddStudent}
-              disabled={!selectedStudentId || isAdding}
-              className="bg-[#001f24] hover:bg-[#03363d] text-white"
-            >
-              {isAdding ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin ml-2" />
-                  جاري الإضافة...
-                </>
-              ) : (
-                <>
-                  <UserPlus className="h-4 w-4 ml-2" />
-                  إضافة الطالب
-                </>
-              )}
-            </Button>
-          </DialogFooter>
+          {/* ✅ Students List */}
+          <div className="px-6 pb-2 max-h-80 overflow-y-auto">
+            {availableStudents === undefined ? (
+              <div className="flex justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-[#1a7a8a]" />
+              </div>
+            ) : availableStudents?.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="w-12 h-12 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                  <Users className="h-6 w-6 text-gray-400" />
+                </div>
+                <p className="text-gray-500 font-medium">لا يوجد طلاب متاحون</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {searchStudent ? "لا توجد نتائج تطابق بحثك" : "جميع الطلاب مسجلون بالفعل"}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {availableStudents.map((student: any) => (
+                  <div
+                    key={student._id}
+                    onClick={() => setSelectedStudentId(student._id)}
+                    className={`
+                flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all
+                ${selectedStudentId === student._id
+                        ? "bg-[#1a7a8a]/10 border-2 border-[#1a7a8a]"
+                        : "hover:bg-gray-50 border-2 border-transparent"
+                      }
+              `}
+                  >
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      {/* ✅ Avatar */}
+                      <div className="w-10 h-10 rounded-full bg-linear-to-br from-[#1a7a8a]/20 to-[#1a7a8a]/5 flex items-center justify-center text-[#1a7a8a] font-bold text-sm shrink-0">
+                        {student.name?.charAt(0) || "ط"}
+                      </div>
+
+                      {/* ✅ Student Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-[#001f24] text-sm truncate">
+                          {student.name}
+                        </p>
+                        <p className="text-xs text-gray-400 truncate">
+                          {student.email}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* ✅ Checkmark for selected */}
+                    {selectedStudentId === student._id && (
+                      <div className="w-5 h-5 rounded-full bg-[#1a7a8a] flex items-center justify-center shrink-0">
+                        <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ✅ Selected Student Info with Remove Button */}
+          {selectedStudentId && availableStudents && (
+            <div className="px-6 pb-2">
+              <div className="flex items-center justify-between p-3 bg-[#1a7a8a]/5 rounded-xl border border-[#1a7a8a]/20">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-[#1a7a8a]/10 flex items-center justify-center">
+                    <Users className="h-4 w-4 text-[#1a7a8a]" />
+                  </div>
+                  <div>
+                    <p className="font-medium text-[#001f24] text-sm">
+                      {availableStudents.find((s: any) => s._id === selectedStudentId)?.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {availableStudents.find((s: any) => s._id === selectedStudentId)?.email}
+                    </p>
+                  </div>
+                </div>
+
+                {/* ✅ Remove Button */}
+                <button
+                  onClick={() => setSelectedStudentId("")}
+                  className="p-1.5 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-full transition-colors"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ✅ Footer */}
+          <div className="p-6 pt-4 border-t bg-gray-50/50">
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsAddStudentOpen(false);
+                  setSelectedStudentId("");
+                  setSearchStudent("");
+                }}
+                className="flex-1 h-11 rounded-xl border-2 hover:bg-gray-50"
+              >
+                إلغاء
+              </Button>
+              <Button
+                onClick={handleAddStudent}
+                disabled={!selectedStudentId || isAdding}
+                className="flex-1 h-11 bg-[#001f24] hover:bg-[#03363d] text-white rounded-xl gap-2"
+              >
+                {isAdding ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    جاري الإضافة...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="h-4 w-4" />
+                    إضافة الطالب
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
