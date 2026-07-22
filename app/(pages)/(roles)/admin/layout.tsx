@@ -22,6 +22,7 @@ import {
   ClipboardCheck,
   BarChart3,
   FileText,
+  Bell,
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { RiParentFill } from "react-icons/ri";
@@ -79,6 +80,7 @@ export default function AdminLayout({
     { href: "/admin/exams", label: "الامتحانات", icon: PiExam  }, 
     { href: "/admin/approvals", label: "الموافقة", icon: ClipboardCheck },
     { href: "/admin/landing", label: "البرتوفوليو", icon: MdOutlineHomeMax  },
+    { href: "/admin/notifications", label: "الإشعارات", icon: Bell  },
     { href: "/admin/settings", label: "الإعدادات", icon: Settings },
   ];
 

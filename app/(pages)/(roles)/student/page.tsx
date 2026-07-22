@@ -54,12 +54,83 @@ const DAYS: Record<string, string> = {
   friday: "الجمعة",
 };
 
+// ✅ دالة مساعدة لتنسيق الوقت
+const getTimeAgo = (timestamp: number) => {
+  const now = Date.now();
+  const diff = now - timestamp;
+  
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) {
+    return `منذ ${days} يوم${days > 1 ? 'ين' : ''}`;
+  }
+  if (hours > 0) {
+    return `منذ ${hours} ساعة${hours > 1 ? 'ين' : ''}`;
+  }
+  if (minutes > 0) {
+    return `منذ ${minutes} دقيقة${minutes > 1 ? 'ين' : ''}`;
+  }
+  return "الآن";
+};
+
+// ✅ دالة للحصول على أيقونة الإشعار
+const getNotificationIcon = (type: string) => {
+  switch (type) {
+    case "teacher_message":
+    case "system_announcement":
+      return Megaphone;
+    case "exam_published":
+    case "exam_reminder":
+      return FileText;
+    case "new_assignment":
+      return FileCheck;
+    case "submission":
+      return CheckCircle;
+    default:
+      return Bell;
+  }
+};
+
+// ✅ دالة للحصول على لون الإشعار
+const getNotificationColor = (type: string) => {
+  switch (type) {
+    case "teacher_message":
+      return "bg-blue-100 text-blue-600";
+    case "exam_published":
+    case "exam_reminder":
+      return "bg-purple-100 text-purple-600";
+    case "new_assignment":
+      return "bg-green-100 text-green-600";
+    case "system_announcement":
+      return "bg-amber-100 text-amber-600";
+    case "submission":
+      return "bg-teal-100 text-teal-600";
+    default:
+      return "bg-gray-100 text-gray-600";
+  }
+};
+
 export default function StudentDashboard() {
   const { isLoaded, isSignedIn } = useAuth();
   const router = useRouter();
   const currentUser = useQuery(api.user.auth.getCurrentUser);
   const [showSchedule, setShowSchedule] = useState<string | null>(null);
   const [activeEventTab, setActiveEventTab] = useState<"all" | "assignments" | "exams">("all");
+
+  // ✅ جلب الإشعارات من قاعدة البيانات
+  const notifications = useQuery(
+    api.notifications.notifications.getMyNotifications,
+    currentUser?._id ? { unreadOnly: false } : "skip"
+  );
+
+  // ✅ جلب عدد الإشعارات غير المقروءة
+  const unreadCount = useQuery(
+    api.notifications.notifications.getUnreadCount,
+    currentUser?._id ? {} : "skip"
+  );
 
   // جلب مجموعات الطالب
   const studentGroups = useQuery(
@@ -97,42 +168,6 @@ export default function StudentDashboard() {
       </div>
     );
   }
-
-  // بيانات وهمية للإشعارات (static)
-  const notifications = [
-    {
-      id: 1,
-      title: "تذكير بواجب الرياضيات",
-      description: "موعد التسليم غداً الساعة 11:59 م",
-      time: "منذ ساعتين",
-      type: "assignment",
-      read: false,
-    },
-    {
-      id: 2,
-      title: "نتيجة اختبار اللغة العربية",
-      description: "لقد حصلت على 85% في الاختبار",
-      time: "منذ يوم",
-      type: "exam",
-      read: false,
-    },
-    {
-      id: 3,
-      title: "تم إضافة محتوى جديد",
-      description: "تم إضافة فيديو جديد في مقرر العلوم",
-      time: "منذ يومين",
-      type: "media",
-      read: true,
-    },
-    {
-      id: 4,
-      title: "إجازة رسمية",
-      description: "الخميس القادم إجازة رسمية بمناسبة العيد",
-      time: "منذ 3 أيام",
-      type: "holiday",
-      read: true,
-    },
-  ];
 
   // الحصول على أيام الأسبوع للعرض
   const getDayLabel = (day: string) => DAYS[day] || day;
@@ -223,13 +258,17 @@ export default function StudentDashboard() {
     return true;
   });
 
-  // إحصائيات
+  // ✅ إحصائيات
   const stats = {
     assignments: upcomingAssignments?.length || 0,
     exams: upcomingExams?.length || 0,
     total: allUpcomingEvents.length,
     groups: studentGroups?.length || 0,
+    unread: unreadCount || 0,
   };
+
+  // ✅ قائمة الإشعارات (من قاعدة البيانات)
+  const notificationList = notifications || [];
 
   return (
     <div className="min-h-full bg-[#f7fafa] p-6">
@@ -244,9 +283,9 @@ export default function StudentDashboard() {
             <Link href="/student/notifications">
               <button className="relative p-2 bg-white rounded-xl border border-[#c0c8c9] hover:border-[#1a7a8a] transition-colors">
                 <Bell className="h-5 w-5 text-gray-600" />
-                {notifications.filter(n => !n.read).length > 0 && (
+                {stats.unread > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
-                    {notifications.filter(n => !n.read).length}
+                    {stats.unread}
                   </span>
                 )}
               </button>
@@ -541,13 +580,18 @@ export default function StudentDashboard() {
               </CardContent>
             </Card>
 
-            {/* Notifications */}
+            {/* ✅ Notifications - Dynamic from Database */}
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Bell className="h-4 w-4 text-[#1a7a8a]" />
                     الإشعارات
+                    {stats.unread > 0 && (
+                      <Badge className="bg-red-500 text-white text-[10px]">
+                        {stats.unread} جديد
+                      </Badge>
+                    )}
                   </CardTitle>
                   <Link href="/student/notifications">
                     <span className="text-xs text-[#1a7a8a] hover:underline cursor-pointer">
@@ -556,45 +600,62 @@ export default function StudentDashboard() {
                   </Link>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-2 max-h-48 overflow-y-auto">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification.id}
-                    className={`p-2 rounded-lg border ${
-                      notification.read
-                        ? "bg-white border-gray-200"
-                        : "bg-[#e0f5f7] border-[#1a7a8a]/20"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2">
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                        notification.type === 'assignment' ? 'bg-blue-100' :
-                        notification.type === 'exam' ? 'bg-purple-100' :
-                        notification.type === 'media' ? 'bg-green-100' :
-                        'bg-amber-100'
-                      }`}>
-                        {notification.type === 'assignment' && <FileCheck className="h-3 w-3 text-blue-600" />}
-                        {notification.type === 'exam' && <FileText className="h-3 w-3 text-purple-600" />}
-                        {notification.type === 'media' && <PlayCircle className="h-3 w-3 text-green-600" />}
-                        {notification.type === 'holiday' && <Calendar className="h-3 w-3 text-amber-600" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-[#001f24]">
-                          {notification.title}
-                          {!notification.read && (
-                            <span className="mr-1 w-1.5 h-1.5 bg-red-500 rounded-full inline-block"></span>
-                          )}
-                        </p>
-                        <p className="text-xs text-gray-500 truncate">
-                          {notification.description}
-                        </p>
-                        <p className="text-[10px] text-gray-400 mt-0.5">
-                          {notification.time}
-                        </p>
-                      </div>
-                    </div>
+              <CardContent className="space-y-2 max-h-56 overflow-y-auto">
+                {notificationList.length === 0 ? (
+                  <div className="text-center py-6">
+                    <Bell className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                    <p className="text-sm text-gray-500">لا توجد إشعارات</p>
                   </div>
-                ))}
+                ) : (
+                  notificationList.slice(0, 5).map((notification: any) => {
+                    const Icon = getNotificationIcon(notification.type);
+                    const colorClasses = getNotificationColor(notification.type);
+                    
+                    return (
+                      <div
+                        key={notification._id}
+                        className={`p-2.5 rounded-lg border transition-colors ${
+                          notification.status === "read"
+                            ? "bg-white border-gray-200"
+                            : "bg-[#e0f5f7] border-[#1a7a8a]/20 shadow-sm"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2.5">
+                          <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${colorClasses}`}>
+                            <Icon className="h-3.5 w-3.5" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-medium text-[#001f24] flex items-center gap-1.5">
+                              {notification.title}
+                              {notification.status === "sent" && (
+                                <span className="w-1.5 h-1.5 bg-red-500 rounded-full inline-block animate-pulse"></span>
+                              )}
+                              {notification.priority === "urgent" && (
+                                <Badge className="bg-red-500 text-white text-[8px] px-1 py-0">عاجل</Badge>
+                              )}
+                              {notification.priority === "high" && (
+                                <Badge className="bg-amber-500 text-white text-[8px] px-1 py-0">هام</Badge>
+                              )}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {notification.message}
+                            </p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">
+                              {getTimeAgo(notification.createdAt)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+                {notificationList.length > 5 && (
+                  <Link href="/student/notifications">
+                    <p className="text-center text-xs text-[#1a7a8a] hover:underline py-1">
+                      عرض {notificationList.length - 5} إشعارات أخرى
+                    </p>
+                  </Link>
+                )}
               </CardContent>
             </Card>
           </div>

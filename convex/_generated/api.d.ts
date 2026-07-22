@@ -19,6 +19,7 @@ import type * as index from "../index.js";
 import type * as landing_landing from "../landing/landing.js";
 import type * as media_mediaassignments from "../media/mediaassignments.js";
 import type * as media_mediafiles from "../media/mediafiles.js";
+import type * as notifications_notifications from "../notifications/notifications.js";
 import type * as questions_questions from "../questions/questions.js";
 import type * as relationships_parentStudent from "../relationships/parentStudent.js";
 import type * as schedules_schedules from "../schedules/schedules.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   "landing/landing": typeof landing_landing;
   "media/mediaassignments": typeof media_mediaassignments;
   "media/mediafiles": typeof media_mediafiles;
+  "notifications/notifications": typeof notifications_notifications;
   "questions/questions": typeof questions_questions;
   "relationships/parentStudent": typeof relationships_parentStudent;
   "schedules/schedules": typeof schedules_schedules;

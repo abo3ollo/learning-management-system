@@ -931,4 +931,42 @@ export default defineSchema({
     .index("by_parent", ["parentId"])
     .index("by_student", ["studentId"])
     .index("by_status", ["status"]),
+
+  notifications: defineTable({
+    title: v.string(),
+    message: v.string(),
+    type: v.union(
+      v.literal("teacher_message"),
+      v.literal("exam_published"),
+      v.literal("exam_reminder"),
+      v.literal("new_assignment"),
+      v.literal("system_announcement"),
+    ),
+    priority: v.union(
+      v.literal("low"),
+      v.literal("normal"),
+      v.literal("high"),
+      v.literal("urgent"),
+    ),
+    recipientType: v.union(
+      v.literal("group"),
+       v.literal("grade"),   
+      v.literal("student"),
+      v.literal("all_teachers"),
+      v.literal("teacher"),
+    ),
+    recipientId: v.optional(v.union(v.id("users"), v.id("groups"), v.id("grades"))),
+    status: v.union(
+      v.literal("sent"),
+      v.literal("read"),
+      v.literal("archived"),
+    ),
+    createdBy: v.id("users"),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_createdBy", ["createdBy"])
+    .index("by_recipient", ["recipientId"])
+    .index("by_status", ["status"])
+    .index("by_type", ["type"]),
 });
