@@ -24,128 +24,204 @@ import {
   Plus,
   ArrowLeft,
   ArrowRight,
+  Bell,
+  GraduationCap,
+  FolderOpen,
 } from "lucide-react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
 
-export default function TeacherDashboardPage() {
-    const teacher = useQuery(api.user.auth.getCurrentUser);
+// ✅ دالة مساعدة لتنسيق الوقت
+const getTimeAgo = (timestamp: number) => {
+  const now = Date.now();
+  const diff = now - timestamp;
   
-  // جلب الإحصائيات
-  const stats = {
-    totalStudents: 45,
-    totalClasses: 3,
-    totalAssignments: 12,
-    totalExams: 8,
-    pendingAssignments: 5,
-    upcomingExams: 3,
-  };
+  const seconds = Math.floor(diff / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) {
+    return `منذ ${days} يوم${days > 1 ? 'ين' : ''}`;
+  }
+  if (hours > 0) {
+    return `منذ ${hours} ساعة${hours > 1 ? 'ين' : ''}`;
+  }
+  if (minutes > 0) {
+    return `منذ ${minutes} دقيقة${minutes > 1 ? 'ين' : ''}`;
+  }
+  return "الآن";
+};
 
-  // واجبات حديثة (تجريبي)
-  const recentAssignments = [
-    {
-      id: "1",
-      title: "واجب الرياضيات - الفصل الأول",
-      subject: "الرياضيات",
-      dueDate: Date.now() + 86400000 * 2,
-      submissions: 12,
-      totalStudents: 15,
-      status: "active",
-    },
-    {
-      id: "2",
-      title: "تلخيص درس النحو",
-      subject: "اللغة العربية",
-      dueDate: Date.now() - 86400000,
-      submissions: 8,
-      totalStudents: 15,
-      status: "late",
-    },
-    {
-      id: "3",
-      title: "بحث عن الطاقة المتجددة",
-      subject: "العلوم",
-      dueDate: Date.now() + 86400000 * 5,
-      submissions: 3,
-      totalStudents: 15,
-      status: "pending",
-    },
-  ];
+export default function TeacherDashboardPage() {
+  // ✅ جلب المستخدم الحالي
+  const teacher = useQuery(api.user.auth.getCurrentUser);
+  
+  // ✅ جلب مجموعات المعلم
+  const teacherGroups = useQuery(
+    api.groups.groups.getTeacherGroups,
+    {}
+  );
 
-  // امتحانات قادمة (تجريبي)
-  const upcomingExams = [
-    {
-      id: "1",
-      title: "امتحان الرياضيات الشهري",
-      subject: "الرياضيات",
-      date: Date.now() + 86400000 * 4,
-      duration: 60,
-      students: 15,
-    },
-    {
-      id: "2",
-      title: "امتحان اللغة العربية",
-      subject: "اللغة العربية",
-      date: Date.now() + 86400000 * 7,
-      duration: 45,
-      students: 15,
-    },
-  ];
+  // ✅ جلب الواجبات
+  const assignments = useQuery(
+    api.assignments.assignments.getTeacherAssignments,
+    {}
+  );
 
+  // ✅ جلب الامتحانات
+  const exams = useQuery(
+    api.exams.exams.getTeacherExams,
+    {}
+  );
+
+  // ✅ جلب الطلاب (للمعلم)
+  const students = useQuery(
+    api.user.students.getStudents,
+    {}
+  );
+
+  // ✅ جلب الإشعارات
+  const notifications = useQuery(
+    api.notifications.notifications.getMyNotifications,
+    { unreadOnly: false }
+  );
+
+  // ✅ جلب عدد الإشعارات غير المقروءة
+  const unreadCount = useQuery(
+    api.notifications.notifications.getUnreadCount,
+    {}
+  );
+
+  // ── حساب الإحصائيات ─────────────────────────────────────────────
+  const groupList = teacherGroups ?? [];
+  const assignmentList = assignments ?? [];
+  const examList = exams ?? [];
+  const studentList = students ?? [];
+  const notificationList = notifications ?? [];
+
+  // ✅ حساب إجمالي الطلاب (من المجموعات)
+  const totalStudents = groupList.reduce(
+    (acc: number, group: any) => acc + (group.students?.length || 0),
+    0
+  );
+
+  // ✅ حساب الواجبات النشطة والمتأخرة
+  const now = Date.now();
+  const activeAssignments = assignmentList.filter(
+    (a: any) => a.status === "published" && a.dueDate > now
+  );
+  const lateAssignments = assignmentList.filter(
+    (a: any) => a.status === "published" && a.dueDate < now
+  );
+  const pendingAssignments = assignmentList.filter(
+    (a: any) => a.status === "draft"
+  );
+
+  // ✅ حساب الامتحانات القادمة
+  const upcomingExamsList = examList.filter(
+    (e: any) => e.status === "published" && e.date > now
+  );
+
+  // ✅ حساب الإشعارات غير المقروءة
+  const unreadNotifications = notificationList.filter(
+    (n: any) => n.status === "sent"
+  );
+
+  // ── إحصائيات البطاقات ──────────────────────────────────────────
   const statsCards = [
     {
       label: "الطلاب",
-      value: stats.totalStudents,
+      value: totalStudents,
       icon: Users,
       color: "bg-blue-50 text-blue-500",
-      trend: "+8%",
+      trend: `+${groupList.length} مجموعات`,
       trendUp: true,
     },
     {
-      label: "الفصول",
-      value: stats.totalClasses,
-      icon: BookOpen,
+      label: "المجموعات",
+      value: groupList.length,
+      icon: FolderOpen,
       color: "bg-green-50 text-green-500",
-      trend: "+2",
+      trend: groupList.length > 0 ? "نشطة" : "لا توجد",
       trendUp: true,
     },
     {
       label: "الواجبات",
-      value: stats.totalAssignments,
+      value: assignmentList.length,
       icon: FileText,
       color: "bg-amber-50 text-amber-500",
-      trend: "+5",
+      trend: `${activeAssignments.length} نشطة`,
       trendUp: true,
     },
     {
-      label: "امتحانات",
-      value: stats.totalExams,
-      icon: ClipboardList,
+      label: "الإشعارات",
+      value: notificationList.length,
+      icon: Bell,
       color: "bg-purple-50 text-purple-500",
-      trend: "+3",
-      trendUp: true,
+      trend: `${unreadNotifications.length} غير مقروءة`,
+      trendUp: unreadNotifications.length > 0,
     },
   ];
 
+  // ── Quick Stats ──────────────────────────────────────────────────
+  const quickStats = [
+    {
+      label: "واجبات قيد التصحيح",
+      value: pendingAssignments.length,
+      color: "text-amber-500",
+      icon: Clock,
+      bgColor: "bg-amber-50",
+    },
+    {
+      label: "امتحانات قادمة",
+      value: upcomingExamsList.length,
+      color: "text-blue-500",
+      icon: Calendar,
+      bgColor: "bg-blue-50",
+    },
+    {
+      label: "مجموعات نشطة",
+      value: groupList.filter((g: any) => g.status === "active").length,
+      color: "text-green-500",
+      icon: CheckCircle,
+      bgColor: "bg-green-50",
+    },
+    {
+      label: "إجمالي الطلاب",
+      value: totalStudents,
+      color: "text-[#1a7a8a]",
+      icon: GraduationCap,
+      bgColor: "bg-[#e0f5f7]",
+    },
+  ];
+
+  // ── عرض البيانات ─────────────────────────────────────────────────
   return (
     <div className="space-y-6" dir="rtl">
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-[#001f24]">
-            مساء الخير، {teacher?.name}! 👋
+            مساء الخير، {teacher?.name || "معلم"}! 👋
           </h1>
           <p className="text-sm text-gray-500 mt-1">
-            إليك نظرة عامة على أداء الفصول والواجبات
+            إليك نظرة عامة على أداء المجموعات والواجبات
           </p>
         </div>
-        {/* <div className="flex items-center gap-3">
-          <Button className="bg-[#001f24] hover:bg-[#03363d] text-white gap-2">
-            <Plus className="h-4 w-4" />
-            إنشاء واجب جديد
-          </Button>
-        </div> */}
+        <div className="flex items-center gap-3">
+          <Link href="/teacher/notifications">
+            <button className="relative p-2 bg-white rounded-xl border border-[#c0c8c9] hover:border-[#1a7a8a] transition-colors">
+              <Bell className="h-5 w-5 text-gray-600" />
+              {unreadCount && unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -175,7 +251,6 @@ export default function TeacherDashboardPage() {
                   <span className={`text-xs ${stat.trendUp ? "text-green-500" : "text-red-500"}`}>
                     {stat.trend}
                   </span>
-                  <span className="text-xs text-gray-400">من الشهر الماضي</span>
                 </div>
               </CardContent>
             </Card>
@@ -193,7 +268,7 @@ export default function TeacherDashboardPage() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/teacher/assignments/create">
+        <Link href="/teacher/assignments">
           <Card className="hover:shadow-md transition-shadow cursor-pointer border-2 border-transparent hover:border-[#1a7a8a]">
             <CardContent className="p-4 text-center">
               <FileText className="h-8 w-8 mx-auto text-[#1a7a8a] mb-2" />
@@ -201,7 +276,7 @@ export default function TeacherDashboardPage() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/teacher/exams/create">
+        <Link href="/teacher/exams">
           <Card className="hover:shadow-md transition-shadow cursor-pointer border-2 border-transparent hover:border-[#1a7a8a]">
             <CardContent className="p-4 text-center">
               <ClipboardList className="h-8 w-8 mx-auto text-[#1a7a8a] mb-2" />
@@ -209,11 +284,11 @@ export default function TeacherDashboardPage() {
             </CardContent>
           </Card>
         </Link>
-        <Link href="/teacher/students">
+        <Link href="/teacher/groups">
           <Card className="hover:shadow-md transition-shadow cursor-pointer border-2 border-transparent hover:border-[#1a7a8a]">
             <CardContent className="p-4 text-center">
-              <UserPlus className="h-8 w-8 mx-auto text-[#1a7a8a] mb-2" />
-              <p className="text-sm font-medium">إضافة طالب</p>
+              <FolderOpen className="h-8 w-8 mx-auto text-[#1a7a8a] mb-2" />
+              <p className="text-sm font-medium">إدارة المجموعات</p>
             </CardContent>
           </Card>
         </Link>
@@ -232,49 +307,58 @@ export default function TeacherDashboardPage() {
             </Link>
           </CardHeader>
           <CardContent className="space-y-3">
-            {recentAssignments.map((assignment) => (
-              <div
-                key={assignment.id}
-                className="flex items-center justify-between p-3 bg-[#f7fafa] rounded-lg hover:bg-[#e0f5f7] transition-colors"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#001f24] truncate">
-                    {assignment.title}
-                  </p>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-xs text-gray-500">{assignment.subject}</span>
-                    <span className="text-xs text-gray-400">•</span>
-                    <span className="text-xs text-gray-500">
-                      {assignment.submissions}/{assignment.totalStudents} طالب
+            {assignmentList.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <FileText className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+                <p className="text-sm">لا توجد واجبات</p>
+              </div>
+            ) : (
+              assignmentList.slice(0, 5).map((assignment: any) => (
+                <div
+                  key={assignment._id}
+                  className="flex items-center justify-between p-3 bg-[#f7fafa] rounded-lg hover:bg-[#e0f5f7] transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[#001f24] truncate">
+                      {assignment.title}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-xs text-gray-500">{assignment.subject || "غير محدد"}</span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-500">
+                        {assignment.submissions?.length || 0} تسليم
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs ${
+                          assignment.status === "published" && assignment.dueDate > now
+                            ? "border-green-500 text-green-600"
+                            : assignment.status === "published" && assignment.dueDate < now
+                            ? "border-red-500 text-red-600"
+                            : "border-amber-500 text-amber-600"
+                        }`}
+                      >
+                        {assignment.status === "published" && assignment.dueDate > now
+                          ? "نشط"
+                          : assignment.status === "published" && assignment.dueDate < now
+                          ? "متأخر"
+                          : "مسودة"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-gray-400">
+                      {format(new Date(assignment.dueDate), "dd/MM", { locale: ar })}
                     </span>
-                    <Badge
-                      variant="outline"
-                      className={`text-xs ${
-                        assignment.status === "active"
-                          ? "border-green-500 text-green-600"
-                          : assignment.status === "late"
-                          ? "border-red-500 text-red-600"
-                          : "border-amber-500 text-amber-600"
-                      }`}
-                    >
-                      {assignment.status === "active"
-                        ? "نشط"
-                        : assignment.status === "late"
-                        ? "متأخر"
-                        : "قادم"}
-                    </Badge>
+                    <Link href="/teacher/assignments/">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Eye className="h-4 w-4 text-gray-400 hover:text-[#1a7a8a]" />
+                      </Button>
+                    </Link>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-gray-400">
-                    {format(new Date(assignment.dueDate), "dd/MM", { locale: ar })}
-                  </span>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <Eye className="h-4 w-4 text-gray-400 hover:text-[#1a7a8a]" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
 
@@ -290,76 +374,126 @@ export default function TeacherDashboardPage() {
             </Link>
           </CardHeader>
           <CardContent className="space-y-3">
-            {upcomingExams.map((exam) => (
-              <div
-                key={exam.id}
-                className="flex items-center justify-between p-3 bg-[#f7fafa] rounded-lg hover:bg-[#e0f5f7] transition-colors"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#001f24] truncate">
-                    {exam.title}
-                  </p>
-                  <div className="flex items-center gap-3 mt-1">
-                    <span className="text-xs text-gray-500">{exam.subject}</span>
-                    <span className="text-xs text-gray-400">•</span>
-                    <span className="text-xs text-gray-500">{exam.duration} دقيقة</span>
-                    <span className="text-xs text-gray-400">•</span>
-                    <span className="text-xs text-gray-500">{exam.students} طالب</span>
+            {upcomingExamsList.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <ClipboardList className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+                <p className="text-sm">لا توجد امتحانات قادمة</p>
+              </div>
+            ) : (
+              upcomingExamsList.slice(0, 5).map((exam: any) => (
+                <div
+                  key={exam._id}
+                  className="flex items-center justify-between p-3 bg-[#f7fafa] rounded-lg hover:bg-[#e0f5f7] transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-[#001f24] truncate">
+                      {exam.title}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1">
+                      <span className="text-xs text-gray-500">{exam.subject || "غير محدد"}</span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-500">{exam.duration || 0} دقيقة</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-amber-500 text-white text-xs">
+                      {format(new Date(exam.date), "dd/MM", { locale: ar })}
+                    </Badge>
+                    <Link href={`/teacher/exams/preview/${exam._id}`}>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <Eye className="h-4 w-4 text-gray-400 hover:text-[#1a7a8a]" />
+                      </Button>
+                    </Link>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-amber-500 text-white text-xs">
-                    {format(new Date(exam.date), "dd/MM", { locale: ar })}
-                  </Badge>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <Eye className="h-4 w-4 text-gray-400 hover:text-[#1a7a8a]" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Quick Stats */}
+      {/* Quick Stats - Dynamic */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg border border-[#c0c8c9] p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500">واجبات قيد التصحيح</p>
-              <p className="text-2xl font-bold text-amber-500">{stats.pendingAssignments}</p>
+        {quickStats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div
+              key={stat.label}
+              className={`${stat.bgColor} rounded-lg border border-[#c0c8c9] p-4`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-gray-500">{stat.label}</p>
+                  <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                </div>
+                <Icon className={`h-8 w-8 ${stat.color}`} />
+              </div>
             </div>
-            <Clock className="h-8 w-8 text-amber-500" />
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border border-[#c0c8c9] p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500">امتحانات قادمة</p>
-              <p className="text-2xl font-bold text-blue-500">{stats.upcomingExams}</p>
-            </div>
-            <Calendar className="h-8 w-8 text-blue-500" />
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border border-[#c0c8c9] p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500">حضور اليوم</p>
-              <p className="text-2xl font-bold text-green-500">92%</p>
-            </div>
-            <CheckCircle className="h-8 w-8 text-green-500" />
-          </div>
-        </div>
-        <div className="bg-white rounded-lg border border-[#c0c8c9] p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500">متوسط الدرجات</p>
-              <p className="text-2xl font-bold text-[#1a7a8a]">78%</p>
-            </div>
-            <BarChart3 className="h-8 w-8 text-[#1a7a8a]" />
-          </div>
-        </div>
+          );
+        })}
       </div>
+
+      {/* Recent Notifications */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Bell className="h-5 w-5 text-[#1a7a8a]" />
+            آخر الإشعارات
+            {unreadCount && unreadCount > 0 && (
+              <Badge className="bg-red-500 text-white">
+                {unreadCount} جديد
+              </Badge>
+            )}
+          </CardTitle>
+          <Link href="/teacher/notifications">
+            <Button variant="ghost" size="sm" className="gap-1">
+              عرض الكل
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {notificationList.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Bell className="h-10 w-10 mx-auto text-gray-300 mb-2" />
+              <p className="text-sm">لا توجد إشعارات</p>
+            </div>
+          ) : (
+            notificationList.slice(0, 5).map((notification: any) => (
+              <div
+                key={notification._id}
+                className={`flex items-center justify-between p-3 rounded-lg transition-colors ${
+                  notification.status === "sent"
+                    ? "bg-[#e0f5f7] border border-[#1a7a8a]/20"
+                    : "bg-[#f7fafa]"
+                }`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-[#001f24] truncate">
+                      {notification.title}
+                    </p>
+                    {notification.status === "sent" && (
+                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full inline-block animate-pulse" />
+                    )}
+                    {notification.priority === "urgent" && (
+                      <Badge className="bg-red-500 text-white text-[8px] px-1 py-0">عاجل</Badge>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 truncate">
+                    {notification.message}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[10px] text-gray-400 whitespace-nowrap">
+                    {getTimeAgo(notification.createdAt)}
+                  </span>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

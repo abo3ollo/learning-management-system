@@ -1,3 +1,5 @@
+// convex/notifications/notifications.ts
+
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 import { Id } from "../_generated/dataModel";
@@ -6,8 +8,7 @@ import { Id } from "../_generated/dataModel";
 // QUERIES
 // ============================================
 
-
-// ✅ جلب جميع الإشعارات (معدل)
+// ✅ جلب جميع الإشعارات (للمشرف)
 export const listNotifications = query({
   args: {
     type: v.optional(v.string()),
@@ -63,7 +64,6 @@ export const listNotifications = query({
         let recipientName = undefined;
         try {
           if (notif.recipientId && notif.recipientType !== "all_teachers") {
-            // ✅ جلب اسم المستلم حسب النوع
             if (notif.recipientType === "group") {
               const group = await ctx.db.get(notif.recipientId);
               if (group) recipientName = group.name || "مجموعة غير معروفة";
@@ -91,7 +91,7 @@ export const listNotifications = query({
   },
 });
 
-// ✅ جلب الإشعارات للمستخدم الحالي (معدل)
+// ✅ جلب الإشعارات للمستخدم الحالي (معدل - مع التحقق الفعلي من المجموعات)
 export const getMyNotifications = query({
   args: {
     status: v.optional(v.union(v.literal("sent"), v.literal("read"), v.literal("archived"))),
@@ -112,27 +112,50 @@ export const getMyNotifications = query({
       .query("notifications")
       .collect();
 
+    // ✅ جلب مجموعات المستخدم (إذا كان معلم أو طالب)
+    let userGroupIds: Id<"groups">[] = [];
+    
+    if (user.role === "teacher") {
+      // ✅ جلب المجموعات التي يديرها المعلم
+      const allGroups = await ctx.db.query("groups").collect();
+      const teacherGroups = allGroups.filter((g) => 
+        g.createdBy === user._id || 
+        g.supervisorId === user._id ||
+        (g.teachers && g.teachers.includes(user._id))
+      );
+      userGroupIds = teacherGroups.map((g) => g._id);
+    } else if (user.role === "student") {
+      // ✅ جلب المجموعات التي فيها الطالب
+      const allGroups = await ctx.db.query("groups").collect();
+      const studentGroups = allGroups.filter((g) =>
+        g.students && g.students.includes(user._id)
+      );
+      userGroupIds = studentGroups.map((g) => g._id);
+    }
+
     // ✅ تصفية الإشعارات التي تخص المستخدم
     notifications = notifications.filter((n) => {
-      // إذا كان المستلم هو المستخدم مباشرة
+      // 1. إذا كان المستلم هو المستخدم مباشرة
       if (n.recipientId === user._id) return true;
       
-      // إذا كان المستلم مجموعة
+      // 2. إذا كان المستلم مجموعة والمستخدم في هذه المجموعة
       if (n.recipientType === "group" && n.recipientId) {
-        // التحقق من أن المستخدم طالب في هذه المجموعة
-        const group = ctx.db.get(n.recipientId);
-        // سيتم التحقق لاحقاً
-        return true;
+        return userGroupIds.some((id) => id === n.recipientId);
       }
       
-      // إذا كان المستلم صف
+      // 3. إذا كان المستلم صف (سيتم التحقق لاحقاً)
       if (n.recipientType === "grade" && n.recipientId) {
-        // التحقق من أن المستخدم في هذا الصف
+        // يمكن إضافة منطق التحقق من الصف هنا
         return true;
       }
       
-      // إذا كان المستلم جميع المعلمين والمستخدم معلم
+      // 4. إذا كان المستلم جميع المعلمين والمستخدم معلم
       if (n.recipientType === "all_teachers" && user.role === "teacher") {
+        return true;
+      }
+      
+      // 5. إذا كان المستلم معلم والمستخدم هو هذا المعلم
+      if (n.recipientType === "teacher" && n.recipientId === user._id) {
         return true;
       }
       
@@ -150,7 +173,7 @@ export const getMyNotifications = query({
   },
 });
 
-// ✅ جلب عدد الإشعارات غير المقروءة
+// ✅ جلب عدد الإشعارات غير المقروءة (معدل)
 export const getUnreadCount = query({
   args: {},
   handler: async (ctx) => {
@@ -164,13 +187,50 @@ export const getUnreadCount = query({
 
     if (!user) return 0;
 
+    // ✅ جلب مجموعات المستخدم
+    let userGroupIds: Id<"groups">[] = [];
+    
+    if (user.role === "teacher") {
+      const allGroups = await ctx.db.query("groups").collect();
+      const teacherGroups = allGroups.filter((g) => 
+        g.createdBy === user._id || 
+        g.supervisorId === user._id ||
+        (g.teachers && g.teachers.includes(user._id))
+      );
+      userGroupIds = teacherGroups.map((g) => g._id);
+    } else if (user.role === "student") {
+      const allGroups = await ctx.db.query("groups").collect();
+      const studentGroups = allGroups.filter((g) =>
+        g.students && g.students.includes(user._id)
+      );
+      userGroupIds = studentGroups.map((g) => g._id);
+    }
+
     const notifications = await ctx.db
       .query("notifications")
       .collect();
 
     const unread = notifications.filter((n) => {
-      if (n.recipientId === user._id && n.status === "sent") return true;
-      if (n.recipientType === "all_teachers" && user.role === "teacher" && n.status === "sent") return true;
+      if (n.status !== "sent") return false;
+      
+      // المستلم هو المستخدم مباشرة
+      if (n.recipientId === user._id) return true;
+      
+      // المستلم مجموعة والمستخدم في المجموعة
+      if (n.recipientType === "group" && n.recipientId) {
+        return userGroupIds.some((id) => id === n.recipientId);
+      }
+      
+      // جميع المعلمين والمستخدم معلم
+      if (n.recipientType === "all_teachers" && user.role === "teacher") {
+        return true;
+      }
+      
+      // معلم معين والمستخدم هو المعلم
+      if (n.recipientType === "teacher" && n.recipientId === user._id) {
+        return true;
+      }
+      
       return false;
     });
 
@@ -181,7 +241,6 @@ export const getUnreadCount = query({
 // ============================================
 // MUTATIONS
 // ============================================
-
 
 // ✅ إنشاء إشعار جديد (معدل)
 export const createNotification = mutation({

@@ -42,6 +42,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { AddAssignmentModalTeacher } from "@/app/_components/Teacher/AddAssignmentModalTeacher";
 
 export default function TeacherAssignmentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -440,7 +441,7 @@ export default function TeacherAssignmentsPage() {
       </div>
 
       {/* Add/Edit Assignment Modal */}
-      <AddAssignmentModal
+      <AddAssignmentModalTeacher
         isOpen={isAddModalOpen}
         onClose={() => {
           setIsAddModalOpen(false);

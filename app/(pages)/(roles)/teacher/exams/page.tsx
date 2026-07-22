@@ -30,6 +30,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddExamModal } from "@/app/_components/Exam/AddExamModal";
+import { AddExamModalTeacher } from "@/app/_components/Teacher/AddExamModalTeacher";
 
 
 export default function TeacherExamsPage() {
@@ -415,7 +416,7 @@ export default function TeacherExamsPage() {
       </div>
 
       {/* Add/Edit Exam Modal - نفس المودال المستخدم في صفحة الأدمن */}
-      <AddExamModal
+      <AddExamModalTeacher
         isOpen={isAddModalOpen}
         onClose={() => {
           setIsAddModalOpen(false);
