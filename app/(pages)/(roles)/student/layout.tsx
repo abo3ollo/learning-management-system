@@ -60,18 +60,18 @@ export default function StudentLayout({
 
   // قائمة التنقل الرئيسية
   const navItems = [
-    { label: "اختياراتي", icon: SiWikibooks , href: "/student/my-courses" },
-    { label: "فصلي", icon: School , href: "/student/my-classes" },
-    { label: "وسائطي", icon: BarChart3 , href: "/student/my-media" },
+    // { label: "اختياراتي", icon: SiWikibooks , href: "/student/my-courses" },
+    // { label: "فصلي", icon: School , href: "/student/my-classes" },
+    { label: "مجموعاتي", icon: Circle , href: "/student/groups" },
     { label: "واجبائي", icon: BsFileCheck , href: "/student/my-assignments" },
     { label: "امتحاناتي", icon: PiExam , href: "/student/my-exams" },
+    { label: "وسائطي", icon: BarChart3 , href: "/student/my-media" },
     { label: "حضوري", icon: Circle , href: "/student/attendance" },
-    { label: "مجموعاتي", icon: Circle , href: "/student/groups" },
-    { label: "شهاداتي", icon: Award , href: "/student/certificates" },
+    // { label: "شهاداتي", icon: Award , href: "/student/certificates" },
     // { label: "المنجر", icon: LayoutDashboard , href: "/student/dashboard" },
-    { label: "الإعلانات", icon: Megaphone , href: "/student/announcements" },
-    { label: "إشعاراتي", icon: Bell , href: "/student/notifications" },
-    { label: "ملفي الشخصي", icon: User , href: "/student/profile" },
+    // { label: "الإعلانات", icon: Megaphone , href: "/student/announcements" },
+    // { label: "إشعاراتي", icon: Bell , href: "/student/notifications" },
+    // { label: "ملفي الشخصي", icon: User , href: "/student/profile" },
   ];
 
   return (

@@ -617,6 +617,11 @@ export const getStudentGroups = query({
           }
         }
 
+        const liveClasses = await ctx.db
+          .query("liveClasses")
+          .filter((q) => q.eq(q.field("groupId"), group._id))
+          .collect();
+
         // ✅ جلب الجدول
         const schedule = await ctx.db
           .query("schedules")
@@ -643,6 +648,9 @@ export const getStudentGroups = query({
 
         return {
           ...group,
+          liveClasses: liveClasses.filter(
+            (lc) => lc.status === "live" || lc.status === "scheduled"
+          ),
           gradeName: grade?.name || "غير معروف",
           supervisorName: supervisorName,
           schedule: scheduleWithNames,

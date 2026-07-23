@@ -17,6 +17,7 @@ import type * as grades_grades from "../grades/grades.js";
 import type * as groups_groups from "../groups/groups.js";
 import type * as index from "../index.js";
 import type * as landing_landing from "../landing/landing.js";
+import type * as liveClasses_liveClasses from "../liveClasses/liveClasses.js";
 import type * as media_mediaassignments from "../media/mediaassignments.js";
 import type * as media_mediafiles from "../media/mediafiles.js";
 import type * as notifications_notifications from "../notifications/notifications.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   "groups/groups": typeof groups_groups;
   index: typeof index;
   "landing/landing": typeof landing_landing;
+  "liveClasses/liveClasses": typeof liveClasses_liveClasses;
   "media/mediaassignments": typeof media_mediaassignments;
   "media/mediafiles": typeof media_mediafiles;
   "notifications/notifications": typeof notifications_notifications;

@@ -58,12 +58,12 @@ const DAYS: Record<string, string> = {
 const getTimeAgo = (timestamp: number) => {
   const now = Date.now();
   const diff = now - timestamp;
-  
+
   const seconds = Math.floor(diff / 1000);
   const minutes = Math.floor(seconds / 60);
   const hours = Math.floor(minutes / 60);
   const days = Math.floor(hours / 24);
-  
+
   if (days > 0) {
     return `منذ ${days} يوم${days > 1 ? 'ين' : ''}`;
   }
@@ -147,6 +147,11 @@ export default function StudentDashboard() {
   // جلب الامتحانات القادمة
   const upcomingExams = useQuery(
     api.exams.exams.getUpcomingForStudent,
+    currentUser?._id ? { studentId: currentUser._id as any } : "skip"
+  );
+
+  const liveClasses = useQuery(
+    api.liveClasses.liveClasses.getStudentLiveClasses,
     currentUser?._id ? { studentId: currentUser._id as any } : "skip"
   );
 
@@ -400,6 +405,42 @@ export default function StudentDashboard() {
                               </div>
                             )}
 
+                            {group.liveClasses && group.liveClasses.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-gray-200">
+                                <p className="text-xs font-medium text-[#1a7a8a] flex items-center gap-1 mb-2">
+                                  <PlayCircle className="h-3 w-3" />
+                                  الحصص المباشرة القادمة:
+                                </p>
+                                <div className="space-y-2">
+                                  {group.liveClasses.filter((lc: any) => lc.status === "live" || lc.status === "scheduled").map((lc: any) => (
+                                    <div key={lc._id} className="flex items-center justify-between p-2 bg-blue-50/50 rounded-lg border border-blue-100">
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-xs font-medium text-[#001f24] truncate">{lc.title}</p>
+                                        <p className="text-[10px] text-gray-500">
+                                          {new Date(lc.startTime).toLocaleString('ar-EG')}
+                                          {lc.status === "live" && (
+                                            <span className="text-green-600 font-medium mr-2">• مباشر الآن</span>
+                                          )}
+                                        </p>
+                                      </div>
+                                      <a
+                                        href={lc.link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className={`px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 shrink-0 ${lc.status === "live"
+                                            ? "bg-green-600 hover:bg-green-700 text-white animate-pulse"
+                                            : "bg-[#1a7a8a] hover:bg-[#15707e] text-white"
+                                          }`}
+                                      >
+                                        <PlayCircle className="h-3 w-3" />
+                                        {lc.status === "live" ? "انضم الآن" : "عرض"}
+                                      </a>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+
                             {/* زر عرض الجدول */}
                             <Button
                               variant="outline"
@@ -610,15 +651,14 @@ export default function StudentDashboard() {
                   notificationList.slice(0, 5).map((notification: any) => {
                     const Icon = getNotificationIcon(notification.type);
                     const colorClasses = getNotificationColor(notification.type);
-                    
+
                     return (
                       <div
                         key={notification._id}
-                        className={`p-2.5 rounded-lg border transition-colors ${
-                          notification.status === "read"
-                            ? "bg-white border-gray-200"
-                            : "bg-[#e0f5f7] border-[#1a7a8a]/20 shadow-sm"
-                        }`}
+                        className={`p-2.5 rounded-lg border transition-colors ${notification.status === "read"
+                          ? "bg-white border-gray-200"
+                          : "bg-[#e0f5f7] border-[#1a7a8a]/20 shadow-sm"
+                          }`}
                       >
                         <div className="flex items-start gap-2.5">
                           <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${colorClasses}`}>

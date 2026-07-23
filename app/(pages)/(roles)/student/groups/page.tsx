@@ -26,6 +26,7 @@ import {
   User,
   ChevronDown,
   ChevronUp,
+  PlayCircle,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -75,6 +76,11 @@ export default function StudentGroupsPage() {
   const schedule = useQuery(
     api.schedules.schedules.getScheduleByGroup,
     selectedGroupId ? { groupId: selectedGroupId as any } : "skip"
+  );
+
+  const liveClasses = useQuery(
+    api.liveClasses.liveClasses.getStudentLiveClasses,
+    currentUser?._id ? { studentId: currentUser._id as any } : "skip"
   );
 
   const addStudentToGroup = useMutation(api.groups.groups.addStudentToGroup);
@@ -254,7 +260,43 @@ export default function StudentGroupsPage() {
                       <div className="text-sm text-gray-500">
                         {group.gradeName}
                       </div>
-                      
+
+                      {group.liveClasses && group.liveClasses.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-gray-200">
+                          <p className="text-xs font-medium text-[#1a7a8a] flex items-center gap-1 mb-2">
+                            <PlayCircle className="h-3 w-3" />
+                            الحصص المباشرة القادمة:
+                          </p>
+                          <div className="space-y-2">
+                            {group.liveClasses.filter((lc: any) => lc.status === "live" || lc.status === "scheduled").map((lc: any) => (
+                              <div key={lc._id} className="flex items-center justify-between p-2 bg-blue-50/50 rounded-lg border border-blue-100">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium text-[#001f24] truncate">{lc.title}</p>
+                                  <p className="text-[10px] text-gray-500">
+                                    {new Date(lc.startTime).toLocaleString('ar-EG')}
+                                    {lc.status === "live" && (
+                                      <span className="text-green-600 font-medium mr-2">• مباشر الآن</span>
+                                    )}
+                                  </p>
+                                </div>
+                                <a
+                                  href={lc.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className={`px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 shrink-0 ${lc.status === "live"
+                                    ? "bg-green-600 hover:bg-green-700 text-white animate-pulse"
+                                    : "bg-[#1a7a8a] hover:bg-[#15707e] text-white"
+                                    }`}
+                                >
+                                  <PlayCircle className="h-3 w-3" />
+                                  {lc.status === "live" ? "انضم الآن" : "عرض"}
+                                </a>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
                       {/* زر عرض الجدول */}
                       <Button
                         variant="outline"
@@ -368,6 +410,9 @@ export default function StudentGroupsPage() {
                           📍 {group.location}
                         </div>
                       )}
+
+
+
                       <Button
                         className="w-full mt-2 bg-[#001f24] hover:bg-[#03363d] text-white"
                         disabled={isFull || isJoiningThis}

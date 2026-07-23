@@ -88,6 +88,8 @@ export default function TeacherLayout({
     { label: "الامتحانات", icon: ClipboardList, href: "/teacher/exams" },
     { label: "الواجبات", icon: FileText, href: "/teacher/assignments" },
     { label: "التحصيلات", icon: School, href: "/teacher/materials" },
+    { label: "المحاضرات المباشرة", icon: GraduationCap, href: "/teacher/live-classes" },
+
   ];
 
   const isActive = (href: string) => {

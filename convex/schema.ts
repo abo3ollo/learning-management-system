@@ -950,12 +950,14 @@ export default defineSchema({
     ),
     recipientType: v.union(
       v.literal("group"),
-       v.literal("grade"),   
+      v.literal("grade"),
       v.literal("student"),
       v.literal("all_teachers"),
       v.literal("teacher"),
     ),
-    recipientId: v.optional(v.union(v.id("users"), v.id("groups"), v.id("grades"))),
+    recipientId: v.optional(
+      v.union(v.id("users"), v.id("groups"), v.id("grades")),
+    ),
     status: v.union(
       v.literal("sent"),
       v.literal("read"),
@@ -969,4 +971,46 @@ export default defineSchema({
     .index("by_recipient", ["recipientId"])
     .index("by_status", ["status"])
     .index("by_type", ["type"]),
+
+
+  liveClasses: defineTable({
+    title: v.string(),
+    description: v.optional(v.string()),
+    groupId: v.id("groups"), // المجموعة المستهدفة
+    teacherId: v.id("users"), // المعلم المنشئ
+    startTime: v.number(), // timestamp
+    endTime: v.number(), // timestamp
+    platform: v.union(
+      v.literal("zoom"),
+      v.literal("google_meet"),
+      v.literal("youtube"),
+      v.literal("teams"),
+      v.literal("other"),
+    ),
+    link: v.string(), // رابط الحصة
+    meetingId: v.optional(v.string()), // معرف الاجتماع (للZoom)
+    password: v.optional(v.string()), // كلمة المرور (للZoom)
+    recordingLink: v.optional(v.string()), // رابط التسجيل بعد الحصة
+    status: v.union(
+      v.literal("scheduled"), // مجدولة
+      v.literal("live"), // مباشرة الآن
+      v.literal("ended"), // انتهت
+      v.literal("cancelled"), // ملغاة
+    ),
+    attendance: v.array(
+      v.object({
+        studentId: v.id("users"),
+        joinedAt: v.number(),
+        leftAt: v.optional(v.number()),
+        duration: v.optional(v.number()), // المدة بالدقائق
+      }),
+    ),
+    maxStudents: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_teacher", ["teacherId"])
+    .index("by_group", ["groupId"])
+    .index("by_status", ["status"])
+    .index("by_startTime", ["startTime"]),
 });
