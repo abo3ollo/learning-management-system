@@ -386,7 +386,7 @@ export const getAvailableStudentsForGroup = query({
 });
 
 
-// convex/user/students.ts
+
 
 export const getStudentWithClass = query({
   args: { studentId: v.id("users") },
@@ -562,20 +562,11 @@ export const registerStudent = mutation({
     address: v.optional(v.string()),
     gradeId: v.optional(v.id("grades")),
     groupId: v.optional(v.id("groups")),
+    parentId: v.optional(v.id("users")), // ✅ إضافة parentId
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
-
-    // التحقق من أن المستخدم مش موجود
-    const existingUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (existingUser) {
-      throw new Error("المستخدم مسجل بالفعل في النظام");
-    }
 
     const studentId = await generateStudentId(ctx);
 
@@ -587,7 +578,6 @@ export const registerStudent = mutation({
         .first();
       
       if (emailExists) {
-        // ✅ لو البريد موجود وطالب active (أضافه الأدمن)، نربطه بالحساب
         if (emailExists.role === "student" && emailExists.status === "active") {
           await ctx.db.patch(emailExists._id, {
             clerkId: identity.subject,
@@ -595,47 +585,65 @@ export const registerStudent = mutation({
           });
           return { success: true, studentId: emailExists.studentId, userId: emailExists._id };
         }
-        
-        // ✅ لو البريد موجود وطالب pending، نرفض
         if (emailExists.role === "student" && emailExists.status === "pending") {
           throw new Error("هذا البريد الإلكتروني قيد الانتظار للموافقة");
         }
-        
         throw new Error("البريد الإلكتروني موجود مسبقاً");
       }
     }
 
-    // ✅ إنشاء الطالب بحالة pending (مش active)
+    // ✅ إنشاء الطالب
     const student = await ctx.db.insert("users", {
       clerkId: identity.subject,
       name: args.name,
       email: args.email && args.email.trim() !== "" ? args.email : `${studentId}@system.local`,
       phoneNumber: args.phoneNumber,
       role: "student",
-      status: "pending", // ✅ pending مش active
+      status: "pending",
+      subscriptionStatus: "pending",
       studentId,
       gradeId: args.gradeId,
       groupId: args.groupId,
       birthDate: args.birthDate,
       gender: args.gender,
       address: args.address,
-      grade: undefined,
       enrollmentDate: Date.now(),
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
 
-    // إذا تم تحديد مجموعة، أضف الطالب إلى المجموعة
-    if (args.groupId) {
-      const groupData = await ctx.db.get(args.groupId);
-      if (groupData) {
-        await ctx.db.patch(args.groupId, {
-          students: [...(groupData.students || []), student],
-          currentStudents: (groupData.currentStudents || 0) + 1,
-          updatedAt: Date.now(),
+    // ✅ إذا كان هناك ولي أمر، ربطه بالطالب
+    if (args.parentId) {
+      const parent = await ctx.db.get(args.parentId);
+      if (parent && parent.role === "parent") {
+        await ctx.db.insert("parentStudentLinks", {
+          parentId: args.parentId,
+          studentId: student,
+          relationship: "guardian",
+          isPrimary: true,
+          permissions: {
+            viewGrades: true,
+            financialAccess: true,
+            pickupNotification: false,
+            emergencyContact: true,
+          },
+          createdAt: Date.now(),
         });
       }
     }
+
+    // ✅ إرسال إشعار للأدمن
+    await ctx.db.insert("notifications", {
+      title: "طالب جديد بحاجة للموافقة",
+      message: `الطالب ${args.name} قام بالتسجيل وينتظر الموافقة`,
+      type: "system_announcement",
+      priority: "high",
+      recipientType: "all_teachers",
+      status: "sent",
+      createdBy: student,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
 
     await ctx.db.insert("auditLogs", {
       userId: student,
@@ -650,7 +658,12 @@ export const registerStudent = mutation({
       createdAt: Date.now(),
     });
 
-    return { success: true, studentId, userId: student };
+    return { 
+      success: true, 
+      studentId, 
+      userId: student,
+      requiresSubscription: true,
+    };
   },
 });
 // تحديث طالب
@@ -857,5 +870,66 @@ export const getPendingStudents = query({
       .withIndex("by_role", (q) => q.eq("role", "student"))
       .filter((q) => q.eq(q.field("status"), "pending"))
       .collect();
+  },
+});
+
+// convex/user/students.ts - أضف هذه الدالة
+
+// ✅ جلب الطلاب الذين ليس لديهم ولي أمر (متاحة للجميع)
+export const getStudentsWithoutParent = query({
+  args: {
+    search: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // ✅ فقط نتحقق من هوية المستخدم
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    // ✅ جلب جميع الطلاب
+    const allStudents = await ctx.db
+      .query("users")
+      .withIndex("by_role", (q) => q.eq("role", "student"))
+      .collect();
+
+    // ✅ جلب الطلاب الذين لديهم ولي أمر مرتبط
+    const links = await ctx.db
+      .query("parentStudentLinks")
+      .collect();
+
+    const linkedStudentIds = new Set(links.map(link => link.studentId));
+
+    // ✅ تصفية الطلاب الذين ليس لديهم ولي أمر
+    let availableStudents = allStudents.filter(
+      student => !linkedStudentIds.has(student._id) && student.status !== "rejected"
+    );
+
+    // ✅ بحث
+    if (args.search && args.search.trim() !== "") {
+      const searchLower = args.search.toLowerCase();
+      availableStudents = availableStudents.filter(student =>
+        student.name.toLowerCase().includes(searchLower) ||
+        student.email.toLowerCase().includes(searchLower) ||
+        student.studentId?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // ✅ جلب معلومات الصف لكل طالب
+    const studentsWithGrade = await Promise.all(
+      availableStudents.map(async (student) => {
+        let gradeName = "غير محدد";
+        if (student.gradeId) {
+          const grade = await ctx.db.get(student.gradeId);
+          if (grade) {
+            gradeName = grade.name || "غير محدد";
+          }
+        }
+        return {
+          ...student,
+          gradeName,
+        };
+      })
+    );
+
+    return studentsWithGrade.sort((a, b) => a.name.localeCompare(b.name));
   },
 });

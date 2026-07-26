@@ -400,7 +400,8 @@ export const getStudentGrades = query({
   },
 });
 
-// ✅ جلب المدفوعات
+
+// ✅ جلب المدفوعات (محسّن)
 export const getPayments = query({
   args: {
     studentId: v.optional(v.id("users")),
@@ -424,30 +425,41 @@ export const getPayments = query({
       throw new Error("مطلوب صلاحيات ولي أمر");
     }
 
-    let payments = await ctx.db
-      .query("payments")
-      .withIndex("by_parent", (q) => q.eq("parentId", parent._id))
-      .collect();
+    // ✅ جلب جميع المدفوعات (بدون استخدام Index غير موجود)
+    const allPayments = await ctx.db.query("payments").collect();
+    
+    // ✅ تصفية المدفوعات الخاصة بولي الأمر
+    let payments = allPayments.filter((p) => p.parentId === parent._id);
 
+    // ✅ تصفية حسب الطالب إذا تم تحديده
     if (args.studentId) {
       payments = payments.filter((p) => p.studentId === args.studentId);
     }
 
+    // ✅ تصفية حسب الحالة إذا تم تحديدها
     if (args.status) {
       payments = payments.filter((p) => p.status === args.status);
     }
 
-    // جلب أسماء الطلاب
+    // ✅ جلب أسماء الطلاب
     const paymentsWithStudent = await Promise.all(
       payments.map(async (payment) => {
-        const student = await ctx.db.get(payment.studentId);
-        return {
-          ...payment,
-          studentName: student?.name || "طالب غير معروف",
-        };
+        try {
+          const student = await ctx.db.get(payment.studentId);
+          return {
+            ...payment,
+            studentName: student?.name || "طالب غير معروف",
+          };
+        } catch (error) {
+          return {
+            ...payment,
+            studentName: "طالب غير معروف",
+          };
+        }
       })
     );
 
+    // ✅ ترتيب من الأحدث للأقدم
     return paymentsWithStudent.sort((a, b) => b.createdAt - a.createdAt);
   },
 });

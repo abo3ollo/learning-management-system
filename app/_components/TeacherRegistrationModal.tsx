@@ -37,9 +37,10 @@ import { useRouter } from "next/navigation";
 interface TeacherRegistrationModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSuccess?: () => void; 
 }
 
-export function TeacherRegistrationModal({ isOpen, onClose }: TeacherRegistrationModalProps) {
+export function TeacherRegistrationModal({ isOpen, onClose, onSuccess }: TeacherRegistrationModalProps) {
   const router = useRouter();
   const { user } = useUser();
   const createUser = useMutation(api.user.auth.createUser);

@@ -1,7 +1,9 @@
+// convex/user/admin.ts
+
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 
-// جلب جميع التسجيلات المنتظرة
+// جلب جميع التسجيلات المنتظرة (مع معلومات إضافية)
 export const getPendingRegistrations = query({
   args: {},
   handler: async (ctx) => {
@@ -17,18 +19,85 @@ export const getPendingRegistrations = query({
       throw new Error("مطلوب صلاحيات مشرف");
     }
 
+    // ✅ جلب المستخدمين المنتظرين (pending أو awaiting_approval)
     const pendingUsers = await ctx.db
       .query("users")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .collect();
 
-    return pendingUsers.sort((a, b) => a.createdAt - b.createdAt);
+    const awaitingUsers = await ctx.db
+      .query("users")
+      .filter((q) => q.eq(q.field("subscriptionStatus"), "awaiting_approval"))
+      .collect();
+
+    // دمج القائمتين
+    const allPending = [...pendingUsers, ...awaitingUsers];
+
+    // ✅ جلب طلبات الموافقة لكل مستخدم ومعلومات إضافية
+    const usersWithRequests = await Promise.all(
+      allPending.map(async (user) => {
+        // جلب طلب الموافقة إذا وجد
+        const approvalRequest = await ctx.db
+          .query("approvalRequests")
+          .withIndex("by_student", (q) => q.eq("studentId", user._id))
+          .first();
+
+        // جلب الصف الدراسي
+        let gradeName = "غير محدد";
+        if (user.gradeId) {
+          const grade = await ctx.db.get(user.gradeId);
+          if (grade) {
+            gradeName = grade.name || "غير محدد";
+          }
+        }
+
+        // ✅ إذا كان المستخدم ولي أمر، جلب أطفاله
+        let children: any[] = [];
+        if (user.role === "parent") {
+          const links = await ctx.db
+            .query("parentStudentLinks")
+            .withIndex("by_parent", (q) => q.eq("parentId", user._id))
+            .collect();
+
+          children = await Promise.all(
+            links.map(async (link) => {
+              const student = await ctx.db.get(link.studentId);
+              if (student) {
+                return {
+                  ...student,
+                  relationship: link.relationship,
+                  isPrimary: link.isPrimary,
+                  email: student.email || "لا يوجد بريد", // ✅ التأكد من وجود البريد
+                };
+              }
+              return null;
+            })
+          );
+          children = children.filter(Boolean);
+        }
+
+        return {
+          ...user,
+          gradeName,
+          hasApprovalRequest: !!approvalRequest,
+          approvalRequestStatus: approvalRequest?.status || null,
+          paymentProof: approvalRequest?.paymentProof || null,
+          amount: approvalRequest?.amount || null,
+          currency: approvalRequest?.currency || null,
+          referenceNumber: approvalRequest?.referenceNumber || null,
+          children, // ✅ إضافة الأطفال
+          email: user.email || "لا يوجد بريد", // ✅ التأكد من وجود البريد
+          childrenCount: children.length,
+        };
+      })
+    );
+
+    // ترتيب من الأحدث للأقدم
+    return usersWithRequests.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
 
-// الموافقة على مستخدم
-// convex/user/admin.ts
-
+// ✅ الموافقة على مستخدم
 export const approveUser = mutation({
   args: { 
     userId: v.id("users"),
@@ -37,7 +106,8 @@ export const approveUser = mutation({
       v.literal("teacher"),
       v.literal("parent"),
       v.literal("admin")
-    ))
+    )),
+    approveSubscription: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -56,12 +126,51 @@ export const approveUser = mutation({
     if (!user) throw new Error("المستخدم غير موجود");
 
     // ✅ تحديث الحالة إلى active
-    await ctx.db.patch(args.userId, {
+    const updateData: any = {
       status: "active",
       approvedAt: Date.now(),
       approvedBy: admin._id,
       updatedAt: Date.now(),
       ...(args.role && { role: args.role }),
+    };
+
+    // ✅ إذا كانت الموافقة تشمل الاشتراك أو كان المستخدم طالب
+    if (args.approveSubscription || user.role === "student") {
+      updateData.subscriptionStatus = "active";
+    }
+
+    await ctx.db.patch(args.userId, updateData);
+
+    // ✅ إذا كان هناك طلب موافقة، قم بتحديثه
+    if (user.role === "student") {
+      const approvalRequest = await ctx.db
+        .query("approvalRequests")
+        .withIndex("by_student", (q) => q.eq("studentId", user._id))
+        .first();
+
+      if (approvalRequest && approvalRequest.status === "pending") {
+        await ctx.db.patch(approvalRequest._id, {
+          status: "approved",
+          reviewedBy: admin._id,
+          reviewedAt: Date.now(),
+          adminNotes: "تم الموافقة على الاشتراك",
+          updatedAt: Date.now(),
+        });
+      }
+    }
+
+    // ✅ إرسال إشعار للمستخدم
+    await ctx.db.insert("notifications", {
+      title: "تم قبول طلبك",
+      message: `تم قبول تسجيلك في المنصة. يمكنك الآن الدخول والمشاركة.`,
+      type: "system_announcement",
+      priority: "normal",
+      recipientType: "student",
+      recipientId: user._id,
+      status: "sent",
+      createdBy: admin._id,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
 
     await ctx.db.insert("auditLogs", {
@@ -74,6 +183,7 @@ export const approveUser = mutation({
         previousRole: user.role,
         newRole: args.role || user.role,
         approvedBy: admin.email,
+        name: args.approveSubscription ? "تمت الموافقة على الاشتراك" : "تمت الموافقة على المستخدم",
       },
       createdAt: Date.now(),
     });
@@ -82,11 +192,12 @@ export const approveUser = mutation({
   },
 });
 
-// رفض مستخدم
+// ✅ رفض مستخدم
 export const rejectUser = mutation({
   args: {
     userId: v.id("users"),
     reason: v.optional(v.string()),
+    rejectSubscription: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -101,17 +212,72 @@ export const rejectUser = mutation({
       throw new Error("مطلوب صلاحيات مشرف");
     }
 
-    await ctx.db.patch(args.userId, {
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("المستخدم غير موجود");
+
+    // ✅ تحديث الحالة إلى rejected
+    const updateData: any = {
       status: "rejected",
       rejectionReason: args.reason,
       updatedAt: Date.now(),
+    };
+
+    if (args.rejectSubscription || user.role === "student") {
+      updateData.subscriptionStatus = "rejected";
+    }
+
+    await ctx.db.patch(args.userId, updateData);
+
+    // ✅ إذا كان هناك طلب موافقة، قم بتحديثه
+    if (user.role === "student") {
+      const approvalRequest = await ctx.db
+        .query("approvalRequests")
+        .withIndex("by_student", (q) => q.eq("studentId", user._id))
+        .first();
+
+      if (approvalRequest && approvalRequest.status === "pending") {
+        await ctx.db.patch(approvalRequest._id, {
+          status: "rejected",
+          reviewedBy: admin._id,
+          reviewedAt: Date.now(),
+          adminNotes: args.reason || "تم رفض الطلب",
+          updatedAt: Date.now(),
+        });
+      }
+    }
+
+    // ✅ إرسال إشعار للمستخدم
+    await ctx.db.insert("notifications", {
+      title: "تم رفض طلبك",
+      message: args.reason || "تم رفض طلب التسجيل الخاص بك. يرجى التواصل مع الإدارة.",
+      type: "system_announcement",
+      priority: "normal",
+      recipientType: "student",
+      recipientId: user._id,
+      status: "sent",
+      createdBy: admin._id,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    await ctx.db.insert("auditLogs", {
+      userId: admin._id,
+      action: "REJECT_USER",
+      resourceType: "user",
+      resourceId: args.userId,
+      details: {
+        previousStatus: user.status,
+        reason: args.reason,
+        rejectedBy: admin.email,
+      },
+      createdAt: Date.now(),
     });
 
     return { success: true };
   },
 });
 
-// تحديث دور مستخدم
+// ✅ تحديث دور مستخدم
 export const updateUserRole = mutation({
   args: {
     userId: v.id("users"),
@@ -135,11 +301,69 @@ export const updateUserRole = mutation({
       throw new Error("مطلوب صلاحيات مشرف");
     }
 
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("المستخدم غير موجود");
+
     await ctx.db.patch(args.userId, {
       role: args.role,
       updatedAt: Date.now(),
     });
 
+    await ctx.db.insert("auditLogs", {
+      userId: admin._id,
+      action: "UPDATE_USER_ROLE",
+      resourceType: "user",
+      resourceId: args.userId,
+      details: {
+        previousRole: user.role,
+        newRole: args.role,
+        updatedBy: admin.email,
+      },
+      createdAt: Date.now(),
+    });
+
     return { success: true };
   },
 });
+
+// ✅ جلب إحصائيات التسجيلات
+export const getRegistrationStats = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const admin = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!admin || admin.role !== "admin") {
+      throw new Error("مطلوب صلاحيات مشرف");
+    }
+
+    const allUsers = await ctx.db.query("users").collect();
+
+    const stats = {
+      total: allUsers.length,
+      pending: allUsers.filter((u) => u.status === "pending").length,
+      active: allUsers.filter((u) => u.status === "active").length,
+      rejected: allUsers.filter((u) => u.status === "rejected").length,
+      awaitingApproval: allUsers.filter((u) => u.subscriptionStatus === "awaiting_approval").length,
+      students: allUsers.filter((u) => u.role === "student").length,
+      teachers: allUsers.filter((u) => u.role === "teacher").length,
+      parents: allUsers.filter((u) => u.role === "parent").length,
+    };
+
+    return stats;
+  },
+});
+
+// ✅ تصدير الدوال
+export const admin = {
+  getPendingRegistrations,
+  approveUser,
+  rejectUser,
+  updateUserRole,
+  getRegistrationStats,
+};

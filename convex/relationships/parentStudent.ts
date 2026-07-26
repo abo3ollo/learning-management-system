@@ -13,7 +13,8 @@ async function getAuthUser(ctx: any) {
     .withIndex("by_clerkId", (q: any) => q.eq("clerkId", identity.subject))
     .first();
 }
-// ربط ولي أمر بطالب
+
+// ربط ولي أمر بطالب - (معدل للسماح لولي الأمر بربط نفسه)
 export const linkParentToStudent = mutation({
   args: {
     parentId: v.id("users"),
@@ -31,14 +32,22 @@ export const linkParentToStudent = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    // التحقق من صلاحيات المشرف
-    const admin = await ctx.db
+    // ✅ جلب المستخدم الحالي
+    const currentUser = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .first();
 
-    if (!admin || admin.role !== "admin") {
-      throw new Error("مطلوب صلاحيات مشرف");
+    if (!currentUser) throw new Error("المستخدم غير موجود");
+
+    // ✅ التحقق من صلاحيات المستخدم:
+    // 1. إذا كان أدمن → يسمح له بكل شيء
+    // 2. إذا كان ولي أمر → يسمح له فقط بربط نفسه (parentId === currentUser._id)
+    const isAdmin = currentUser.role === "admin";
+    const isSelfParent = currentUser._id === args.parentId && currentUser.role === "parent";
+
+    if (!isAdmin && !isSelfParent) {
+      throw new Error("غير مصرح بربط ولي أمر بالطالب");
     }
 
     // التحقق من وجود ولي الأمر والطالب
@@ -52,7 +61,7 @@ export const linkParentToStudent = mutation({
       throw new Error("الطالب غير موجود");
     }
     
-    // التحقق من وجود الرابط مسبقاً
+    // ✅ التحقق من وجود الرابط مسبقاً
     const existing = await ctx.db
       .query("parentStudentLinks")
       .withIndex("by_parent_student", (q) => 
@@ -62,7 +71,7 @@ export const linkParentToStudent = mutation({
     
     if (existing) throw new Error("الرابط موجود مسبقاً");
     
-    // إنشاء الرابط مع الصلاحيات
+    // ✅ إنشاء الرابط مع الصلاحيات
     const linkId = await ctx.db.insert("parentStudentLinks", {
       parentId: args.parentId,
       studentId: args.studentId,
@@ -77,16 +86,16 @@ export const linkParentToStudent = mutation({
       createdAt: Date.now(),
     });
     
-    // تسجيل في سجل التدقيق - ✅ إزالة relationship من details
+    // ✅ تسجيل في سجل التدقيق - استخدام المستخدم المناسب (الأدمن أو ولي الأمر)
     await ctx.db.insert("auditLogs", {
-      userId: admin._id,
+      userId: currentUser._id,
       action: "LINK_PARENT_STUDENT",
       resourceType: "parentStudentLink",
       resourceId: linkId,
       details: {
         parentId: args.parentId,
         studentId: args.studentId,
-        createdBy: admin.email,
+        createdBy: currentUser.email || currentUser.name || "غير معروف",
       },
       createdAt: Date.now(),
     });

@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as admin_approvals from "../admin/approvals.js";
 import type * as assignments_assignments from "../assignments/assignments.js";
 import type * as classes_classSubjects from "../classes/classSubjects.js";
 import type * as classes_classes from "../classes/classes.js";
@@ -21,6 +22,7 @@ import type * as liveClasses_liveClasses from "../liveClasses/liveClasses.js";
 import type * as media_mediaassignments from "../media/mediaassignments.js";
 import type * as media_mediafiles from "../media/mediafiles.js";
 import type * as notifications_notifications from "../notifications/notifications.js";
+import type * as payments_gradePricing from "../payments/gradePricing.js";
 import type * as questions_questions from "../questions/questions.js";
 import type * as relationships_parentStudent from "../relationships/parentStudent.js";
 import type * as schedules_schedules from "../schedules/schedules.js";
@@ -40,6 +42,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "admin/approvals": typeof admin_approvals;
   "assignments/assignments": typeof assignments_assignments;
   "classes/classSubjects": typeof classes_classSubjects;
   "classes/classes": typeof classes_classes;
@@ -53,6 +56,7 @@ declare const fullApi: ApiFromModules<{
   "media/mediaassignments": typeof media_mediaassignments;
   "media/mediafiles": typeof media_mediafiles;
   "notifications/notifications": typeof notifications_notifications;
+  "payments/gradePricing": typeof payments_gradePricing;
   "questions/questions": typeof questions_questions;
   "relationships/parentStudent": typeof relationships_parentStudent;
   "schedules/schedules": typeof schedules_schedules;

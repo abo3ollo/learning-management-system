@@ -24,6 +24,15 @@ export default defineSchema({
       v.literal("inactive"),
       v.literal("on_leave"), // ✅ إضافة حالة الإجازة للمعلمين
     ),
+    subscriptionStatus: v.optional(
+      v.union(
+        v.literal("pending"), // مسجل - لم يدفع بعد
+        v.literal("awaiting_approval"), // دفع - ينتظر الموافقة
+        v.literal("active"), // موافق عليه - نشط
+        v.literal("rejected"), // مرفوض
+        v.literal("expired"), // اشتراك منتهي
+      ),
+    ),
 
     rejectionReason: v.optional(v.string()),
     approvedAt: v.optional(v.number()),
@@ -66,7 +75,8 @@ export default defineSchema({
     .index("by_studentId", ["studentId"])
     .index("by_teacherId", ["teacherId"]) // ✅ إضافة index للمعلمين
     .index("by_parentId", ["parentId"])
-    .index("by_gradeId", ["gradeId"]), // ✅ إضافة index للبحث بالصف    // إضافة index للوالدين
+    .index("by_gradeId", ["gradeId"]) // ✅ إضافة index للبحث بالصف    // إضافة index للوالدين
+    .index("by_subscriptionStatus", ["subscriptionStatus"]),
 
   parentStudentLinks: defineTable({
     parentId: v.id("users"),
@@ -225,8 +235,6 @@ export default defineSchema({
     .index("by_subject", ["subjectId"])
     .index("by_teacher", ["teacherId"])
     .index("by_grade_status", ["gradeId", "status"]),
-
-  // convex/schema.ts
 
   schedules: defineTable({
     groupId: v.optional(v.id("groups")), // ✅ أضف هذا
@@ -972,7 +980,6 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_type", ["type"]),
 
-
   liveClasses: defineTable({
     title: v.string(),
     description: v.optional(v.string()),
@@ -1013,4 +1020,42 @@ export default defineSchema({
     .index("by_group", ["groupId"])
     .index("by_status", ["status"])
     .index("by_startTime", ["startTime"]),
+
+  // ✅ جدول تعريف الأسعار حسب الصف
+  gradePricing: defineTable({
+    gradeId: v.id("grades"),
+    price: v.number(),
+    currency: v.string(),
+    description: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_grade", ["gradeId"])
+    .index("by_active", ["isActive"]),
+
+  // ✅ جدول طلبات الموافقة على الاشتراك
+  approvalRequests: defineTable({
+    userId: v.id("users"), // من قام بالطلب (طالب أو ولي أمر)
+    studentId: v.id("users"), // الطالب المستهدف
+    gradeId: v.id("grades"), // الصف الدراسي
+    amount: v.number(),
+    currency: v.string(),
+    paymentProof: v.string(), // رابط الصورة المرفوعة (Base64 أو URL)
+    referenceNumber: v.optional(v.string()),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+    ),
+    adminNotes: v.optional(v.string()),
+    reviewedBy: v.optional(v.id("users")),
+    reviewedAt: v.optional(v.number()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_student", ["studentId"])
+    .index("by_status", ["status"])
+    .index("by_grade", ["gradeId"]),
 });

@@ -73,28 +73,17 @@ export const getGrades = query({
 export const getGradeById = query({
   args: { gradeId: v.id("grades") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("غير مصرح");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user || user.role !== "admin") {
-      throw new Error("مطلوب صلاحيات مشرف");
-    }
-
+    // ✅ إزالة التحقق من الصلاحيات - متاحة للجميع
     const grade = await ctx.db.get(args.gradeId);
     if (!grade) throw new Error("الصف غير موجود");
 
-    // جلب المجموعات التابعة للصف
+    // ✅ جلب المجموعات التابعة للصف (اختياري - يمكن إزالته إذا كان يسبب بطء)
     const groups = await ctx.db
       .query("groups")
       .withIndex("by_grade", (q) => q.eq("gradeId", grade._id))
       .collect();
 
-    // جلب الطلاب
+    // ✅ جلب الطلاب (اختياري - يمكن إزالته إذا كان يسبب بطء)
     const students = await ctx.db
       .query("users")
       .withIndex("by_gradeId", (q) => q.eq("gradeId", grade._id))

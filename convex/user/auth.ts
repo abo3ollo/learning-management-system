@@ -46,6 +46,7 @@ export const createUser = mutation({
     grade:          v.optional(v.string()),
     gradeId:        v.optional(v.id("grades")),
     groupId:        v.optional(v.id("groups")),
+    
     classId:        v.optional(v.id("classes")),
     enrollmentDate: v.optional(v.number()),
  

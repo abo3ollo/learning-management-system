@@ -9,6 +9,7 @@ import {
   GraduationCap, Calendar, CheckCircle,
   AlertCircle, Loader2, Phone, Mail,
   FileText, FolderOpen, Eye, ChevronRight,
+  Clock, XCircle, Wallet,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -19,11 +20,11 @@ function formatDate(ts?: number) {
   return format(new Date(ts), "dd MMM yyyy", { locale: ar });
 }
 
-const paymentStatusMap: Record<string, { label: string; cls: string }> = {
-  pending:   { label: "معلق",    cls: "bg-amber-100 text-amber-700" },
-  completed: { label: "مكتمل",  cls: "bg-green-100 text-green-700" },
-  failed:    { label: "فشل",    cls: "bg-red-100   text-red-600"   },
-  refunded:  { label: "مُسترد", cls: "bg-blue-100  text-blue-700"  },
+const paymentStatusMap: Record<string, { label: string; cls: string; icon: any }> = {
+  completed: { label: "مكتمل",  cls: "bg-green-100 text-green-700", icon: CheckCircle },
+  pending:   { label: "معلق",    cls: "bg-amber-100 text-amber-700", icon: Clock },
+  failed:    { label: "فشل",    cls: "bg-red-100 text-red-600", icon: XCircle },
+  refunded:  { label: "مُسترد", cls: "bg-blue-100 text-blue-700", icon: Wallet },
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -45,7 +46,6 @@ export default function ParentDashboard() {
       : "skip"
   );
 
-  // ✅ These only fire when a student is selected
   const grades = useQuery(
     api.user.parents.getStudentGrades,
     selectedStudentId ? { studentId: selectedStudentId } : "skip"
@@ -55,7 +55,6 @@ export default function ParentDashboard() {
     api.groups.groups.getStudentGroups,
     selectedStudentId ? { studentId: selectedStudentId } : "skip"
   );
-  console.log(groups)
 
   const payments = useQuery(
     api.user.parents.getPayments,
@@ -105,12 +104,19 @@ export default function ParentDashboard() {
     setActiveTab(tab);
   };
 
+  // ✅ حساب الإحصائيات
   const totalPaid = paymentList
     .filter((p: any) => p.status === "completed")
     .reduce((s: number, p: any) => s + p.amount, 0);
+  
   const totalPending = paymentList
     .filter((p: any) => p.status === "pending")
     .reduce((s: number, p: any) => s + p.amount, 0);
+  
+  const unpaidCount = paymentList
+    .filter((p: any) => p.status === "pending" || p.status === "failed")
+    .length;
+
   const gradedCount = gradeData.examGrades.filter(
     (g: any) => g.status === "graded"
   ).length;
@@ -149,7 +155,6 @@ export default function ParentDashboard() {
               )}
             </div>
           </div>
-          {/* Children count badge */}
           <span className="bg-teal-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full">
             {childrenList.length} طالب
           </span>
@@ -162,8 +167,8 @@ export default function ParentDashboard() {
           {[
             { label: "الأبناء",          value: childrenList.length, icon: Users,      iconCls: "text-blue-500",   bg: "bg-blue-50"   },
             { label: "الدرجات",          value: gradedCount,          icon: Award,      iconCls: "text-green-500",  bg: "bg-green-50"  },
-            { label: "المدفوعات المعلقة", value: `${totalPending}`,   icon: CreditCard, iconCls: "text-amber-500",  bg: "bg-amber-50"  },
-            { label: "المجموعات",        value: groupList.length,     icon: FolderOpen, iconCls: "text-purple-500", bg: "bg-purple-50" },
+            { label: "مدفوعات معلقة",    value: totalPending > 0 ? `${totalPending} ج.م` : "0", icon: CreditCard, iconCls: "text-amber-500", bg: "bg-amber-50"  },
+            { label: "يجب الدفع",         value: unpaidCount,          icon: AlertCircle, iconCls: "text-red-500", bg: "bg-red-50" },
           ].map((s) => {
             const Icon = s.icon;
             return (
@@ -183,7 +188,7 @@ export default function ParentDashboard() {
           })}
         </div>
 
-        {/* ── Quick child picker (always visible) ─────────────── */}
+        {/* ── Quick child picker ─────────────────────────────── */}
         {childrenList.length > 0 && (
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-sm text-gray-500">عرض بيانات:</span>
@@ -594,66 +599,154 @@ export default function ParentDashboard() {
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
                 </div>
-              ) : paymentList.length === 0 ? (
-                <div className="text-center py-12">
-                  <CreditCard className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">لا توجد مدفوعات</p>
-                </div>
               ) : (
-                <div className="space-y-3">
-                  {paymentList.map((p: any) => {
-                    const ps =
-                      paymentStatusMap[p.status] ?? {
-                        label: p.status,
-                        cls: "bg-gray-100 text-gray-600",
-                      };
-                    return (
-                      <div
-                        key={p._id}
-                        className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100"
-                      >
-                        <div>
-                          <p className="text-sm font-semibold text-gray-900">
-                            {p.description}
-                          </p>
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {p.studentName} — {formatDate(p.createdAt)}
-                          </p>
-                          {p.dueDate && (
-                            <p className="text-xs text-gray-400">
-                              الاستحقاق: {formatDate(p.dueDate)}
-                            </p>
-                          )}
-                        </div>
-                        <div className="text-left">
-                          <p className="text-base font-bold text-gray-900">
-                            {p.amount} {p.currency}
-                          </p>
-                          <span
-                            className={`text-xs px-2 py-0.5 rounded-full ${ps.cls}`}
-                          >
-                            {ps.label}
-                          </span>
-                        </div>
+                <div className="space-y-6">
+                  {/* ✅ حالة اشتراك ولي الأمر */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-5">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
+                        <CreditCard className="h-5 w-5 text-teal-600" />
                       </div>
-                    );
-                  })}
-                  {/* Summary */}
-                  <div className="border-t border-gray-100 pt-3 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">الإجمالي المدفوع</span>
-                      <span className="font-bold text-green-600">
-                        {totalPaid} ج.م
-                      </span>
+                      <div>
+                        <h3 className="font-semibold text-gray-900">حالة الاشتراك</h3>
+                        <p className="text-xs text-gray-500">حالة اشتراكك في المنصة</p>
+                      </div>
                     </div>
-                    {totalPending > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-gray-500">الإجمالي المعلق</span>
-                        <span className="font-bold text-amber-600">
-                          {totalPending} ج.م
-                        </span>
+                    
+                    <div className="flex items-center justify-between p-4 rounded-xl border">
+                      <div>
+                        <p className="text-sm text-gray-500">حالة الاشتراك</p>
+                        <p className="font-bold text-gray-900 mt-0.5">
+                          {currentUser.subscriptionStatus === "active" ? "نشط" :
+                           currentUser.subscriptionStatus === "awaiting_approval" ? "في انتظار الموافقة" :
+                           currentUser.subscriptionStatus === "pending" ? "قيد الانتظار" :
+                           currentUser.subscriptionStatus === "rejected" ? "مرفوض" : "غير محدد"}
+                        </p>
                       </div>
-                    )}
+                      <div>
+                        {currentUser.subscriptionStatus === "active" ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-green-700 bg-green-100 rounded-full">
+                            <CheckCircle className="h-4 w-4" />
+                            مفعل
+                          </span>
+                        ) : currentUser.subscriptionStatus === "awaiting_approval" ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-amber-700 bg-amber-100 rounded-full">
+                            <Clock className="h-4 w-4" />
+                            قيد المراجعة
+                          </span>
+                        ) : currentUser.subscriptionStatus === "pending" ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-blue-700 bg-blue-100 rounded-full">
+                            <Clock className="h-4 w-4" />
+                            لم يدفع بعد
+                          </span>
+                        ) : currentUser.subscriptionStatus === "rejected" ? (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-red-700 bg-red-100 rounded-full">
+                            <XCircle className="h-4 w-4" />
+                            مرفوض
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-gray-700 bg-gray-100 rounded-full">
+                            <AlertCircle className="h-4 w-4" />
+                            غير محدد
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ✅ حالة اشتراك الأبناء */}
+                  {childrenList.length > 0 && (
+                    <div className="bg-white rounded-xl border border-gray-200 p-5">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                          <Users className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">اشتراكات الأبناء</h3>
+                          <p className="text-xs text-gray-500">حالة اشتراك كل ابن في المنصة</p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        {childrenList.map((child: any) => {
+                          const childPayment = paymentList.find(
+                            (p: any) => p.studentId === child._id
+                          );
+                          
+                          const isActive = child.subscriptionStatus === "active" || childPayment?.status === "completed";
+                          const isPending = child.subscriptionStatus === "awaiting_approval" || childPayment?.status === "pending";
+                          const isRejected = child.subscriptionStatus === "rejected" || childPayment?.status === "failed";
+                          
+                          return (
+                            <div
+                              key={child._id}
+                              className="flex items-center justify-between p-4 rounded-xl border border-gray-100 hover:border-teal-300 transition-all"
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-full bg-teal-100 flex items-center justify-center">
+                                  <span className="text-teal-700 font-bold text-sm">
+                                    {child.name?.charAt(0)}
+                                  </span>
+                                </div>
+                                <div>
+                                  <p className="font-medium text-gray-900 text-sm">{child.name}</p>
+                                  <p className="text-xs text-gray-400">{child.studentId || "رقم غير محدد"}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                {isActive && (
+                                  <span className="text-xs text-green-600 font-medium flex items-center gap-1">
+                                    <CheckCircle className="h-3.5 w-3.5" />
+                                    مدفوع
+                                  </span>
+                                )}
+                                {isPending && (
+                                  <span className="text-xs text-amber-600 font-medium flex items-center gap-1">
+                                    <Clock className="h-3.5 w-3.5" />
+                                    قيد المراجعة
+                                  </span>
+                                )}
+                                {isRejected && (
+                                  <span className="text-xs text-red-600 font-medium flex items-center gap-1">
+                                    <XCircle className="h-3.5 w-3.5" />
+                                    مرفوض
+                                  </span>
+                                )}
+                                {!isActive && !isPending && !isRejected && (
+                                  <span className="text-xs text-gray-400 font-medium flex items-center gap-1">
+                                    <AlertCircle className="h-3.5 w-3.5" />
+                                    لم يدفع
+                                  </span>
+                                )}
+                                {childPayment && (
+                                  <span className="text-xs text-gray-400">
+                                    {childPayment.amount} {childPayment.currency}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ✅ ملخص سريع */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                      <p className="text-xs text-green-600 font-medium">المدفوع</p>
+                      <p className="text-xl font-bold text-green-700 mt-1">
+                        {paymentList.filter((p: any) => p.status === "completed").length}
+                      </p>
+                      <p className="text-xs text-green-500">اشتراكات مكتملة</p>
+                    </div>
+                    <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                      <p className="text-xs text-amber-600 font-medium">قيد الانتظار</p>
+                      <p className="text-xl font-bold text-amber-700 mt-1">
+                        {paymentList.filter((p: any) => p.status === "pending").length}
+                      </p>
+                      <p className="text-xs text-amber-500">اشتراكات قيد المراجعة</p>
+                    </div>
                   </div>
                 </div>
               )}
