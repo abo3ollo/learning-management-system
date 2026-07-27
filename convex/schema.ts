@@ -1058,4 +1058,72 @@ export default defineSchema({
     .index("by_student", ["studentId"])
     .index("by_status", ["status"])
     .index("by_grade", ["gradeId"]),
+
+
+
+// ============================================
+// STORE TABLES
+// ============================================
+
+// ✅ جدول الأصناف
+storeItems: defineTable({
+  code: v.string(),
+  name: v.string(),
+  type: v.union(
+    v.literal("books"),
+    v.literal("stationery"),
+    v.literal("electronics"),
+    v.literal("uniforms"),
+    v.literal("supplies"),
+    v.literal("other")
+  ),
+  description: v.optional(v.string()),
+  unit: v.union(
+    v.literal("piece"),
+    v.literal("kg"),
+    v.literal("meter"),
+    v.literal("box"),
+    v.literal("liter"),
+    v.literal("other")
+  ),
+  purchasePrice: v.number(),
+  sellingPrice: v.number(),
+  quantity: v.number(),
+  minStock: v.optional(v.number()),
+  gradeId: v.optional(v.id("grades")),
+  status: v.union(
+    v.literal("active"),
+    v.literal("inactive"),
+    v.literal("out_of_stock")
+  ),
+  totalCost: v.number(),
+  avgCost: v.number(),
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_code", ["code"])
+  .index("by_name", ["name"])
+  .index("by_type", ["type"])
+  .index("by_status", ["status"])
+  .index("by_grade", ["gradeId"]),
+
+// ✅ جدول معاملات المخزون (بدون موردين)
+storeTransactions: defineTable({
+  itemId: v.id("storeItems"),
+  type: v.union(
+    v.literal("purchase"),
+    v.literal("sale"),
+    v.literal("adjustment"),
+    v.literal("return")
+  ),
+  quantity: v.number(),
+  unitPrice: v.number(),
+  totalPrice: v.number(),
+  notes: v.optional(v.string()),
+  createdBy: v.id("users"),
+  createdAt: v.number(),
+})
+  .index("by_item", ["itemId"])
+  .index("by_type", ["type"])
+  .index("by_date", ["createdAt"]),
 });

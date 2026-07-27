@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { RiParentFill } from "react-icons/ri";
-import { FaChalkboardTeacher } from "react-icons/fa";
+import { FaChalkboardTeacher, FaStore } from "react-icons/fa";
 import { SiGoogleclassroom } from "react-icons/si";
 import { AiOutlineSchedule } from "react-icons/ai";
 import { MdOutlineHomeMax, MdOutlinePermMedia } from "react-icons/md";
@@ -83,6 +83,7 @@ export default function AdminLayout({
     { href: "/admin/landing", label: "البرتوفوليو", icon: MdOutlineHomeMax  },
     { href: "/admin/notifications", label: "الإشعارات", icon: Bell  },
     { href: "/admin/subscriptions", label: "الاشتراكات", icon: CircleDollarSign  },
+    { href: "/admin/store", label: "المخزن", icon: FaStore  },
     { href: "/admin/settings", label: "الإعدادات", icon: Settings },
   ];
 
