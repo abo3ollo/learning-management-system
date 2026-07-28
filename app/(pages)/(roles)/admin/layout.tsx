@@ -83,7 +83,7 @@ export default function AdminLayout({
     { href: "/admin/landing", label: "البرتوفوليو", icon: MdOutlineHomeMax  },
     { href: "/admin/notifications", label: "الإشعارات", icon: Bell  },
     { href: "/admin/subscriptions", label: "الاشتراكات", icon: CircleDollarSign  },
-    { href: "/admin/store", label: "المخزن", icon: FaStore  },
+    { href: "/admin/inventory", label: "المخزن", icon: FaStore  },
     { href: "/admin/settings", label: "الإعدادات", icon: Settings },
   ];
 

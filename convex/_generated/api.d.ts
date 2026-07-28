@@ -10,6 +10,7 @@
 
 import type * as admin_approvals from "../admin/approvals.js";
 import type * as assignments_assignments from "../assignments/assignments.js";
+import type * as categories from "../categories.js";
 import type * as classes_classSubjects from "../classes/classSubjects.js";
 import type * as classes_classes from "../classes/classes.js";
 import type * as courses_courses from "../courses/courses.js";
@@ -17,6 +18,8 @@ import type * as exams_exams from "../exams/exams.js";
 import type * as grades_grades from "../grades/grades.js";
 import type * as groups_groups from "../groups/groups.js";
 import type * as index from "../index.js";
+import type * as invoices from "../invoices.js";
+import type * as items from "../items.js";
 import type * as landing_landing from "../landing/landing.js";
 import type * as liveClasses_liveClasses from "../liveClasses/liveClasses.js";
 import type * as media_mediaassignments from "../media/mediaassignments.js";
@@ -26,17 +29,16 @@ import type * as payments_gradePricing from "../payments/gradePricing.js";
 import type * as questions_questions from "../questions/questions.js";
 import type * as relationships_parentStudent from "../relationships/parentStudent.js";
 import type * as schedules_schedules from "../schedules/schedules.js";
-import type * as store_items from "../store/items.js";
-import type * as store_reports from "../store/reports.js";
-import type * as store_transactions from "../store/transactions.js";
 import type * as submissions_submissions from "../submissions/submissions.js";
 import type * as teacherMaterials_teacherMaterials from "../teacherMaterials/teacherMaterials.js";
+import type * as units from "../units.js";
 import type * as user_admin from "../user/admin.js";
 import type * as user_auth from "../user/auth.js";
 import type * as user_helpers from "../user/helpers.js";
 import type * as user_parents from "../user/parents.js";
 import type * as user_students from "../user/students.js";
 import type * as user_teachers from "../user/teachers.js";
+import type * as warehouses from "../warehouses.js";
 
 import type {
   ApiFromModules,
@@ -47,6 +49,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   "admin/approvals": typeof admin_approvals;
   "assignments/assignments": typeof assignments_assignments;
+  categories: typeof categories;
   "classes/classSubjects": typeof classes_classSubjects;
   "classes/classes": typeof classes_classes;
   "courses/courses": typeof courses_courses;
@@ -54,6 +57,8 @@ declare const fullApi: ApiFromModules<{
   "grades/grades": typeof grades_grades;
   "groups/groups": typeof groups_groups;
   index: typeof index;
+  invoices: typeof invoices;
+  items: typeof items;
   "landing/landing": typeof landing_landing;
   "liveClasses/liveClasses": typeof liveClasses_liveClasses;
   "media/mediaassignments": typeof media_mediaassignments;
@@ -63,17 +68,16 @@ declare const fullApi: ApiFromModules<{
   "questions/questions": typeof questions_questions;
   "relationships/parentStudent": typeof relationships_parentStudent;
   "schedules/schedules": typeof schedules_schedules;
-  "store/items": typeof store_items;
-  "store/reports": typeof store_reports;
-  "store/transactions": typeof store_transactions;
   "submissions/submissions": typeof submissions_submissions;
   "teacherMaterials/teacherMaterials": typeof teacherMaterials_teacherMaterials;
+  units: typeof units;
   "user/admin": typeof user_admin;
   "user/auth": typeof user_auth;
   "user/helpers": typeof user_helpers;
   "user/parents": typeof user_parents;
   "user/students": typeof user_students;
   "user/teachers": typeof user_teachers;
+  warehouses: typeof warehouses;
 }>;
 
 /**

@@ -98,7 +98,7 @@ export default function OnboardingPage() {
     }
   }, [user]);
 
-  // ✅ Redirect logic - منع التوجيه أثناء وجود أي مودال
+  // ✅ Redirect logic - جميع حالات التوجيه في useEffect واحد
   useEffect(() => {
     if (!currentUser) return;
 
@@ -107,24 +107,38 @@ export default function OnboardingPage() {
       return;
     }
 
+    // ✅ حالة Active أو Approved - توجيه حسب الدور
     if (currentUser.status === "active" || currentUser.status === "approved") {
       const routes: Record<string, string> = {
         student: "/student",
         teacher: "/teacher",
         parent: "/parent",
-        admin: "/admin",
+        admin: "/admin", // ✅ تم إضافة Admin هنا
       };
       router.replace(routes[currentUser.role] ?? "/dashboard");
       return;
     }
 
+    // ✅ حالة مرفوض
     if (currentUser.status === "rejected") {
       router.replace("/account-rejected");
       return;
     }
 
+    // ✅ حالة قيد الانتظار
     if (currentUser.status === "pending") {
       router.replace("/pending-approval");
+    }
+  }, [currentUser, showSubscriptionModal, showChildModal, router]);
+
+  // ✅ useEffect إضافي للـ Admin فقط - كطبقة أمان إضافية
+  useEffect(() => {
+    // تأكد من وجود currentUser وعدم فتح أي مودال
+    if (!currentUser || showSubscriptionModal || showChildModal) return;
+    
+    // تحقق من دور Admin وحالة Active
+    if (currentUser.role === "admin" && (currentUser.status === "active" || currentUser.status === "approved")) {
+      router.replace("/admin");
     }
   }, [currentUser, showSubscriptionModal, showChildModal, router]);
 
@@ -275,10 +289,7 @@ export default function OnboardingPage() {
     { value: "admin", label: "أدمن", icon: Shield, desc: "سجّل كأدمن لإدارة المنصة والمستخدمين" },
   ];
 
-  if (currentUser?.role === "admin" && (currentUser.status === "active" || currentUser.status === "approved")) {
-    router.replace("/admin");
-    return null;
-  }
+  // ❌ تم حذف التوجيه من هنا - لم يعد هناك أي router.replace في جسم الدالة
 
   return (
     <>

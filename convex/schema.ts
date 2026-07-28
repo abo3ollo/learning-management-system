@@ -1065,65 +1065,83 @@ export default defineSchema({
 // STORE TABLES
 // ============================================
 
-// ✅ جدول الأصناف
-storeItems: defineTable({
-  code: v.string(),
-  name: v.string(),
-  type: v.union(
-    v.literal("books"),
-    v.literal("stationery"),
-    v.literal("electronics"),
-    v.literal("uniforms"),
-    v.literal("supplies"),
-    v.literal("other")
-  ),
-  description: v.optional(v.string()),
-  unit: v.union(
-    v.literal("piece"),
-    v.literal("kg"),
-    v.literal("meter"),
-    v.literal("box"),
-    v.literal("liter"),
-    v.literal("other")
-  ),
-  purchasePrice: v.number(),
-  sellingPrice: v.number(),
-  quantity: v.number(),
-  minStock: v.optional(v.number()),
-  gradeId: v.optional(v.id("grades")),
-  status: v.union(
-    v.literal("active"),
-    v.literal("inactive"),
-    v.literal("out_of_stock")
-  ),
-  totalCost: v.number(),
-  avgCost: v.number(),
-  createdAt: v.number(),
-  updatedAt: v.number(),
-})
-  .index("by_code", ["code"])
-  .index("by_name", ["name"])
-  .index("by_type", ["type"])
-  .index("by_status", ["status"])
-  .index("by_grade", ["gradeId"]),
 
-// ✅ جدول معاملات المخزون (بدون موردين)
-storeTransactions: defineTable({
-  itemId: v.id("storeItems"),
-  type: v.union(
-    v.literal("purchase"),
-    v.literal("sale"),
-    v.literal("adjustment"),
-    v.literal("return")
-  ),
-  quantity: v.number(),
-  unitPrice: v.number(),
-  totalPrice: v.number(),
-  notes: v.optional(v.string()),
-  createdBy: v.id("users"),
-  createdAt: v.number(),
-})
-  .index("by_item", ["itemId"])
-  .index("by_type", ["type"])
-  .index("by_date", ["createdAt"]),
+  // ── المخازن ──────────────────────────────────────────────
+  warehouses: defineTable({
+    name: v.string(),
+    createdBy: v.id("users"),
+    isActive: v.boolean(),
+  })
+  .index("by_createdBy", ["createdBy"])
+  .index("by_isActive", ["isActive"]),
+
+  // ── الوحدات ──────────────────────────────────────────────
+  units: defineTable({
+    name: v.string(),
+    createdBy: v.id("users"),
+    isActive: v.boolean(),
+  })
+  .index("by_createdBy", ["createdBy"])
+  .index("by_isActive", ["isActive"]),
+
+  // ── مجموعات الأصناف ──────────────────────────────────────
+  categories: defineTable({
+    name: v.string(),
+    createdBy: v.id("users"),
+    isActive: v.boolean(),
+  })
+  .index("by_createdBy", ["createdBy"])
+  .index("by_isActive", ["isActive"]),
+
+  // ── الأصناف ──────────────────────────────────────────────
+  items: defineTable({
+    code: v.string(),
+    name: v.string(),
+    purchasePrice: v.number(),
+    sellingPrice: v.number(),
+    averageCost: v.number(),
+    unitId: v.id("units"),
+    categoryId: v.id("categories"),
+    warehouseId: v.id("warehouses"),
+    createdBy: v.id("users"),
+    isActive: v.boolean(),
+  })
+  .index("by_createdBy", ["createdBy"])
+  .index("by_warehouseId", ["warehouseId"])
+  .index("by_categoryId", ["categoryId"])
+  .index("by_unitId", ["unitId"])
+  .index("by_code", ["code"])
+  .index("by_isActive", ["isActive"]),
+
+  // ── الفواتير ──────────────────────────────────────────────
+  invoices: defineTable({
+    invoiceNumber: v.string(),
+    date: v.number(), // timestamp
+    warehouseId: v.id("warehouses"),
+    createdBy: v.id("users"),
+    totalAmount: v.number(),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("saved"),
+      v.literal("cancelled")
+    ),
+    notes: v.optional(v.string()),
+  })
+  .index("by_createdBy", ["createdBy"])
+  .index("by_warehouseId", ["warehouseId"])
+  .index("by_date", ["date"])
+  .index("by_status", ["status"])
+  .index("by_invoiceNumber", ["invoiceNumber"]),
+
+  // ── تفاصيل الفاتورة ──────────────────────────────────────
+  invoiceItems: defineTable({
+    invoiceId: v.id("invoices"),
+    itemId: v.id("items"),
+    quantity: v.number(),
+    purchasePrice: v.number(),
+    totalPrice: v.number(),
+  })
+  .index("by_invoiceId", ["invoiceId"])
+  .index("by_itemId", ["itemId"]),
+
 });
