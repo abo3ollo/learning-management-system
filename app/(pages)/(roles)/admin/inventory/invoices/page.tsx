@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { DataTable } from "@/app/_components/ui/DataTable";
-import { FileText, ArrowRight } from "lucide-react";
-import Link from "next/link";
 import { InvoiceModal } from "@/app/_components/inventory/InvoiceModal";
+import { FileText, ArrowRight, Eye, Edit, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function InvoicesPage() {
+  const router = useRouter();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<any>(null);
 
@@ -34,6 +36,10 @@ export default function InvoicesPage() {
     if (confirm("هل أنت متأكد من حذف هذه الفاتورة؟")) {
       await deleteInvoice({ invoiceId: invoice._id });
     }
+  };
+
+  const handleView = (invoice: any) => {
+    router.push(`/admin/inventory/invoices/${invoice._id}`);
   };
 
   const columns = [
@@ -72,13 +78,47 @@ export default function InvoicesPage() {
     },
   ];
 
+  // ✅ إضافة زر العرض إلى الإجراءات
+  const renderActions = (invoice: any) => (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => handleView(invoice)}
+        className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-blue-600"
+        title="عرض الفاتورة"
+      >
+        <Eye className="h-4 w-4" />
+      </button>
+      {invoice.status === "saved" && (
+        <>
+          <button
+            onClick={() => {
+              setEditingInvoice(invoice);
+              setIsModalOpen(true);
+            }}
+            className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-blue-600"
+            title="تعديل"
+          >
+            <Edit className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => handleDelete(invoice)}
+            className="p-1.5 hover:bg-red-50 rounded-lg transition-colors text-red-600"
+            title="حذف"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </>
+      )}
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 p-8" dir="rtl">
       <div className="max-w-7xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <Link
-              href="/inventory"
+              href="/admin/inventory"
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <ArrowRight className="h-5 w-5 text-gray-600" />
@@ -110,6 +150,7 @@ export default function InvoicesPage() {
           onDelete={handleDelete}
           isLoading={invoices === undefined}
           searchPlaceholder="بحث عن فاتورة..."
+          actions={renderActions}
         />
 
         <InvoiceModal

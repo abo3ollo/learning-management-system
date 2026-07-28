@@ -212,3 +212,56 @@ export const remove = mutation({
     return args.invoiceId;
   },
 });
+
+
+// ── جلب تفاصيل فاتورة كاملة للعرض ──────────────────────────
+export const getInvoiceForView = query({
+  args: {
+    invoiceId: v.id("invoices"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const invoice = await ctx.db.get(args.invoiceId);
+    if (!invoice) throw new Error("الفاتورة غير موجودة");
+
+    // جلب بيانات المخزن
+    const warehouse = await ctx.db.get(invoice.warehouseId);
+    
+    // جلب بيانات المستخدم الذي أنشأ الفاتورة
+    const createdBy = await ctx.db.get(invoice.createdBy);
+
+    // جلب تفاصيل الفاتورة
+    const invoiceItems = await ctx.db
+      .query("invoiceItems")
+      .withIndex("by_invoiceId", (q) => q.eq("invoiceId", args.invoiceId))
+      .collect();
+
+    // جلب بيانات الأصناف
+    const itemsWithDetails = await Promise.all(
+      invoiceItems.map(async (item) => {
+        const itemData = await ctx.db.get(item.itemId);
+        return {
+          ...item,
+          itemName: itemData?.name || "",
+          itemCode: itemData?.code || "",
+        };
+      })
+    );
+
+    // حساب الإجمالي
+    const totalAmount = itemsWithDetails.reduce(
+      (sum, item) => sum + item.totalPrice,
+      0
+    );
+
+    return {
+      ...invoice,
+      warehouseName: warehouse?.name || "",
+      createdByName: createdBy?.name || "",
+      items: itemsWithDetails,
+      totalAmount,
+    };
+  },
+});

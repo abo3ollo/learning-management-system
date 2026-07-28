@@ -15,6 +15,7 @@ interface DataTableProps {
   onAdd?: () => void;
   onEdit?: (item: any) => void;
   onDelete?: (item: any) => void;
+  actions?: (item: any) => React.ReactNode; // ✅ إضافة إجراءات مخصصة
   isLoading?: boolean;
   searchPlaceholder?: string;
 }
@@ -25,6 +26,7 @@ export function DataTable({
   onAdd,
   onEdit,
   onDelete,
+  actions,
   isLoading = false,
   searchPlaceholder = "بحث...",
 }: DataTableProps) {
@@ -54,7 +56,7 @@ export function DataTable({
           {onAdd && (
             <button
               onClick={onAdd}
-              className="flex items-center gap-2 bg-[#001f24] hover:bg-[#03363d] text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
+              className="flex items-center gap-2 bg-[#001f24] hover:bg-[#03363d] text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap"
             >
               <Plus className="h-4 w-4" />
               إضافة جديد
@@ -76,7 +78,7 @@ export function DataTable({
                   {col.label}
                 </th>
               ))}
-              {(onEdit || onDelete) && (
+              {(onEdit || onDelete || actions) && (
                 <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   الإجراءات
                 </th>
@@ -110,26 +112,30 @@ export function DataTable({
                       {col.render ? col.render(item[col.key], item) : item[col.key]}
                     </td>
                   ))}
-                  {(onEdit || onDelete) && (
+                  {(onEdit || onDelete || actions) && (
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {onEdit && (
-                          <button
-                            onClick={() => onEdit(item)}
-                            className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-blue-600"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                        )}
-                        {onDelete && (
-                          <button
-                            onClick={() => onDelete(item)}
-                            className="p-1.5 hover:bg-red-50 rounded-lg transition-colors text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
+                      {actions ? (
+                        actions(item)
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          {onEdit && (
+                            <button
+                              onClick={() => onEdit(item)}
+                              className="p-1.5 hover:bg-blue-50 rounded-lg transition-colors text-blue-600"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                          )}
+                          {onDelete && (
+                            <button
+                              onClick={() => onDelete(item)}
+                              className="p-1.5 hover:bg-red-50 rounded-lg transition-colors text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </td>
                   )}
                 </tr>
