@@ -1144,4 +1144,102 @@ export default defineSchema({
   .index("by_invoiceId", ["invoiceId"])
   .index("by_itemId", ["itemId"]),
 
+
+  // convex/schema.ts - أضف هذه الجداول في نهاية ملف schema
+
+// ============================================
+// CHAT TABLES
+// ============================================
+
+// ✅ مجموعات المحادثة
+chatGroups: defineTable({
+  name: v.string(), // اسم المجموعة
+  description: v.optional(v.string()), // وصف المجموعة
+  type: v.union(
+    v.literal("group"), // مجموعة عادية
+    v.literal("class"), // فصل دراسي
+    v.literal("grade"), // صف دراسي
+    v.literal("direct"), // محادثة مباشرة (2 شخص)
+  ),
+  createdBy: v.id("users"), // منشئ المجموعة
+  isPrivate: v.boolean(), // مجموعة خاصة (دعوة فقط)
+  isActive: v.boolean(), // هل المجموعة نشطة
+  avatar: v.optional(v.string()), // صورة المجموعة
+  lastMessage: v.optional(v.string()), // آخر رسالة
+  lastMessageAt: v.optional(v.number()), // وقت آخر رسالة
+  lastMessageSender: v.optional(v.id("users")), // مرسل آخر رسالة
+  unreadCount: v.optional(v.number()), // عدد الرسائل غير المقروءة
+  groupId: v.optional(v.id("groups")), // ✅ إضافة هذا الحقل
+  createdAt: v.number(),
+  updatedAt: v.number(),
+})
+  .index("by_createdBy", ["createdBy"])
+  .index("by_type", ["type"])
+  .index("by_isActive", ["isActive"])
+  .index("by_groupId", ["groupId"]), // ✅ إضافة index
+
+// ✅ المشاركون في المحادثة
+chatParticipants: defineTable({
+  chatId: v.id("chatGroups"), // معرف المجموعة
+  userId: v.id("users"), // معرف المستخدم
+  role: v.union(
+    v.literal("admin"), // مدير المجموعة
+    v.literal("member"), // عضو عادي
+  ),
+  status: v.union(
+    v.literal("active"), // نشط
+    v.literal("inactive"), // غير نشط
+    v.literal("kicked"), // مطرود
+  ),
+  joinedAt: v.number(),
+  lastReadAt: v.optional(v.number()), // آخر قراءة
+  isMuted: v.boolean(), // كتم الإشعارات
+  pinned: v.boolean(), // تثبيت المحادثة
+})
+  .index("by_chat_user", ["chatId", "userId"])
+  .index("by_user", ["userId"])
+  .index("by_chat", ["chatId"])
+  .index("by_status", ["status"]),
+
+// ✅ الرسائل
+chatMessages: defineTable({
+  chatId: v.id("chatGroups"), // معرف المجموعة
+  senderId: v.id("users"), // معرف المرسل
+  content: v.string(), // نص الرسالة
+  type: v.union(
+    v.literal("text"), // نص عادي
+    v.literal("image"), // صورة
+    v.literal("file"), // ملف
+    v.literal("voice"), // صوت
+    v.literal("video"), // فيديو
+    v.literal("system"), // رسالة نظام
+  ),
+  mediaUrl: v.optional(v.string()), // رابط الملف/الصورة
+  mediaKey: v.optional(v.string()), // مفتاح R2
+  replyTo: v.optional(v.id("chatMessages")), // رد على رسالة
+  isEdited: v.boolean(),
+  isDeleted: v.boolean(),
+  isPinned: v.boolean(), // رسالة مثبتة
+  readBy: v.array(v.id("users")), // من قرأ الرسالة
+  createdAt: v.number(),
+  updatedAt: v.optional(v.number()),
+})
+  .index("by_chat", ["chatId"])
+  .index("by_sender", ["senderId"])
+  .index("by_createdAt", ["createdAt"]),
+
+// ✅ إشعارات المحادثة
+chatNotifications: defineTable({
+  userId: v.id("users"), // المستخدم المستهدف
+  chatId: v.id("chatGroups"), // المجموعة
+  messageId: v.id("chatMessages"), // الرسالة
+  isRead: v.boolean(), // هل تمت القراءة
+  readAt: v.optional(v.number()),
+  createdAt: v.number(),
+})
+  .index("by_user", ["userId"])
+  .index("by_chat", ["chatId"])
+  .index("by_user_chat", ["userId", "chatId"])
+  .index("by_isRead", ["isRead"]),
+
 });

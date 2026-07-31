@@ -27,6 +27,7 @@ import { Loader2 } from "lucide-react";
 import { SiWikibooks } from "react-icons/si";
 import { BsFileCheck } from "react-icons/bs";
 import { PiExam } from "react-icons/pi";
+import { IoChatbubbleOutline } from "react-icons/io5";
 
 export default function StudentLayout({
   children,
@@ -67,6 +68,8 @@ export default function StudentLayout({
     { label: "امتحاناتي", icon: PiExam , href: "/student/my-exams" },
     { label: "وسائطي", icon: BarChart3 , href: "/student/my-media" },
     { label: "حضوري", icon: Circle , href: "/student/attendance" },
+    { label: " Chatbox", icon: IoChatbubbleOutline, href: "/student/chatbox" },
+    
     // { label: "شهاداتي", icon: Award , href: "/student/certificates" },
     // { label: "المنجر", icon: LayoutDashboard , href: "/student/dashboard" },
     // { label: "الإعلانات", icon: Megaphone , href: "/student/announcements" },

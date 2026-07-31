@@ -83,13 +83,6 @@ export const getGroups = query({
   },
 });
 
-// ✅ جلب مجموعات المعلم
-// convex/groups/groups.ts
-
-// ✅ جلب مجموعات المعلم (مع دعم البحث)
-
-
-
 // ✅ تحديث getGroupById لجلب الطلاب مع بياناتهم الكاملة
 // convex/groups/groups.ts
 
@@ -118,7 +111,7 @@ export const getGroupById = query({
       const isCreator = group.createdBy === user._id;
       const isSupervisor = group.supervisorId === user._id;
       const isTeacher = group.teachers && group.teachers.includes(user._id);
-      
+
       if (!isCreator && !isSupervisor && !isTeacher) {
         throw new Error("غير مصرح لك بمشاهدة هذه المجموعة");
       }
@@ -135,7 +128,7 @@ export const getGroupById = query({
       group.students.map(async (studentId) => {
         const student = await ctx.db.get(studentId);
         return student;
-      })
+      }),
     );
 
     // ✅ جلب أسماء المعلمين في المجموعة
@@ -145,7 +138,7 @@ export const getGroupById = query({
         group.teachers.map(async (teacherId) => {
           const teacher = await ctx.db.get(teacherId);
           return teacher?.name || null;
-        })
+        }),
       );
       teacherNames = teachers.filter((name): name is string => name !== null);
     }
@@ -212,7 +205,7 @@ export const getAvailableTeachersForGroup = query({
   },
 });
 
-// ✅ إنشاء مجموعة جديدة (أدمن + معلم)
+// ✅ إنشاء مجموعة جديدة (أدمن + معلم) مع إنشاء مجموعة شات تلقائياً
 export const createGroup = mutation({
   args: {
     name: v.string(),
@@ -251,6 +244,9 @@ export const createGroup = mutation({
       throw new Error(`المجموعة ${args.name} موجودة مسبقاً في هذا الصف`);
     }
 
+    const supervisorId = args.supervisorId || user._id;
+
+    // ✅ إنشاء المجموعة الدراسية
     const groupId = await ctx.db.insert("groups", {
       name: args.name,
       nameEn: args.nameEn,
@@ -258,7 +254,7 @@ export const createGroup = mutation({
       subject: args.subject,
       maxStudents: args.maxStudents,
       currentStudents: 0,
-      supervisorId: args.supervisorId || user._id,
+      supervisorId: supervisorId,
       location: args.location,
       status: "active",
       students: [],
@@ -267,6 +263,11 @@ export const createGroup = mutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+
+    // ============================================
+    // ✅ إنشاء مجموعة شات تلقائياً للمجموعة الجديدة
+    // ============================================
+    await createChatGroupForGroup(ctx, groupId, args, user, grade);
 
     await ctx.db.insert("auditLogs", {
       userId: user._id,
@@ -284,6 +285,78 @@ export const createGroup = mutation({
     return { success: true, groupId };
   },
 });
+
+// ✅ دالة مساعدة لإنشاء مجموعة شات لمجموعة دراسية جديدة
+async function createChatGroupForGroup(
+  ctx: any,
+  groupId: Id<"groups">,
+  args: any,
+  user: any,
+  grade: any,
+) {
+  try {
+    // ✅ إنشاء مجموعة الشات
+    const chatId = await ctx.db.insert("chatGroups", {
+      name: `شات ${args.name}`,
+      description: `مجموعة محادثة لطلاب ${args.name} - ${grade?.name || "غير محدد"}`,
+      type: "group",
+      createdBy: user._id,
+      isPrivate: true,
+      isActive: true,
+      groupId: groupId, // ✅ ربط بمجموعة الدراسة
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+
+    // ✅ إضافة المشاركين إلى مجموعة الشات
+    const participantIds = new Set<Id<"users">>();
+
+    // المنشئ
+    participantIds.add(user._id);
+
+    // المشرف
+    if (args.supervisorId) {
+      participantIds.add(args.supervisorId);
+    }
+
+    // المعلمين (المبدئيين)
+    participantIds.add(user._id);
+
+    // إضافة المشاركين
+    for (const userId of participantIds) {
+      await ctx.db.insert("chatParticipants", {
+        chatId,
+        userId,
+        role: userId === user._id ? "admin" : "member",
+        status: "active",
+        joinedAt: Date.now(),
+        isMuted: false,
+        pinned: false,
+      });
+    }
+
+    // إضافة رسالة ترحيب
+    await ctx.db.insert("chatMessages", {
+      chatId,
+      senderId: user._id,
+      content: `تم إنشاء مجموعة الشات لـ ${args.name}`,
+      type: "system",
+      isEdited: false,
+      isDeleted: false,
+      isPinned: false,
+      readBy: [user._id],
+      createdAt: Date.now(),
+    });
+
+    return { success: true, chatId };
+  } catch (error) {
+    console.error("Error creating chat group:", error);
+    // لا نرمي خطأ حتى لا يؤثر على إنشاء المجموعة الأساسية
+    const errorMessage =
+      error instanceof Error ? error.message : "حدث خطأ غير معروف";
+    return { success: false, error: errorMessage };
+  }
+}
 
 // ✅ تحديث مجموعة
 export const updateGroup = mutation({
@@ -463,10 +536,7 @@ export const removeTeacherFromGroup = mutation({
   },
 });
 
-// ✅ إضافة طالب إلى مجموعة (معدل للسماح للطلاب بالتسجيل بأنفسهم)
-// convex/groups/groups.ts
-
-// ✅ إضافة طالب إلى مجموعة (معدل لتحديث groupId في الطالب)
+// ✅ إضافة طالب إلى مجموعة (مع إنشاء/إضافة إلى مجموعة الشات تلقائياً)
 export const addStudentToGroup = mutation({
   args: {
     groupId: v.id("groups"),
@@ -485,13 +555,10 @@ export const addStudentToGroup = mutation({
 
     // ✅ السماح للطلاب بالتسجيل بأنفسهم
     if (user.role === "student") {
-      // ✅ التأكد أن الطالب يسجل نفسه فقط
       if (user._id !== args.studentId) {
         throw new Error("غير مصرح لك بتسجيل طالب آخر");
       }
-    } 
-    // ✅ للمعلمين والأدمن - يمكنهم تسجيل أي طالب
-    else if (user.role !== "admin" && user.role !== "teacher") {
+    } else if (user.role !== "admin" && user.role !== "teacher") {
       throw new Error("مطلوب صلاحيات مشرف أو معلم");
     }
 
@@ -519,7 +586,7 @@ export const addStudentToGroup = mutation({
     }
 
     const updatedStudents = [...group.students, args.studentId];
-    
+
     // ✅ تحديث المجموعة بإضافة الطالب
     await ctx.db.patch(args.groupId, {
       students: updatedStudents,
@@ -527,18 +594,155 @@ export const addStudentToGroup = mutation({
       updatedAt: Date.now(),
     });
 
-    // ✅ تحديث الطالب بإضافة groupId (مهم جداً!)
+    // ✅ تحديث الطالب بإضافة groupId
     await ctx.db.patch(args.studentId, {
       groupId: args.groupId,
       updatedAt: Date.now(),
     });
 
+    // ============================================
+    // ✅ إضافة الطالب إلى مجموعة الشات تلقائياً
+    // ============================================
+    await addStudentToChatGroup(ctx, args.groupId, args.studentId, group);
+
     return { success: true };
   },
 });
 
+// ✅ دالة مساعدة لإضافة طالب إلى مجموعة الشات
+async function addStudentToChatGroup(
+  ctx: any,
+  groupId: Id<"groups">,
+  studentId: Id<"users">,
+  group: any,
+) {
+  try {
+    // ✅ البحث عن مجموعة شات مرتبطة بهذه المجموعة الدراسية
+    const existingChat = await ctx.db
+      .query("chatGroups")
+      .withIndex("by_groupId", (q: any) => q.eq("groupId", groupId))
+      .first();
 
-// ✅ إزالة طالب من مجموعة (معدل لإزالة groupId من الطالب)
+    let chatId: Id<"chatGroups">;
+
+    if (existingChat) {
+      // ✅ مجموعة الشات موجودة - أضف الطالب إليها
+      chatId = existingChat._id;
+
+      // التحقق من أن الطالب ليس موجوداً بالفعل في مجموعة الشات
+      const existingParticipant = await ctx.db
+        .query("chatParticipants")
+        .withIndex("by_chat_user", (q: any) =>
+          q.eq("chatId", chatId).eq("userId", studentId),
+        )
+        .first();
+
+      if (!existingParticipant) {
+        // إضافة الطالب إلى مجموعة الشات
+        await ctx.db.insert("chatParticipants", {
+          chatId,
+          userId: studentId,
+          role: "member",
+          status: "active",
+          joinedAt: Date.now(),
+          isMuted: false,
+          pinned: false,
+        });
+
+        // إضافة رسالة ترحيب
+        const studentData = await ctx.db.get(studentId);
+        await ctx.db.insert("chatMessages", {
+          chatId,
+          senderId: studentId,
+          content: `مرحباً ${studentData?.name || "طالب جديد"}! تم إضافتك إلى مجموعة ${group.name}`,
+          type: "system",
+          isEdited: false,
+          isDeleted: false,
+          isPinned: false,
+          readBy: [studentId],
+          createdAt: Date.now(),
+        });
+      }
+    } else {
+      // ✅ لا توجد مجموعة شات - أنشئ واحدة جديدة
+      const grade = await ctx.db.get(group.gradeId);
+      const gradeName = grade?.name || "غير محدد";
+
+      // إنشاء مجموعة شات جديدة
+      chatId = await ctx.db.insert("chatGroups", {
+        name: `شات ${group.name}`,
+        description: `مجموعة محادثة لطلاب ${group.name} - ${gradeName}`,
+        type: "group",
+        createdBy: group.createdBy,
+        isPrivate: true,
+        isActive: true,
+        groupId: groupId, // ✅ ربط بمجموعة الدراسة
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      // ✅ إضافة جميع الأعضاء إلى مجموعة الشات
+      const allParticipantIds = new Set<Id<"users">>();
+
+      // إضافة المنشئ
+      allParticipantIds.add(group.createdBy);
+
+      // إضافة المشرف
+      if (group.supervisorId) {
+        allParticipantIds.add(group.supervisorId);
+      }
+
+      // إضافة المعلمين
+      if (group.teachers) {
+        group.teachers.forEach((id: Id<"users">) => allParticipantIds.add(id));
+      }
+
+      // إضافة جميع الطلاب (بما فيهم الطالب الجديد)
+      const allStudents = [...group.students, studentId];
+      allStudents.forEach((id) => allParticipantIds.add(id));
+
+      // إضافة المشاركين إلى مجموعة الشات
+      for (const userId of allParticipantIds) {
+        const role = userId === group.createdBy ? "admin" : "member";
+        await ctx.db.insert("chatParticipants", {
+          chatId,
+          userId,
+          role,
+          status: "active",
+          joinedAt: Date.now(),
+          isMuted: false,
+          pinned: false,
+        });
+      }
+
+      // إضافة رسالة ترحيب
+      const creator = await ctx.db.get(group.createdBy);
+      await ctx.db.insert("chatMessages", {
+        chatId,
+        senderId: group.createdBy,
+        content: `تم إنشاء مجموعة الشات لـ ${group.name} بواسطة ${creator?.name || "المشرف"}`,
+        type: "system",
+        isEdited: false,
+        isDeleted: false,
+        isPinned: false,
+        readBy: [group.createdBy],
+        createdAt: Date.now(),
+      });
+    }
+
+    return { success: true, chatId };
+  } catch (error) {
+    console.error("Error adding student to chat group:", error);
+    // لا نرمي خطأ حتى لا يؤثر على عملية التسجيل الأساسية
+    const errorMessage =
+      error instanceof Error ? error.message : "حدث خطأ غير معروف";
+    return { success: false, error: errorMessage };
+  }
+}
+
+// convex/groups/groups.ts - تحديث دالة removeStudentFromGroup
+
+// ✅ إزالة طالب من مجموعة (معدل لإزالة groupId من الطالب ومن مجموعة الشات)
 export const removeStudentFromGroup = mutation({
   args: {
     groupId: v.id("groups"),
@@ -567,7 +771,7 @@ export const removeStudentFromGroup = mutation({
     const updatedStudents = group.students.filter(
       (id) => id !== args.studentId,
     );
-    
+
     // ✅ تحديث المجموعة بإزالة الطالب
     await ctx.db.patch(args.groupId, {
       students: updatedStudents,
@@ -581,34 +785,103 @@ export const removeStudentFromGroup = mutation({
       updatedAt: Date.now(),
     });
 
+    // ============================================
+    // ✅ إزالة الطالب من مجموعة الشات
+    // ============================================
+    await removeStudentFromChatGroup(ctx, args.groupId, args.studentId);
+
     return { success: true };
   },
 });
 
+// ✅ دالة مساعدة لإزالة طالب من مجموعة الشات
+async function removeStudentFromChatGroup(
+  ctx: any,
+  groupId: Id<"groups">,
+  studentId: Id<"users">,
+) {
+  try {
+    // ✅ البحث عن مجموعة شات مرتبطة بهذه المجموعة الدراسية
+    const existingChat = await ctx.db
+      .query("chatGroups")
+      .withIndex("by_groupId", (q: any) => q.eq("groupId", groupId))
+      .first();
 
-// ✅ جلب مجموعات الطالب مع الجدول والمشرف
+    if (!existingChat) return;
+
+    // ✅ البحث عن مشاركة الطالب في مجموعة الشات
+    const participant = await ctx.db
+      .query("chatParticipants")
+      .withIndex("by_chat_user", (q: any) =>
+        q.eq("chatId", existingChat._id).eq("userId", studentId),
+      )
+      .first();
+
+    if (participant) {
+      // ✅ تحديث حالة المشارك إلى غير نشط (بدلاً من حذفه)
+      await ctx.db.patch(participant._id, {
+        status: "inactive",
+      });
+
+      // إضافة رسالة نظام
+      const student = await ctx.db.get(studentId);
+      await ctx.db.insert("chatMessages", {
+        chatId: existingChat._id,
+        senderId: studentId,
+        content: `${student?.name || "طالب"} غادر المجموعة`,
+        type: "system",
+        isEdited: false,
+        isDeleted: false,
+        isPinned: false,
+        readBy: [studentId],
+        createdAt: Date.now(),
+      });
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error removing student from chat group:", error);
+    const errorMessage =
+      error instanceof Error ? error.message : "حدث خطأ غير معروف";
+    return { success: false, error: errorMessage };
+  }
+}
+
+// convex/groups/groups.ts - تحديث getStudentGroups لإرجاع معلومات أكثر
+
 export const getStudentGroups = query({
-  args: { studentId: v.id("users") },
+  args: { 
+    studentId: v.optional(v.id("users")) 
+  },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    const student = await ctx.db.get(args.studentId);
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) throw new Error("المستخدم غير موجود");
+
+    // ✅ استخدام studentId الممرر أو المستخدم الحالي
+    const studentId = args.studentId || user._id;
+
+    const student = await ctx.db.get(studentId);
     if (!student || student.role !== "student") {
       throw new Error("الطالب غير موجود");
     }
 
     const allGroups = await ctx.db.query("groups").collect();
     const studentGroups = allGroups.filter((g) =>
-      g.students.includes(args.studentId),
+      g.students.includes(studentId)
     );
 
-    // جلب معلومات الصف والمشرف والجدول
+    // ✅ جلب معلومات إضافية لكل مجموعة
     const groupsWithDetails = await Promise.all(
       studentGroups.map(async (group) => {
         const grade = await ctx.db.get(group.gradeId);
         
-        // جلب المشرف
         let supervisorName = "غير محدد";
         if (group.supervisorId) {
           const supervisor = await ctx.db.get(group.supervisorId);
@@ -617,45 +890,26 @@ export const getStudentGroups = query({
           }
         }
 
-        const liveClasses = await ctx.db
-          .query("liveClasses")
-          .filter((q) => q.eq(q.field("groupId"), group._id))
-          .collect();
-
-        // ✅ جلب الجدول
-        const schedule = await ctx.db
-          .query("schedules")
-          .withIndex("by_group", (q) => q.eq("groupId", group._id))
-          .first();
-
-        // ✅ إضافة أسماء المعلمين في الجدول
-        let scheduleWithNames = null;
-        if (schedule) {
-          scheduleWithNames = { ...schedule };
-          if (scheduleWithNames.weekDays) {
-            for (const day of scheduleWithNames.weekDays) {
-              if (day.periods) {
-                for (const period of day.periods) {
-                  if (period.teacherId) {
-                    const teacher = await ctx.db.get(period.teacherId);
-                    period.teacherName = teacher?.name || "غير محدد";
-                  }
-                }
-              }
-            }
-          }
+        // ✅ جلب أسماء المعلمين
+        let teacherNames: string[] = [];
+        if (group.teachers && group.teachers.length > 0) {
+          const teachers = await Promise.all(
+            group.teachers.map(async (teacherId) => {
+              const teacher = await ctx.db.get(teacherId);
+              return teacher?.name || null;
+            })
+          );
+          teacherNames = teachers.filter((name): name is string => name !== null);
         }
 
         return {
           ...group,
-          liveClasses: liveClasses.filter(
-            (lc) => lc.status === "live" || lc.status === "scheduled"
-          ),
           gradeName: grade?.name || "غير معروف",
           supervisorName: supervisorName,
-          schedule: scheduleWithNames,
+          teacherNames: teacherNames,
+          studentsCount: group.students.length,
         };
-      }),
+      })
     );
 
     return groupsWithDetails;
@@ -772,7 +1026,10 @@ export const getAvailableStudentsForGroup = query({
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .first();
 
-    if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "teacher")) {
+    if (
+      !currentUser ||
+      (currentUser.role !== "admin" && currentUser.role !== "teacher")
+    ) {
       throw new Error("مطلوب صلاحيات مشرف أو معلم");
     }
 
@@ -784,18 +1041,20 @@ export const getAvailableStudentsForGroup = query({
       .withIndex("by_role", (q) => q.eq("role", "student"))
       .collect();
 
-    students = students.filter((student) => 
-      student.status === "active" && 
-      student.gradeId === group.gradeId && 
-      !group.students.includes(student._id)
+    students = students.filter(
+      (student) =>
+        student.status === "active" &&
+        student.gradeId === group.gradeId &&
+        !group.students.includes(student._id),
     );
 
     if (args.search && args.search.trim() !== "") {
       const searchLower = args.search.toLowerCase();
-      students = students.filter((student) =>
-        student.name?.toLowerCase().includes(searchLower) ||
-        student.email?.toLowerCase().includes(searchLower) ||
-        student.studentId?.toLowerCase().includes(searchLower)
+      students = students.filter(
+        (student) =>
+          student.name?.toLowerCase().includes(searchLower) ||
+          student.email?.toLowerCase().includes(searchLower) ||
+          student.studentId?.toLowerCase().includes(searchLower),
       );
     }
 
@@ -803,9 +1062,7 @@ export const getAvailableStudentsForGroup = query({
   },
 });
 
-
 // ✅ جلب مجموعات المعلم مع الجدول والمشرف
-
 
 export const getTeacherGroups = query({
   args: {
@@ -832,15 +1089,16 @@ export const getTeacherGroups = query({
     }
 
     let groups = await ctx.db.query("groups").collect();
-    
+
     // ✅ جلب المجموعات التي:
     // 1. أنشأها المعلم (createdBy)
     // 2. أو هو مشرف عليها (supervisorId)
     // 3. أو هو مدرس فيها (teachers array)
-    groups = groups.filter((g) => 
-      g.createdBy === user._id || 
-      g.supervisorId === user._id ||
-      (g.teachers && g.teachers.includes(user._id))
+    groups = groups.filter(
+      (g) =>
+        g.createdBy === user._id ||
+        g.supervisorId === user._id ||
+        (g.teachers && g.teachers.includes(user._id)),
     );
 
     if (args.status) {
@@ -861,7 +1119,7 @@ export const getTeacherGroups = query({
     const groupsWithDetails = await Promise.all(
       groups.map(async (group) => {
         const grade = await ctx.db.get(group.gradeId);
-        
+
         // جلب المشرف
         let supervisorName = "غير محدد";
         if (group.supervisorId) {
@@ -911,9 +1169,11 @@ export const getTeacherGroups = query({
             group.teachers.map(async (teacherId) => {
               const teacher = await ctx.db.get(teacherId);
               return teacher?.name || null;
-            })
+            }),
           );
-          teacherNames = teachers.filter((name): name is string => name !== null);
+          teacherNames = teachers.filter(
+            (name): name is string => name !== null,
+          );
         }
 
         return {
@@ -930,6 +1190,9 @@ export const getTeacherGroups = query({
     return groupsWithDetails.sort((a, b) => a.createdAt - b.createdAt);
   },
 });
+// convex/groups/groups.ts - إصلاح دالة createChatGroupForGroup
+
+// ✅ دالة مساعدة لإنشاء مجموعة شات لمجموعة دراسية جديدة
 
 // ============================================
 // EXPORTS

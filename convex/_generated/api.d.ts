@@ -11,6 +11,9 @@
 import type * as admin_approvals from "../admin/approvals.js";
 import type * as assignments_assignments from "../assignments/assignments.js";
 import type * as categories from "../categories.js";
+import type * as chat_chats from "../chat/chats.js";
+import type * as chat_messages from "../chat/messages.js";
+import type * as chat_participants from "../chat/participants.js";
 import type * as classes_classSubjects from "../classes/classSubjects.js";
 import type * as classes_classes from "../classes/classes.js";
 import type * as courses_courses from "../courses/courses.js";
@@ -50,6 +53,9 @@ declare const fullApi: ApiFromModules<{
   "admin/approvals": typeof admin_approvals;
   "assignments/assignments": typeof assignments_assignments;
   categories: typeof categories;
+  "chat/chats": typeof chat_chats;
+  "chat/messages": typeof chat_messages;
+  "chat/participants": typeof chat_participants;
   "classes/classSubjects": typeof classes_classSubjects;
   "classes/classes": typeof classes_classes;
   "courses/courses": typeof courses_courses;

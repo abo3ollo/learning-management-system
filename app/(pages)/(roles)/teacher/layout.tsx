@@ -10,10 +10,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
   LayoutDashboard,
-  Users,
-  BookOpen,
   FileText,
-  Calendar,
   Settings,
   LogOut,
   Menu,
@@ -21,22 +18,15 @@ import {
   ChevronDown,
   GraduationCap,
   ClipboardList,
-  CheckSquare,
-  BarChart3,
   Bell,
   Search,
   User,
-  Home,
   School,
   FolderOpen,
-  Award,
-  MessageSquare,
-  Clock,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -45,8 +35,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
+
 import { Input } from "@/components/ui/input";
+import { IoChatbubbleOutline } from "react-icons/io5";
 
 export default function TeacherLayout({
   children,
@@ -89,6 +80,7 @@ export default function TeacherLayout({
     { label: "الواجبات", icon: FileText, href: "/teacher/assignments" },
     { label: "التحصيلات", icon: School, href: "/teacher/materials" },
     { label: "المحاضرات المباشرة", icon: GraduationCap, href: "/teacher/live-classes" },
+    { label: " Chatbox", icon: IoChatbubbleOutline, href: "/teacher/chatbox" },
 
   ];
 

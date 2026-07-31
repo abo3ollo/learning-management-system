@@ -33,6 +33,7 @@ import { AiOutlineSchedule } from "react-icons/ai";
 import { MdOutlineHomeMax, MdOutlinePermMedia } from "react-icons/md";
 import { FaClipboardQuestion } from "react-icons/fa6";
 import { PiExam } from "react-icons/pi";
+import { IoChatbubbleOutline } from "react-icons/io5";
 
 
 export default function AdminLayout({
@@ -81,6 +82,8 @@ export default function AdminLayout({
     { href: "/admin/exams", label: "الامتحانات", icon: PiExam  }, 
     { href: "/admin/approvals", label: "الموافقة", icon: ClipboardCheck },
     { href: "/admin/landing", label: "البرتوفوليو", icon: MdOutlineHomeMax  },
+    { href: "/admin/chatbox", label: "Chat Box", icon: IoChatbubbleOutline  },
+
     { href: "/admin/notifications", label: "الإشعارات", icon: Bell  },
     { href: "/admin/subscriptions", label: "الاشتراكات", icon: CircleDollarSign  },
     { href: "/admin/inventory", label: "المخزن", icon: FaStore  },
