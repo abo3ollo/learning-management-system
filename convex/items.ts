@@ -150,3 +150,73 @@ export const getByWarehouse = query({
     return itemsWithRelations;
   },
 });
+
+// ── جلب الأصناف المتاحة للشراء للطلاب ──────────────────────
+export const getAvailableForPurchase = query({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    // جلب جميع الأصناف النشطة
+    const items = await ctx.db
+      .query("items")
+      .withIndex("by_isActive", (q) => q.eq("isActive", true))
+      .collect();
+
+    // جلب البيانات المرتبطة
+    const itemsWithDetails = await Promise.all(
+      items.map(async (item) => {
+        const unit = await ctx.db.get(item.unitId);
+        const category = await ctx.db.get(item.categoryId);
+        const warehouse = await ctx.db.get(item.warehouseId);
+
+        return {
+          ...item,
+          unitName: unit?.name || "",
+          categoryName: category?.name || "",
+          warehouseName: warehouse?.name || "",
+        };
+      })
+    );
+
+    return itemsWithDetails;
+  },
+});
+
+// ── إنشاء طلب شراء (Purchase Request) ──────────────────────
+export const createPurchaseRequest = mutation({
+  args: {
+    itemId: v.id("items"),
+    quantity: v.number(),
+    totalPrice: v.number(),
+    paymentProof: v.string(), // URL أو base64 للصورة
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) throw new Error("المستخدم غير موجود");
+
+    // جلب بيانات الصنف
+    const item = await ctx.db.get(args.itemId);
+    if (!item) throw new Error("الصنف غير موجود");
+
+    // إنشاء طلب الشراء
+    const purchaseId = await ctx.db.insert("purchases", {
+      itemId: args.itemId,
+      studentId: user._id,
+      quantity: args.quantity,
+      totalPrice: args.totalPrice,
+      paymentProof: args.paymentProof,
+      status: "pending",
+      createdAt: Date.now(),
+    });
+
+    return purchaseId;
+  },
+});

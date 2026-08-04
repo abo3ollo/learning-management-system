@@ -1242,4 +1242,28 @@ chatNotifications: defineTable({
   .index("by_user_chat", ["userId", "chatId"])
   .index("by_isRead", ["isRead"]),
 
+
+
+// ── طلبات الشراء (Purchases) ──────────────────────────────
+purchases: defineTable({
+  itemId: v.id("items"),
+  studentId: v.id("users"),
+  quantity: v.number(),
+  totalPrice: v.number(),
+  paymentProof: v.string(), // رابط الصورة
+  status: v.union(
+    v.literal("pending"),
+    v.literal("approved"),
+    v.literal("rejected"),
+    v.literal("completed")
+  ),
+  notes: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.optional(v.number()),
+})
+.index("by_studentId", ["studentId"])
+.index("by_itemId", ["itemId"])
+.index("by_status", ["status"])
+.index("by_createdAt", ["createdAt"]),
+
 });

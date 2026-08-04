@@ -29,6 +29,7 @@ import type * as media_mediaassignments from "../media/mediaassignments.js";
 import type * as media_mediafiles from "../media/mediafiles.js";
 import type * as notifications_notifications from "../notifications/notifications.js";
 import type * as payments_gradePricing from "../payments/gradePricing.js";
+import type * as purchases from "../purchases.js";
 import type * as questions_questions from "../questions/questions.js";
 import type * as relationships_parentStudent from "../relationships/parentStudent.js";
 import type * as schedules_schedules from "../schedules/schedules.js";
@@ -71,6 +72,7 @@ declare const fullApi: ApiFromModules<{
   "media/mediafiles": typeof media_mediafiles;
   "notifications/notifications": typeof notifications_notifications;
   "payments/gradePricing": typeof payments_gradePricing;
+  purchases: typeof purchases;
   "questions/questions": typeof questions_questions;
   "relationships/parentStudent": typeof relationships_parentStudent;
   "schedules/schedules": typeof schedules_schedules;
