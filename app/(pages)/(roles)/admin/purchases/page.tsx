@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { 
-  ShoppingBag, 
-  Search, 
-  Eye, 
-  CheckCircle, 
-  XCircle, 
+import {
+  ShoppingBag,
+  Search,
+  Eye,
+  CheckCircle,
+  XCircle,
   Clock,
   DollarSign,
   Filter,
@@ -35,23 +35,26 @@ export default function AdminPurchasesPage() {
 
   // فلترة الطلبات
   const filteredPurchases = purchases?.filter((p: any) => {
-    const matchesSearch = 
+    const matchesSearch =
       p.itemName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.itemCode.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesStatus = statusFilter === "all" || p.status === statusFilter;
-    
+
     return matchesSearch && matchesStatus;
   });
 
-  const handleStatusUpdate = async (status: string, reason?: string) => {
+  const handleStatusUpdate = async (status: string, reason?: string, notes?: string) => {
     if (!selectedPurchase) return;
+
+    console.log("Updating status with:", { status, reason, notes }); // للتتبع
 
     await updateStatus({
       purchaseId: selectedPurchase._id,
       status: status as any,
       rejectionReason: reason,
+      notes: notes, // ✅ هذا هو adminNotes
     });
 
     setIsStatusUpdateOpen(false);

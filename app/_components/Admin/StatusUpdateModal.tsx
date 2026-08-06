@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { X, Loader2, Check, CheckCircle, XCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { X, Loader2, Check, CheckCircle, XCircle, MessageSquare } from "lucide-react";
 
 interface StatusUpdateModalProps {
   isOpen: boolean;
   onClose: () => void;
   purchase: any;
-  onUpdate: (status: string, reason?: string) => Promise<void>;
+  onUpdate: (status: string, reason?: string, notes?: string) => Promise<void>;
 }
 
 export function StatusUpdateModal({
@@ -18,7 +18,17 @@ export function StatusUpdateModal({
 }: StatusUpdateModalProps) {
   const [status, setStatus] = useState<"approved" | "rejected">("approved");
   const [rejectionReason, setRejectionReason] = useState("");
+  const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // إعادة تعيين النموذج عند فتح المودال
+  useEffect(() => {
+    if (isOpen) {
+      setStatus("approved");
+      setRejectionReason("");
+      setNotes("");
+    }
+  }, [isOpen]);
 
   if (!isOpen || !purchase) return null;
 
@@ -32,10 +42,30 @@ export function StatusUpdateModal({
 
     setIsSubmitting(true);
     try {
-      await onUpdate(status, status === "rejected" ? rejectionReason : undefined);
+      // ✅ تأكد من إرسال notes في جميع الحالات
+      const notesToSend = notes.trim() || undefined;
+      
+      console.log("Submitting status update:", {
+        status,
+        rejectionReason: status === "rejected" ? rejectionReason : undefined,
+        notes: notesToSend,
+      });
+
+      await onUpdate(
+        status, 
+        status === "rejected" ? rejectionReason : undefined,
+        notesToSend
+      );
+      
       // Reset form after successful submission
       setRejectionReason("");
+      setNotes("");
       setStatus("approved");
+      
+      // ✅ إغلاق المودال بعد النجاح
+      onClose();
+    } catch (error) {
+      console.error("Error updating status:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -43,15 +73,16 @@ export function StatusUpdateModal({
 
   const handleClose = () => {
     setRejectionReason("");
+    setNotes("");
     setStatus("approved");
     onClose();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl">
+      <div className="bg-white rounded-2xl w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-100">
+        <div className="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-xl font-bold text-gray-900">تحديث حالة الطلب</h2>
             <p className="text-sm text-gray-500 mt-1">
@@ -118,7 +149,37 @@ export function StatusUpdateModal({
             </div>
           </div>
 
-          {/* Rejection Reason */}
+          {/* ✅ Notes for Approval - يظهر في حالة الموافقة */}
+          {status === "approved" && (
+            <div className="animate-fadeIn">
+              <label className="text-sm font-semibold text-gray-700 block mb-2">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4 text-green-600" />
+                  <span>تعليمات الاستلام <span className="text-gray-400 text-xs font-normal">(اختياري)</span></span>
+                </div>
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="أدخل تعليمات الاستلام للطالب..."
+                rows={4}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 resize-none"
+              />
+              <div className="flex items-start gap-2 mt-1.5">
+                <div className="text-xs text-gray-400">
+                  <p>💡 يمكنك إضافة:</p>
+                  <ul className="list-disc list-inside mr-4 mt-0.5 space-y-0.5">
+                    <li>مكان الاستلام (العنوان)</li>
+                    <li>موعد الاستلام</li>
+                    <li>رقم التواصل للتنسيق</li>
+                    <li>تعليمات إضافية</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Rejection Reason - يظهر فقط في حالة الرفض */}
           {status === "rejected" && (
             <div className="animate-fadeIn">
               <label className="text-sm font-semibold text-gray-700 block mb-2">
@@ -140,14 +201,32 @@ export function StatusUpdateModal({
           )}
 
           {/* Success Message Preview */}
-          {status === "approved" && (
-            <div className="bg-green-50 border border-green-100 rounded-xl p-3 text-sm text-green-700">
-              <div className="flex items-center gap-2">
+          <div className={`rounded-xl p-3 text-sm ${
+            status === "approved" 
+              ? "bg-green-50 border border-green-100 text-green-700"
+              : "bg-red-50 border border-red-100 text-red-700"
+          }`}>
+            <div className="flex items-center gap-2">
+              {status === "approved" ? (
                 <Check className="h-4 w-4" />
-                <span>سيتم إعلام الطالب بموافقة طلبه</span>
-              </div>
+              ) : (
+                <XCircle className="h-4 w-4" />
+              )}
+              <span>
+                {status === "approved" 
+                  ? "✅ سيتم إعلام الطالب بموافقة طلبه" 
+                  : "❌ سيتم إعلام الطالب برفض طلبه مع ذكر السبب"}
+              </span>
             </div>
-          )}
+            {status === "approved" && notes.trim() && (
+              <div className="mt-2 pt-2 border-t border-green-200 text-xs text-green-600">
+                <span className="font-medium">📋 سيتم إرسال الملاحظات التالية:</span>
+                <p className="mt-1 whitespace-pre-wrap bg-green-50/50 p-2 rounded-lg">
+                  {notes}
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Actions */}
           <div className="flex gap-3 pt-4 border-t border-gray-100">

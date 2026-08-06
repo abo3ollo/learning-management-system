@@ -2,7 +2,7 @@
 
 import { format } from "date-fns";
 import { arSA } from "date-fns/locale";
-import { X, User, Package, ShoppingBag, AlertCircle, Calendar, DollarSign, Hash } from "lucide-react";
+import { X, User, Package, ShoppingBag, AlertCircle, Calendar, DollarSign, Hash, MessageSquare } from "lucide-react";
 import Image from "next/image";
 
 interface PurchaseDetailsModalProps {
@@ -152,22 +152,26 @@ export function PurchaseDetailsModal({
             </div>
           )}
 
-          {/* Rejection Reason */}
-          {purchase.status === "rejected" && purchase.rejectionReason && (
-            <div className="bg-red-50 border border-red-100 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-red-700 mb-2 flex items-center gap-2">
-                <AlertCircle className="h-4 w-4" />
-                سبب الرفض
+
+          {/* Admin Notes (Approval Notes) */}
+          {purchase.adminNotes && purchase.status === "approved" && (
+            <div className="bg-green-50 border border-green-100 rounded-xl p-4">
+              <h3 className="text-sm font-semibold text-green-700 mb-2 flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                تعليمات الاستلام
               </h3>
-              <p className="text-sm text-red-600">{purchase.rejectionReason}</p>
+              <p className="text-sm text-green-600 whitespace-pre-wrap">{purchase.adminNotes}</p>
             </div>
           )}
 
-          {/* Notes */}
-          {purchase.notes && (
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-              <h3 className="text-sm font-semibold text-blue-700 mb-2">ملاحظات</h3>
-              <p className="text-sm text-blue-600">{purchase.notes}</p>
+          {/* Admin Notes (Rejection Notes) - تظهر مع سبب الرفض */}
+          {purchase.adminNotes && purchase.status === "rejected" && (
+            <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 mt-3">
+              <h3 className="text-sm font-semibold text-amber-700 mb-2 flex items-center gap-2">
+                <MessageSquare className="h-4 w-4" />
+                ملاحظات إضافية
+              </h3>
+              <p className="text-sm text-amber-600 whitespace-pre-wrap">{purchase.adminNotes}</p>
             </div>
           )}
         </div>

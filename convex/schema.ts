@@ -1257,6 +1257,8 @@ purchases: defineTable({
     v.literal("rejected"),
     v.literal("completed")
   ),
+  rejectionReason: v.optional(v.string()), // سبب الرفض
+  adminNotes: v.optional(v.string()), // ✅ ملاحظات الأدمن (للموافقة أو الرفض)
   notes: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.optional(v.number()),

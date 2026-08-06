@@ -15,11 +15,15 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  ArrowRight
+  ArrowRight,
+  MessageSquare,
+  AlertCircle,
+  Info,
+  ChevronDown
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { CheckoutModal } from "../../../../_components/student/CheckoutModal";
+import { CheckoutModal } from "@/app/_components/student/CheckoutModal";
 
 interface ItemWithDetails {
   _id: string;
@@ -38,11 +42,108 @@ interface ItemWithDetails {
   _creationTime: number;
 }
 
+// ✅ مكون عرض رسالة الأدمن
+function AdminMessage({ purchase }: { purchase: any }) {
+  if (purchase.status === "approved" && purchase.adminNotes) {
+    return (
+      <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl">
+        <div className="flex items-start gap-2">
+          <MessageSquare className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-xs font-medium text-green-700">📋 تعليمات الاستلام:</p>
+            <p className="text-sm text-green-700 mt-1 whitespace-pre-wrap">
+              {purchase.adminNotes}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (purchase.status === "rejected" && purchase.rejectionReason) {
+    return (
+      <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl">
+        <div className="flex items-start gap-2">
+          <AlertCircle className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-xs font-medium text-red-700">⚠️ سبب الرفض:</p>
+            <p className="text-sm text-red-700 mt-1 whitespace-pre-wrap">
+              {purchase.rejectionReason}
+            </p>
+            {purchase.adminNotes && (
+              <div className="mt-2 pt-2 border-t border-red-200">
+                <p className="text-xs text-red-600">
+                  <span className="font-medium">ملاحظات إضافية:</span>
+                  <span className="block mt-1">{purchase.adminNotes}</span>
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (purchase.status === "approved" && !purchase.adminNotes) {
+    return (
+      <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl">
+        <div className="flex items-center gap-2">
+          <CheckCircle className="h-4 w-4 text-green-600" />
+          <p className="text-sm text-green-700">✅ تم الموافقة على طلبك</p>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// ✅ مكون عرض حالة الطلب مع تفاصيل
+function PurchaseStatusBadge({ purchase }: { purchase: any }) {
+  const statusMap: Record<string, { label: string; color: string; icon: any; bgColor: string }> = {
+    pending: { 
+      label: "قيد المراجعة", 
+      color: "text-yellow-700", 
+      bgColor: "bg-yellow-100",
+      icon: Clock 
+    },
+    approved: { 
+      label: "تم الموافقة", 
+      color: "text-green-700", 
+      bgColor: "bg-green-100",
+      icon: CheckCircle 
+    },
+    rejected: { 
+      label: "مرفوض", 
+      color: "text-red-700", 
+      bgColor: "bg-red-100",
+      icon: XCircle 
+    },
+    completed: { 
+      label: "مكتمل", 
+      color: "text-blue-700", 
+      bgColor: "bg-blue-100",
+      icon: CheckCircle 
+    },
+  };
+
+  const status = statusMap[purchase.status] || statusMap.pending;
+  const StatusIcon = status.icon;
+
+  return (
+    <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${status.bgColor} ${status.color} w-fit`}>
+      <StatusIcon className="h-3 w-3" />
+      {status.label}
+    </span>
+  );
+}
+
 export default function StudentPurchasesPage() {
   const { user } = useUser();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedItem, setSelectedItem] = useState<ItemWithDetails | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [expandedPurchase, setExpandedPurchase] = useState<string | null>(null);
 
   // جلب الأصناف المتاحة
   const items = useQuery(api.items.getAvailableForPurchase);
@@ -81,6 +182,10 @@ export default function StudentPurchasesPage() {
     setSelectedItem(null);
   };
 
+  const toggleExpand = (purchaseId: string) => {
+    setExpandedPurchase(expandedPurchase === purchaseId ? null : purchaseId);
+  };
+
   // حالة التحميل
   if (items === undefined) {
     return (
@@ -97,7 +202,7 @@ export default function StudentPurchasesPage() {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-8">
           <div className="flex items-center gap-4">
             <Link
-              href="/student/dashboard"
+              href="/student"
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
               <ArrowRight className="h-5 w-5 text-gray-600" />
@@ -198,58 +303,155 @@ export default function StudentPurchasesPage() {
           </div>
         )}
 
-        {/* My Purchases History */}
+        {/* My Purchases History with Messages */}
         {myPurchases && myPurchases.length > 0 && (
           <div className="mt-10">
             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
               <Clock className="h-5 w-5 text-gray-500" />
               طلباتي السابقة
             </h2>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600">المنتج</th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600">الكمية</th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600">الإجمالي</th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600">الحالة</th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600">التاريخ</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {myPurchases.map((purchase: any) => {
-                      const statusMap: Record<string, { label: string; color: string; icon: any }> = {
-                        pending: { label: "قيد المراجعة", color: "bg-yellow-100 text-yellow-700", icon: Clock },
-                        approved: { label: "تم الموافقة", color: "bg-green-100 text-green-700", icon: CheckCircle },
-                        rejected: { label: "مرفوض", color: "bg-red-100 text-red-700", icon: XCircle },
-                        completed: { label: "مكتمل", color: "bg-blue-100 text-blue-700", icon: CheckCircle },
-                      };
-                      const status = statusMap[purchase.status] || statusMap.pending;
-                      const StatusIcon = status.icon;
-
-                      return (
-                        <tr key={purchase._id} className="hover:bg-gray-50 transition-colors">
-                          <td className="px-6 py-4 text-sm text-gray-700">{purchase.itemName}</td>
-                          <td className="px-6 py-4 text-sm text-gray-700">{purchase.quantity}</td>
-                          <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                            {purchase.totalPrice.toFixed(2)} ج.م
-                          </td>
-                          <td className="px-6 py-4">
-                            <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${status.color} w-fit`}>
-                              <StatusIcon className="h-3 w-3" />
-                              {status.label}
+            
+            <div className="space-y-4">
+              {myPurchases.map((purchase: any) => {
+                // ✅ قيم آمنة مع fallback
+                const safeItemSellingPrice = purchase.itemSellingPrice ?? 0;
+                const safeTotalPrice = purchase.totalPrice ?? 0;
+                const safeQuantity = purchase.quantity ?? 0;
+                
+                return (
+                  <div
+                    key={purchase._id}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
+                  >
+                    {/* Purchase Header - Clickable to expand */}
+                    <div 
+                      className="p-4 cursor-pointer hover:bg-gray-50/50 transition-colors"
+                      onClick={() => toggleExpand(purchase._id)}
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex-1 min-w-37.5">
+                          <p className="font-semibold text-gray-900">{purchase.itemName || "غير معروف"}</p>
+                          <p className="text-xs text-gray-400">كود: {purchase.itemCode || "غير معروف"}</p>
+                        </div>
+                        
+                        <div className="flex items-center gap-4">
+                          <div className="text-sm">
+                            <span className="text-gray-500">الكمية: </span>
+                            <span className="font-medium text-gray-700">{safeQuantity}</span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-gray-500">الإجمالي: </span>
+                            <span className="font-medium text-[#001f24]">
+                              {safeTotalPrice.toFixed(2)} ج.م
                             </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-500">
-                            {new Date(purchase.createdAt).toLocaleDateString("ar-EG")}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          </div>
+                          <PurchaseStatusBadge purchase={purchase} />
+                          <button className="p-1 hover:bg-gray-100 rounded-lg transition-colors">
+                            <ChevronDown className={`h-5 w-5 text-gray-400 transition-transform ${
+                              expandedPurchase === purchase._id ? "rotate-180" : ""
+                            }`} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Expanded Details */}
+                    {expandedPurchase === purchase._id && (
+                      <div className="px-4 pb-4 pt-0 border-t border-gray-100 animate-fadeIn">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                          {/* Product Details */}
+                          <div className="bg-gray-50 rounded-xl p-3">
+                            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                              تفاصيل المنتج
+                            </h4>
+                            <div className="space-y-1 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">الاسم:</span>
+                                <span className="font-medium text-gray-700">{purchase.itemName || "غير معروف"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">الكود:</span>
+                                <span className="font-medium text-gray-700">{purchase.itemCode || "غير معروف"}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">سعر الوحدة:</span>
+                                <span className="font-medium text-gray-700">
+                                  {safeItemSellingPrice.toFixed(2)} ج.م
+                                </span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-gray-500">الكمية:</span>
+                                <span className="font-medium text-gray-700">{safeQuantity}</span>
+                              </div>
+                              <div className="flex justify-between border-t border-gray-200 pt-1 mt-1">
+                                <span className="text-gray-500 font-medium">الإجمالي:</span>
+                                <span className="font-bold text-[#001f24]">
+                                  {safeTotalPrice.toFixed(2)} ج.م
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Order Status & Admin Message */}
+                          <div className="bg-gray-50 rounded-xl p-3">
+                            <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+                              حالة الطلب
+                            </h4>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm text-gray-500">الحالة:</span>
+                                <PurchaseStatusBadge purchase={purchase} />
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-gray-500">تاريخ الطلب:</span>
+                                <span className="font-medium text-gray-700">
+                                  {purchase.createdAt ? new Date(purchase.createdAt).toLocaleDateString("ar-EG", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }) : "غير معروف"}
+                                </span>
+                              </div>
+                              {purchase.updatedAt && (
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-gray-500">آخر تحديث:</span>
+                                  <span className="font-medium text-gray-700">
+                                    {new Date(purchase.updatedAt).toLocaleDateString("ar-EG", {
+                                      year: "numeric",
+                                      month: "long",
+                                      day: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* ✅ Admin Message */}
+                            <AdminMessage purchase={purchase} />
+                          </div>
+                        </div>
+
+                        {/* Payment Proof Preview */}
+                        {purchase.paymentProof && (
+                          <div className="mt-3">
+                            <button
+                              onClick={() => window.open(purchase.paymentProof, "_blank")}
+                              className="text-xs text-[#1a7a8a] hover:underline flex items-center gap-1"
+                            >
+                              <Eye className="h-3 w-3" />
+                              عرض إيصال الدفع
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -267,6 +469,23 @@ export default function StudentPurchasesPage() {
           onSubmit={handlePurchaseSubmit}
         />
       )}
+
+      {/* Custom Animation Style */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 }
