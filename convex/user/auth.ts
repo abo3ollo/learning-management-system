@@ -68,13 +68,32 @@ export const createUser = mutation({
     relationship:   v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Prevent duplicates
-    const existing = await ctx.db
+    // Prevent duplicates:
+    // 1) If a user with this clerkId already exists — return it.
+    // 2) If a user with this email exists, link clerkId if missing and return that record instead of creating a duplicate.
+    // 3) If a user with this email exists and already has a different clerkId, return the existing record (do not create duplicate).
+    const existingByClerk = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
       .first();
- 
-    if (existing) return existing._id;
+
+    if (existingByClerk) return existingByClerk._id;
+
+    const existingByEmail = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .first();
+
+    if (existingByEmail) {
+      // Attach clerkId to the existing record if it wasn't set yet so getCurrentUser will find it.
+      if (!existingByEmail.clerkId) {
+        await ctx.db.patch(existingByEmail._id, { clerkId: args.clerkId, updatedAt: Date.now() });
+      } else {
+        // If there is already a different clerkId, do not create a duplicate.
+        // Optionally: record an audit log or notify admin about the identity conflict.
+      }
+      return existingByEmail._id;
+    }
  
     const now = Date.now();
  
