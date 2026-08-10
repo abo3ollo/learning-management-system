@@ -19,20 +19,23 @@ import {
   Eye,
   Loader2,
   Filter,
+  DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AddMaterialModal } from "@/app/_components/Teacher/AddMaterialModal";
-
+import { CoursePriceModal } from "@/app/_components/Teacher/CoursePriceModal";
 
 
 export default function TeacherMaterialsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+   const [isCoursePriceModalOpen, setIsCoursePriceModalOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<any>(null);
+  
 
   const currentUser = useQuery(api.user.auth.getCurrentUser);
   const materials = useQuery(
@@ -41,6 +44,7 @@ export default function TeacherMaterialsPage() {
   );
 
   const deleteMaterial = useMutation(api.teacherMaterials.teacherMaterials.deleteMaterial);
+  const updateMaterial = useMutation(api.teacherMaterials.teacherMaterials.updateMaterial);
 
   if (!currentUser || materials === undefined) {
     return (
@@ -95,16 +99,32 @@ export default function TeacherMaterialsPage() {
           <h1 className="text-xl font-semibold text-[#001f24]">موادي التعليمية</h1>
           <p className="text-sm text-gray-500">إدارة المواد التعليمية الخاصة بك</p>
         </div>
-        <Button
-          onClick={() => {
-            setEditingMaterial(null);
-            setIsAddModalOpen(true);
-          }}
-          className="bg-[#001f24] hover:bg-[#03363d] text-white gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          إضافة مادة
-        </Button>
+        <div className="flex items-center gap-3">
+          {/* ✅ زر سعر الكورس */}
+          <Button
+            onClick={() => setIsCoursePriceModalOpen(true)}
+            variant="outline"
+            className="border-green-500 text-green-600 hover:bg-green-50 gap-2"
+          >
+            <DollarSign className="h-4 w-4" />
+            {currentUser?.coursePrice ? (
+              <span>{currentUser.coursePrice} {currentUser.courseCurrency || "EGP"}</span>
+            ) : (
+              "تحديد سعر الكورس"
+            )}
+          </Button>
+          
+          <Button
+            onClick={() => {
+              setEditingMaterial(null);
+              setIsAddModalOpen(true);
+            }}
+            className="bg-[#001f24] hover:bg-[#03363d] text-white gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            إضافة مادة
+          </Button>
+        </div>
       </header>
 
       <div className="p-8 max-w-7xl mx-auto space-y-6">
@@ -230,6 +250,16 @@ export default function TeacherMaterialsPage() {
         }}
         teacherId={currentUser._id}
         editingMaterial={editingMaterial}
+      />
+
+      
+      <CoursePriceModal
+        isOpen={isCoursePriceModalOpen}
+        onClose={() => setIsCoursePriceModalOpen(false)}
+        teacherId={currentUser?._id}
+        initialPrice={currentUser?.coursePrice || 0}
+        initialCurrency={currentUser?.courseCurrency || "EGP"}
+        teacherName={currentUser?.name}
       />
     </div>
   );

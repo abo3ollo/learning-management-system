@@ -9,6 +9,7 @@
  */
 
 import type * as admin_approvals from "../admin/approvals.js";
+import type * as aptitude_aptitude from "../aptitude/aptitude.js";
 import type * as assignments_assignments from "../assignments/assignments.js";
 import type * as categories from "../categories.js";
 import type * as chat_chats from "../chat/chats.js";
@@ -16,6 +17,7 @@ import type * as chat_messages from "../chat/messages.js";
 import type * as chat_participants from "../chat/participants.js";
 import type * as classes_classSubjects from "../classes/classSubjects.js";
 import type * as classes_classes from "../classes/classes.js";
+import type * as coursePrice_coursePrice from "../coursePrice/coursePrice.js";
 import type * as courses_courses from "../courses/courses.js";
 import type * as exams_exams from "../exams/exams.js";
 import type * as grades_grades from "../grades/grades.js";
@@ -35,6 +37,7 @@ import type * as relationships_parentStudent from "../relationships/parentStuden
 import type * as schedules_schedules from "../schedules/schedules.js";
 import type * as submissions_submissions from "../submissions/submissions.js";
 import type * as teacherMaterials_teacherMaterials from "../teacherMaterials/teacherMaterials.js";
+import type * as transactions_transactions from "../transactions/transactions.js";
 import type * as units from "../units.js";
 import type * as user_admin from "../user/admin.js";
 import type * as user_auth from "../user/auth.js";
@@ -52,6 +55,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "admin/approvals": typeof admin_approvals;
+  "aptitude/aptitude": typeof aptitude_aptitude;
   "assignments/assignments": typeof assignments_assignments;
   categories: typeof categories;
   "chat/chats": typeof chat_chats;
@@ -59,6 +63,7 @@ declare const fullApi: ApiFromModules<{
   "chat/participants": typeof chat_participants;
   "classes/classSubjects": typeof classes_classSubjects;
   "classes/classes": typeof classes_classes;
+  "coursePrice/coursePrice": typeof coursePrice_coursePrice;
   "courses/courses": typeof courses_courses;
   "exams/exams": typeof exams_exams;
   "grades/grades": typeof grades_grades;
@@ -78,6 +83,7 @@ declare const fullApi: ApiFromModules<{
   "schedules/schedules": typeof schedules_schedules;
   "submissions/submissions": typeof submissions_submissions;
   "teacherMaterials/teacherMaterials": typeof teacherMaterials_teacherMaterials;
+  "transactions/transactions": typeof transactions_transactions;
   units: typeof units;
   "user/admin": typeof user_admin;
   "user/auth": typeof user_auth;

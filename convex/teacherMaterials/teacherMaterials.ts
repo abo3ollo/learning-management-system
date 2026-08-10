@@ -3,6 +3,29 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 
+
+// ✅ إضافة دالة توليد رابط رفع الملف
+export const generateUploadUrl = mutation({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) throw new Error("المستخدم غير موجود");
+    if (user.role !== "teacher" && user.role !== "admin") {
+      throw new Error("غير مصرح: فقط المعلمون والأدمن يمكنهم رفع الملفات");
+    }
+
+    // ✅ توليد رابط رفع الملف
+    const uploadUrl = await ctx.storage.generateUploadUrl();
+    return uploadUrl;
+  },
+});
+
 // ✅ جلب مواد معلم معين
 export const getTeacherMaterials = query({
   args: {
@@ -126,6 +149,21 @@ export const createMaterial = mutation({
 
     return { success: true, materialId };
   },
+  
+});
+
+export const getMaterialFileUrl = query({
+  args: {
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    // جلب رابط الملف من Convex Storage
+    const url = await ctx.storage.getUrl(args.storageId);
+    return url;
+  },
 });
 
 // ✅ تحديث مادة
@@ -136,9 +174,20 @@ export const updateMaterial = mutation({
     titleAr: v.optional(v.string()),
     description: v.optional(v.string()),
     descriptionAr: v.optional(v.string()),
+    // ✅ إضافة type
+    type: v.optional(v.union(
+      v.literal("pdf"),
+      v.literal("video"),
+      v.literal("exam"),
+      v.literal("assignment"),
+      v.literal("revision")
+    )),
     fileUrl: v.optional(v.string()),
     fileSize: v.optional(v.string()),
     duration: v.optional(v.string()),
+    // ✅ إضافة subject و grade
+    subject: v.optional(v.string()),
+    grade: v.optional(v.string()),
     questions: v.optional(v.array(
       v.object({
         id: v.string(),
@@ -151,6 +200,9 @@ export const updateMaterial = mutation({
     deadline: v.optional(v.number()),
     isPublished: v.optional(v.boolean()),
     displayOrder: v.optional(v.number()),
+    // ✅ إضافة price و currency
+    price: v.optional(v.number()),
+    currency: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -171,8 +223,17 @@ export const updateMaterial = mutation({
     }
 
     const { materialId, ...fields } = args;
+    
+    // ✅ إزالة undefined values
+    const cleanFields: any = {};
+    for (const [key, value] of Object.entries(fields)) {
+      if (value !== undefined && value !== null) {
+        cleanFields[key] = value;
+      }
+    }
+
     await ctx.db.patch(materialId, {
-      ...fields,
+      ...cleanFields,
       updatedAt: Date.now(),
     });
 

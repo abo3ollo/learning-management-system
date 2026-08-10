@@ -81,8 +81,6 @@ export const updatePurchaseStatus = mutation({
       updateData.adminNotes = args.notes;
     }
 
-    console.log("Updating purchase with data:", updateData); // للتتبع
-
     await ctx.db.patch(args.purchaseId, updateData);
 
     return args.purchaseId;

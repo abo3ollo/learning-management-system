@@ -10,6 +10,7 @@ import {
   X, Upload, CheckCircle, Loader2,
   CreditCard, AlertCircle, ImageIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface SubscriptionModalProps {
   isOpen: boolean;
@@ -53,6 +54,9 @@ export default function SubscriptionModal({
     api.admin.approvals.createApprovalRequest
   );
 
+  // ✅ جلب دوال المعاملات
+  const createTransaction = useMutation(api.transactions.transactions.createTransaction);
+
   // ── Cleanup preview URL on unmount ───────────────────────────
   useEffect(() => {
     return () => {
@@ -94,6 +98,7 @@ export default function SubscriptionModal({
     }
 
     setIsSubmitting(true);
+    setIsUploading(true);
     setError(null);
 
     try {
@@ -104,7 +109,8 @@ export default function SubscriptionModal({
         fileReader.readAsDataURL(receiptFile);
       });
 
-      await createApprovalRequest({
+      // 1. إنشاء طلب الموافقة
+      const approvalResult = await createApprovalRequest({
         studentId: (childId || userId) as Id<"users">,
         gradeId: gradeId,
         paymentProof: fileData,
@@ -113,7 +119,44 @@ export default function SubscriptionModal({
         referenceNumber: referenceNumber || undefined,
       });
 
+      // ✅ 2. استخراج requestId من النتيجة
+      // approvalResult قد يكون كائن { paymentId, requestId, success } أو string
+      let referenceId: string;
+      if (typeof approvalResult === 'string') {
+        referenceId = approvalResult;
+      } else if (approvalResult && typeof approvalResult === 'object') {
+        // إذا كان كائن، استخرج requestId
+        referenceId = (approvalResult as any).requestId || (approvalResult as any).paymentId || String(approvalResult);
+      } else {
+        referenceId = String(approvalResult);
+      }
+
+      // ✅ 3. إنشاء معاملة مالية
+      const studentId = (childId || userId) as Id<"users">;
+      
+      const transactionData: any = {
+        studentId: studentId,
+        type: "platform",
+        category: "subscription",
+        amount: gradePrice?.price ?? 0,
+        currency: gradePrice?.currency ?? "EGP",
+        status: "pending",
+        referenceId: referenceId, // ✅ الآن هو string
+        referenceType: "subscription",
+        description: `Subscription to platform - Grade ${gradeInfo?.name || ''}`,
+        descriptionAr: `اشتراك في المنصة - ${gradeInfo?.name || ''}`,
+        paymentProof: fileData,
+      };
+
+      // إضافة parentId إذا كان هناك ولي أمر (childId موجود)
+      if (childId) {
+        transactionData.parentId = userId;
+      }
+
+      await createTransaction(transactionData);
+
       setSubmitted(true);
+      setIsUploading(false);
       
       setTimeout(() => {
         onSuccess();
@@ -121,8 +164,10 @@ export default function SubscriptionModal({
 
     } catch (err: any) {
       setError(err.message || "حدث خطأ أثناء تقديم الطلب");
+      toast.error(err.message || "حدث خطأ أثناء تقديم الطلب");
     } finally {
       setIsSubmitting(false);
+      setIsUploading(false);
     }
   };
 
@@ -147,7 +192,7 @@ export default function SubscriptionModal({
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">تم التقديم بنجاح!</h2>
             <p className="text-gray-500 text-sm leading-relaxed">
-              تم استلام طلب اشتراكك. سيقوم الأدمن بمراجعة الإيصال والموافقة على حسابك قريباً.
+              تم استلام طلب اشتراكك. سيتم مراجعة الإيصال والموافقة على حسابك قريباً.
             </p>
             <div className="mt-5 flex items-center justify-center gap-2 text-[#1a7a8a] text-sm">
               <Loader2 className="h-4 w-4 animate-spin" />

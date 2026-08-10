@@ -24,6 +24,8 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { CheckoutModal } from "@/app/_components/student/CheckoutModal";
+import { toast } from "sonner";
+import { Id } from "@/convex/_generated/dataModel";
 
 interface ItemWithDetails {
   _id: string;
@@ -144,10 +146,20 @@ export default function StudentPurchasesPage() {
   const [selectedItem, setSelectedItem] = useState<ItemWithDetails | null>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [expandedPurchase, setExpandedPurchase] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // ✅ جلب بيانات المستخدم الحالي
+  const currentUser = useQuery(
+    api.user.auth.getCurrentUser,
+    user ? {} : "skip"
+  );
 
   // جلب الأصناف المتاحة
   const items = useQuery(api.items.getAvailableForPurchase);
   const createPurchase = useMutation(api.items.createPurchaseRequest);
+  
+  // ✅ جلب دوال المعاملات
+  const createTransaction = useMutation(api.transactions.transactions.createTransaction);
 
   // جلب طلبات الشراء السابقة للطالب
   const myPurchases = useQuery(api.purchases.getMyPurchases, 
@@ -170,16 +182,51 @@ export default function StudentPurchasesPage() {
     paymentProof: string;
   }) => {
     if (!selectedItem) return;
+    if (!currentUser) {
+      toast.error("يرجى تسجيل الدخول أولاً");
+      return;
+    }
 
-    await createPurchase({
-      itemId: selectedItem._id as any,
-      quantity: data.quantity,
-      totalPrice: data.quantity * selectedItem.sellingPrice,
-      paymentProof: data.paymentProof,
-    });
+    setIsSubmitting(true);
+    try {
+      // 1. إنشاء طلب الشراء
+      const purchaseResult = await createPurchase({
+        itemId: selectedItem._id as any,
+        quantity: data.quantity,
+        totalPrice: data.quantity * selectedItem.sellingPrice,
+        paymentProof: data.paymentProof,
+      });
 
-    setIsCheckoutOpen(false);
-    setSelectedItem(null);
+      // ✅ 2. إنشاء معاملة مالية
+      const transactionData: any = {
+        studentId: currentUser._id,
+        type: "purchase",
+        category: "product_purchase",
+        amount: data.quantity * selectedItem.sellingPrice,
+        currency: "EGP",
+        status: "completed",
+        referenceId: purchaseResult,
+        referenceType: "purchase",
+        description: `Purchase of ${selectedItem.name}`,
+        descriptionAr: `شراء ${selectedItem.name}`,
+        paymentProof: data.paymentProof,
+      };
+
+      if (currentUser.parentId) {
+        transactionData.parentId = currentUser.parentId as Id<"users">;
+      }
+
+      await createTransaction(transactionData);
+
+      setIsCheckoutOpen(false);
+      setSelectedItem(null);
+      toast.success("✅ تم الشراء بنجاح");
+      window.location.reload();
+    } catch (error: any) {
+      toast.error(error.message || "حدث خطأ أثناء الشراء");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const toggleExpand = (purchaseId: string) => {
@@ -187,7 +234,7 @@ export default function StudentPurchasesPage() {
   };
 
   // حالة التحميل
-  if (items === undefined) {
+  if (items === undefined || currentUser === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
@@ -255,7 +302,6 @@ export default function StudentPurchasesPage() {
                 className="bg-white rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-all hover:scale-105 group"
               >
                 <div className="p-5">
-                  {/* Product Image Placeholder */}
                   <div className="w-full h-40 bg-linear-to-br from-[#e8f4f8] to-[#f0f4f8] rounded-xl flex items-center justify-center mb-4 relative">
                     <Package className="h-16 w-16 text-[#1a7a8a]/30" />
                     <span className="absolute top-2 left-2 bg-[#001f24] text-white text-xs px-2 py-1 rounded-lg">
@@ -263,7 +309,6 @@ export default function StudentPurchasesPage() {
                     </span>
                   </div>
 
-                  {/* Product Info */}
                   <div className="space-y-2">
                     <h3 className="font-semibold text-gray-900 text-lg line-clamp-1">
                       {item.name}
@@ -303,7 +348,7 @@ export default function StudentPurchasesPage() {
           </div>
         )}
 
-        {/* My Purchases History with Messages */}
+        {/* My Purchases History */}
         {myPurchases && myPurchases.length > 0 && (
           <div className="mt-10">
             <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -313,7 +358,6 @@ export default function StudentPurchasesPage() {
             
             <div className="space-y-4">
               {myPurchases.map((purchase: any) => {
-                // ✅ قيم آمنة مع fallback
                 const safeItemSellingPrice = purchase.itemSellingPrice ?? 0;
                 const safeTotalPrice = purchase.totalPrice ?? 0;
                 const safeQuantity = purchase.quantity ?? 0;
@@ -323,7 +367,6 @@ export default function StudentPurchasesPage() {
                     key={purchase._id}
                     className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
                   >
-                    {/* Purchase Header - Clickable to expand */}
                     <div 
                       className="p-4 cursor-pointer hover:bg-gray-50/50 transition-colors"
                       onClick={() => toggleExpand(purchase._id)}
@@ -355,11 +398,9 @@ export default function StudentPurchasesPage() {
                       </div>
                     </div>
 
-                    {/* Expanded Details */}
                     {expandedPurchase === purchase._id && (
                       <div className="px-4 pb-4 pt-0 border-t border-gray-100 animate-fadeIn">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                          {/* Product Details */}
                           <div className="bg-gray-50 rounded-xl p-3">
                             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                               تفاصيل المنتج
@@ -392,7 +433,6 @@ export default function StudentPurchasesPage() {
                             </div>
                           </div>
 
-                          {/* Order Status & Admin Message */}
                           <div className="bg-gray-50 rounded-xl p-3">
                             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                               حالة الطلب
@@ -430,12 +470,10 @@ export default function StudentPurchasesPage() {
                               )}
                             </div>
 
-                            {/* ✅ Admin Message */}
                             <AdminMessage purchase={purchase} />
                           </div>
                         </div>
 
-                        {/* Payment Proof Preview */}
                         {purchase.paymentProof && (
                           <div className="mt-3">
                             <button
@@ -457,7 +495,7 @@ export default function StudentPurchasesPage() {
         )}
       </div>
 
-      {/* Checkout Modal */}
+      {/* ✅ CheckoutModal - تعديل teacher ليكون object مناسب */}
       {selectedItem && (
         <CheckoutModal
           isOpen={isCheckoutOpen}
@@ -470,7 +508,6 @@ export default function StudentPurchasesPage() {
         />
       )}
 
-      {/* Custom Animation Style */}
       <style jsx>{`
         @keyframes fadeIn {
           from {

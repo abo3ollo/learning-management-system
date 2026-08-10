@@ -29,6 +29,8 @@ import { BsFileCheck } from "react-icons/bs";
 import { PiExam } from "react-icons/pi";
 import { IoChatbubbleOutline } from "react-icons/io5";
 import { FaStore } from "react-icons/fa";
+import { IoIosCheckmarkCircleOutline } from "react-icons/io";
+import { AiOutlineTransaction } from "react-icons/ai";
 
 export default function StudentLayout({
   children,
@@ -71,7 +73,8 @@ export default function StudentLayout({
     { label: "حضوري", icon: Circle , href: "/student/attendance" },
     { label: " Chatbox", icon: IoChatbubbleOutline, href: "/student/chatbox" },
     { label: " المشتريات", icon: FaStore, href: "/student/purchases" },
-    
+    { label: "التحصيلي", icon: IoIosCheckmarkCircleOutline, href: "/student/aptitude" },
+    { label: "كشف الحساب", icon: AiOutlineTransaction, href: "/student/transactions" },
     // { label: "شهاداتي", icon: Award , href: "/student/certificates" },
     // { label: "المنجر", icon: LayoutDashboard , href: "/student/dashboard" },
     // { label: "الإعلانات", icon: Megaphone , href: "/student/announcements" },

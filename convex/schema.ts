@@ -55,6 +55,9 @@ export default defineSchema({
     salary: v.optional(v.number()), // الراتب
     subjects: v.optional(v.array(v.string())), // المواد التي يدرسها
 
+    coursePrice: v.optional(v.number()),
+    courseCurrency: v.optional(v.string()),
+
     // Parent specific fields
     parentId: v.optional(v.string()),
     workPhone: v.optional(v.string()),
@@ -1059,12 +1062,9 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_grade", ["gradeId"]),
 
-
-
-// ============================================
-// STORE TABLES
-// ============================================
-
+  // ============================================
+  // STORE TABLES
+  // ============================================
 
   // ── المخازن ──────────────────────────────────────────────
   warehouses: defineTable({
@@ -1072,8 +1072,8 @@ export default defineSchema({
     createdBy: v.id("users"),
     isActive: v.boolean(),
   })
-  .index("by_createdBy", ["createdBy"])
-  .index("by_isActive", ["isActive"]),
+    .index("by_createdBy", ["createdBy"])
+    .index("by_isActive", ["isActive"]),
 
   // ── الوحدات ──────────────────────────────────────────────
   units: defineTable({
@@ -1081,8 +1081,8 @@ export default defineSchema({
     createdBy: v.id("users"),
     isActive: v.boolean(),
   })
-  .index("by_createdBy", ["createdBy"])
-  .index("by_isActive", ["isActive"]),
+    .index("by_createdBy", ["createdBy"])
+    .index("by_isActive", ["isActive"]),
 
   // ── مجموعات الأصناف ──────────────────────────────────────
   categories: defineTable({
@@ -1090,8 +1090,8 @@ export default defineSchema({
     createdBy: v.id("users"),
     isActive: v.boolean(),
   })
-  .index("by_createdBy", ["createdBy"])
-  .index("by_isActive", ["isActive"]),
+    .index("by_createdBy", ["createdBy"])
+    .index("by_isActive", ["isActive"]),
 
   // ── الأصناف ──────────────────────────────────────────────
   items: defineTable({
@@ -1106,12 +1106,12 @@ export default defineSchema({
     createdBy: v.id("users"),
     isActive: v.boolean(),
   })
-  .index("by_createdBy", ["createdBy"])
-  .index("by_warehouseId", ["warehouseId"])
-  .index("by_categoryId", ["categoryId"])
-  .index("by_unitId", ["unitId"])
-  .index("by_code", ["code"])
-  .index("by_isActive", ["isActive"]),
+    .index("by_createdBy", ["createdBy"])
+    .index("by_warehouseId", ["warehouseId"])
+    .index("by_categoryId", ["categoryId"])
+    .index("by_unitId", ["unitId"])
+    .index("by_code", ["code"])
+    .index("by_isActive", ["isActive"]),
 
   // ── الفواتير ──────────────────────────────────────────────
   invoices: defineTable({
@@ -1123,15 +1123,15 @@ export default defineSchema({
     status: v.union(
       v.literal("draft"),
       v.literal("saved"),
-      v.literal("cancelled")
+      v.literal("cancelled"),
     ),
     notes: v.optional(v.string()),
   })
-  .index("by_createdBy", ["createdBy"])
-  .index("by_warehouseId", ["warehouseId"])
-  .index("by_date", ["date"])
-  .index("by_status", ["status"])
-  .index("by_invoiceNumber", ["invoiceNumber"]),
+    .index("by_createdBy", ["createdBy"])
+    .index("by_warehouseId", ["warehouseId"])
+    .index("by_date", ["date"])
+    .index("by_status", ["status"])
+    .index("by_invoiceNumber", ["invoiceNumber"]),
 
   // ── تفاصيل الفاتورة ──────────────────────────────────────
   invoiceItems: defineTable({
@@ -1141,131 +1141,205 @@ export default defineSchema({
     purchasePrice: v.number(),
     totalPrice: v.number(),
   })
-  .index("by_invoiceId", ["invoiceId"])
-  .index("by_itemId", ["itemId"]),
-
+    .index("by_invoiceId", ["invoiceId"])
+    .index("by_itemId", ["itemId"]),
 
   // convex/schema.ts - أضف هذه الجداول في نهاية ملف schema
 
-// ============================================
-// CHAT TABLES
-// ============================================
+  // ============================================
+  // CHAT TABLES
+  // ============================================
 
-// ✅ مجموعات المحادثة
-chatGroups: defineTable({
-  name: v.string(), // اسم المجموعة
-  description: v.optional(v.string()), // وصف المجموعة
-  type: v.union(
-    v.literal("group"), // مجموعة عادية
-    v.literal("class"), // فصل دراسي
-    v.literal("grade"), // صف دراسي
-    v.literal("direct"), // محادثة مباشرة (2 شخص)
-  ),
-  createdBy: v.id("users"), // منشئ المجموعة
-  isPrivate: v.boolean(), // مجموعة خاصة (دعوة فقط)
-  isActive: v.boolean(), // هل المجموعة نشطة
-  avatar: v.optional(v.string()), // صورة المجموعة
-  lastMessage: v.optional(v.string()), // آخر رسالة
-  lastMessageAt: v.optional(v.number()), // وقت آخر رسالة
-  lastMessageSender: v.optional(v.id("users")), // مرسل آخر رسالة
-  unreadCount: v.optional(v.number()), // عدد الرسائل غير المقروءة
-  groupId: v.optional(v.id("groups")), // ✅ إضافة هذا الحقل
-  createdAt: v.number(),
-  updatedAt: v.number(),
-})
-  .index("by_createdBy", ["createdBy"])
-  .index("by_type", ["type"])
-  .index("by_isActive", ["isActive"])
-  .index("by_groupId", ["groupId"]), // ✅ إضافة index
+  // ✅ مجموعات المحادثة
+  chatGroups: defineTable({
+    name: v.string(), // اسم المجموعة
+    description: v.optional(v.string()), // وصف المجموعة
+    type: v.union(
+      v.literal("group"), // مجموعة عادية
+      v.literal("class"), // فصل دراسي
+      v.literal("grade"), // صف دراسي
+      v.literal("direct"), // محادثة مباشرة (2 شخص)
+    ),
+    createdBy: v.id("users"), // منشئ المجموعة
+    isPrivate: v.boolean(), // مجموعة خاصة (دعوة فقط)
+    isActive: v.boolean(), // هل المجموعة نشطة
+    avatar: v.optional(v.string()), // صورة المجموعة
+    lastMessage: v.optional(v.string()), // آخر رسالة
+    lastMessageAt: v.optional(v.number()), // وقت آخر رسالة
+    lastMessageSender: v.optional(v.id("users")), // مرسل آخر رسالة
+    unreadCount: v.optional(v.number()), // عدد الرسائل غير المقروءة
+    groupId: v.optional(v.id("groups")), // ✅ إضافة هذا الحقل
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_createdBy", ["createdBy"])
+    .index("by_type", ["type"])
+    .index("by_isActive", ["isActive"])
+    .index("by_groupId", ["groupId"]), // ✅ إضافة index
 
-// ✅ المشاركون في المحادثة
-chatParticipants: defineTable({
-  chatId: v.id("chatGroups"), // معرف المجموعة
-  userId: v.id("users"), // معرف المستخدم
-  role: v.union(
-    v.literal("admin"), // مدير المجموعة
-    v.literal("member"), // عضو عادي
-  ),
-  status: v.union(
-    v.literal("active"), // نشط
-    v.literal("inactive"), // غير نشط
-    v.literal("kicked"), // مطرود
-  ),
-  joinedAt: v.number(),
-  lastReadAt: v.optional(v.number()), // آخر قراءة
-  isMuted: v.boolean(), // كتم الإشعارات
-  pinned: v.boolean(), // تثبيت المحادثة
-})
-  .index("by_chat_user", ["chatId", "userId"])
-  .index("by_user", ["userId"])
-  .index("by_chat", ["chatId"])
-  .index("by_status", ["status"]),
+  // ✅ المشاركون في المحادثة
+  chatParticipants: defineTable({
+    chatId: v.id("chatGroups"), // معرف المجموعة
+    userId: v.id("users"), // معرف المستخدم
+    role: v.union(
+      v.literal("admin"), // مدير المجموعة
+      v.literal("member"), // عضو عادي
+    ),
+    status: v.union(
+      v.literal("active"), // نشط
+      v.literal("inactive"), // غير نشط
+      v.literal("kicked"), // مطرود
+    ),
+    joinedAt: v.number(),
+    lastReadAt: v.optional(v.number()), // آخر قراءة
+    isMuted: v.boolean(), // كتم الإشعارات
+    pinned: v.boolean(), // تثبيت المحادثة
+  })
+    .index("by_chat_user", ["chatId", "userId"])
+    .index("by_user", ["userId"])
+    .index("by_chat", ["chatId"])
+    .index("by_status", ["status"]),
 
-// ✅ الرسائل
-chatMessages: defineTable({
-  chatId: v.id("chatGroups"), // معرف المجموعة
-  senderId: v.id("users"), // معرف المرسل
-  content: v.string(), // نص الرسالة
-  type: v.union(
-    v.literal("text"), // نص عادي
-    v.literal("image"), // صورة
-    v.literal("file"), // ملف
-    v.literal("voice"), // صوت
-    v.literal("video"), // فيديو
-    v.literal("system"), // رسالة نظام
-  ),
-  mediaUrl: v.optional(v.string()), // رابط الملف/الصورة
-  mediaKey: v.optional(v.string()), // مفتاح R2
-  replyTo: v.optional(v.id("chatMessages")), // رد على رسالة
-  isEdited: v.boolean(),
-  isDeleted: v.boolean(),
-  isPinned: v.boolean(), // رسالة مثبتة
-  readBy: v.array(v.id("users")), // من قرأ الرسالة
-  createdAt: v.number(),
-  updatedAt: v.optional(v.number()),
-})
-  .index("by_chat", ["chatId"])
-  .index("by_sender", ["senderId"])
-  .index("by_createdAt", ["createdAt"]),
+  // ✅ الرسائل
+  chatMessages: defineTable({
+    chatId: v.id("chatGroups"), // معرف المجموعة
+    senderId: v.id("users"), // معرف المرسل
+    content: v.string(), // نص الرسالة
+    type: v.union(
+      v.literal("text"), // نص عادي
+      v.literal("image"), // صورة
+      v.literal("file"), // ملف
+      v.literal("voice"), // صوت
+      v.literal("video"), // فيديو
+      v.literal("system"), // رسالة نظام
+    ),
+    mediaUrl: v.optional(v.string()), // رابط الملف/الصورة
+    mediaKey: v.optional(v.string()), // مفتاح R2
+    replyTo: v.optional(v.id("chatMessages")), // رد على رسالة
+    isEdited: v.boolean(),
+    isDeleted: v.boolean(),
+    isPinned: v.boolean(), // رسالة مثبتة
+    readBy: v.array(v.id("users")), // من قرأ الرسالة
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_chat", ["chatId"])
+    .index("by_sender", ["senderId"])
+    .index("by_createdAt", ["createdAt"]),
 
-// ✅ إشعارات المحادثة
-chatNotifications: defineTable({
-  userId: v.id("users"), // المستخدم المستهدف
-  chatId: v.id("chatGroups"), // المجموعة
-  messageId: v.id("chatMessages"), // الرسالة
-  isRead: v.boolean(), // هل تمت القراءة
-  readAt: v.optional(v.number()),
-  createdAt: v.number(),
-})
-  .index("by_user", ["userId"])
-  .index("by_chat", ["chatId"])
-  .index("by_user_chat", ["userId", "chatId"])
-  .index("by_isRead", ["isRead"]),
+  // ✅ إشعارات المحادثة
+  chatNotifications: defineTable({
+    userId: v.id("users"), // المستخدم المستهدف
+    chatId: v.id("chatGroups"), // المجموعة
+    messageId: v.id("chatMessages"), // الرسالة
+    isRead: v.boolean(), // هل تمت القراءة
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_chat", ["chatId"])
+    .index("by_user_chat", ["userId", "chatId"])
+    .index("by_isRead", ["isRead"]),
+
+  // ── طلبات الشراء (Purchases) ──────────────────────────────
+  purchases: defineTable({
+    itemId: v.id("items"),
+    studentId: v.id("users"),
+    quantity: v.number(),
+    totalPrice: v.number(),
+    paymentProof: v.string(), // رابط الصورة
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("completed"),
+    ),
+    rejectionReason: v.optional(v.string()), // سبب الرفض
+    adminNotes: v.optional(v.string()), // ✅ ملاحظات الأدمن (للموافقة أو الرفض)
+    notes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_studentId", ["studentId"])
+    .index("by_itemId", ["itemId"])
+    .index("by_status", ["status"])
+    .index("by_createdAt", ["createdAt"]),
+
+  // ── طلبات القدرات (Aptitude Purchases) ────────────────────
+  aptitudePurchases: defineTable({
+    teacherId: v.id("users"), // المعلم المختار
+    studentId: v.id("users"), // الطالب
+    amount: v.number(),
+    paymentProof: v.string(), // رابط الصورة
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+    ),
+    rejectionReason: v.optional(v.string()),
+    adminNotes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_studentId", ["studentId"])
+    .index("by_teacherId", ["teacherId"])
+    .index("by_status", ["status"]),
+
+  // ── مواد القدرات (Aptitude Materials) ──────────────────────
+  aptitudeMaterials: defineTable({
+    teacherId: v.id("users"),
+    title: v.string(),
+    titleAr: v.optional(v.string()),
+    type: v.union(
+      v.literal("pdf"),
+      v.literal("video"),
+      v.literal("exam"),
+      v.literal("assignment"),
+      v.literal("revision"),
+    ),
+    url: v.string(),
+    size: v.optional(v.string()),
+    duration: v.optional(v.string()),
+    description: v.optional(v.string()),
+    descriptionAr: v.optional(v.string()),
+    isActive: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_teacherId", ["teacherId"])
+    .index("by_type", ["type"])
+    .index("by_isActive", ["isActive"]),
 
 
+    
 
-// ── طلبات الشراء (Purchases) ──────────────────────────────
-purchases: defineTable({
-  itemId: v.id("items"),
+transactions: defineTable({
   studentId: v.id("users"),
-  quantity: v.number(),
-  totalPrice: v.number(),
-  paymentProof: v.string(), // رابط الصورة
+  parentId: v.optional(v.id("users")),
+  type: v.union(
+    v.literal("platform"),
+    v.literal("aptitude"),
+    v.literal("purchase")
+  ),
+  category: v.string(),
+  description: v.string(),
+  descriptionAr: v.string(),
+  amount: v.number(),
+  currency: v.string(),
   status: v.union(
     v.literal("pending"),
-    v.literal("approved"),
-    v.literal("rejected"),
-    v.literal("completed")
+    v.literal("completed"),
+    v.literal("refunded"),
+    v.literal("failed")
   ),
-  rejectionReason: v.optional(v.string()), // سبب الرفض
-  adminNotes: v.optional(v.string()), // ✅ ملاحظات الأدمن (للموافقة أو الرفض)
-  notes: v.optional(v.string()),
+  referenceId: v.string(),
+  referenceType: v.string(),
+  paymentProof: v.optional(v.string()),
   createdAt: v.number(),
   updatedAt: v.optional(v.number()),
 })
-.index("by_studentId", ["studentId"])
-.index("by_itemId", ["itemId"])
+.index("by_student", ["studentId"])
+.index("by_parent", ["parentId"])
+.index("by_type", ["type"])
 .index("by_status", ["status"])
-.index("by_createdAt", ["createdAt"]),
-
+.index("by_created", ["createdAt"]),
 });

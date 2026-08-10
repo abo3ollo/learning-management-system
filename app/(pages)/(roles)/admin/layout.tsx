@@ -29,12 +29,13 @@ import { Loader2 } from "lucide-react";
 import { RiParentFill } from "react-icons/ri";
 import { FaChalkboardTeacher, FaStore } from "react-icons/fa";
 import { SiGoogleclassroom } from "react-icons/si";
-import { AiOutlineSchedule } from "react-icons/ai";
+import { AiOutlineSchedule, AiOutlineTransaction } from "react-icons/ai";
 import { MdOutlineHomeMax, MdOutlinePermMedia } from "react-icons/md";
 import { FaClipboardQuestion } from "react-icons/fa6";
 import { PiExam } from "react-icons/pi";
 import { IoChatbubbleOutline } from "react-icons/io5";
 import { BiPurchaseTag } from "react-icons/bi";
+import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 
 
 export default function AdminLayout({
@@ -89,6 +90,10 @@ export default function AdminLayout({
     { href: "/admin/subscriptions", label: "الاشتراكات", icon: CircleDollarSign  },
     { href: "/admin/inventory", label: "المخزن", icon: FaStore  },
     { href: "/admin/purchases", label: " تفاصيل المشتريات", icon: BiPurchaseTag   },
+    { href: "/admin/aptitude-approvals", label: "الموافقة على التحصيلات", icon: IoIosCheckmarkCircleOutline   },
+    { href: "/admin/transactions", label: "كشف الحساب ", icon: AiOutlineTransaction    },
+
+
     { href: "/admin/settings", label: "الإعدادات", icon: Settings },
   ];
 
