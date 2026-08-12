@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useClerk } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { SignOutButton } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
@@ -24,6 +23,7 @@ import {
   FileText,
   Bell,
   CircleDollarSign,
+  Home,
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { RiParentFill } from "react-icons/ri";
@@ -36,7 +36,7 @@ import { PiExam } from "react-icons/pi";
 import { IoChatbubbleOutline } from "react-icons/io5";
 import { BiPurchaseTag } from "react-icons/bi";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
-
+import { HiAcademicCap } from "react-icons/hi";
 
 export default function AdminLayout({
   children,
@@ -44,10 +44,10 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const { isLoaded, isSignedIn } = useAuth();
+  const { signOut } = useClerk();
   const pathname = usePathname();
   const router = useRouter();
 
-  // ✅ Fixed — was api.user.auth.getCurrentUser
   const currentUser = useQuery(api.user.auth.getCurrentUser);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -74,26 +74,21 @@ export default function AdminLayout({
     { href: "/admin/teachers", label: "المعلمين", icon: FaChalkboardTeacher },
     { href: "/admin/students", label: "الطلاب", icon: GraduationCap },
     { href: "/admin/parents", label: "أولياء الامور", icon: RiParentFill },
-    // { href: "/admin/classes", label: "الفصول", icon: SiGoogleclassroom },
     { href: "/admin/grades", label: "الصفوف", icon: SiGoogleclassroom },
-    // { href: "/admin/courses", label: "المواد", icon: BookOpen },
-    // { href: "/admin/schedules", label: "الجدول", icon: AiOutlineSchedule },
     { href: "/admin/media", label: "الوسائط", icon: MdOutlinePermMedia },
-    { href: "/admin/questions", label: "بنك الأسئلة", icon: FaClipboardQuestion  },
-    { href: "/admin/assignments", label: "الواجبات", icon: FileText }, 
-    { href: "/admin/exams", label: "الامتحانات", icon: PiExam  }, 
+    { href: "/admin/questions", label: "بنك الأسئلة", icon: FaClipboardQuestion },
+    { href: "/admin/assignments", label: "الواجبات", icon: FileText },
+    { href: "/admin/exams", label: "الامتحانات", icon: PiExam },
     { href: "/admin/approvals", label: "الموافقة", icon: ClipboardCheck },
-    { href: "/admin/landing", label: "البرتوفوليو", icon: MdOutlineHomeMax  },
-    { href: "/admin/chatbox", label: "Chat Box", icon: IoChatbubbleOutline  },
-
-    { href: "/admin/notifications", label: "الإشعارات", icon: Bell  },
-    { href: "/admin/subscriptions", label: "الاشتراكات", icon: CircleDollarSign  },
-    { href: "/admin/inventory", label: "المخزن", icon: FaStore  },
-    { href: "/admin/purchases", label: " تفاصيل المشتريات", icon: BiPurchaseTag   },
-    { href: "/admin/aptitude-approvals", label: "الموافقة على التحصيلات", icon: IoIosCheckmarkCircleOutline   },
-    { href: "/admin/transactions", label: "كشف الحساب ", icon: AiOutlineTransaction    },
-
-
+    { href: "/admin/landing", label: "البرتوفوليو", icon: MdOutlineHomeMax },
+    { href: "/admin/chatbox", label: "Chat Box", icon: IoChatbubbleOutline },
+    { href: "/admin/notifications", label: "الإشعارات", icon: Bell },
+    { href: "/admin/subscriptions", label: "الاشتراكات", icon: CircleDollarSign },
+    { href: "/admin/inventory", label: "المخزن", icon: FaStore },
+    { href: "/admin/purchases", label: "تفاصيل المشتريات", icon: BiPurchaseTag },
+    { href: "/admin/transactions", label: "كشف الحساب", icon: AiOutlineTransaction },
+    { href: "/admin/aptitude-approvals", label: "الموافقة على القدرات", icon: IoIosCheckmarkCircleOutline },
+    { href: "/admin/academic-approvals", label: "الموافقة على التحصيلات", icon: HiAcademicCap  },
     { href: "/admin/settings", label: "الإعدادات", icon: Settings },
   ];
 
@@ -146,7 +141,7 @@ export default function AdminLayout({
           })}
         </nav>
 
-        {/* User + logout */}
+        {/* User + Home + Logout */}
         <div className="border-t border-[#03363d] p-4">
           {sidebarOpen && (
             <div className="mb-3">
@@ -157,12 +152,30 @@ export default function AdminLayout({
               <p className="text-xs text-[#759fa7] truncate">{currentUser.email}</p>
             </div>
           )}
-          <SignOutButton>
-            <button className="flex items-center gap-3 w-full bg-[#03363d] hover:bg-[#032a30] text-white py-2.5 px-3 rounded-lg transition-colors text-sm font-medium">
-              <LogOut size={17} />
-              {sidebarOpen && <span>تسجيل الخروج</span>}
-            </button>
-          </SignOutButton>
+          
+          {/* ✅ زر Home - يروح للصفحة الرئيسية مع الحفاظ على Session */}
+          <button
+            onClick={() => {
+              router.push("/");
+              router.refresh();
+            }}
+            className="flex items-center gap-3 w-full bg-[#03363d] hover:bg-[#032a30] text-white py-2.5 px-3 rounded-lg transition-colors text-sm font-medium mb-2"
+          >
+            <Home size={17} />
+            {sidebarOpen && <span>الرئيسية</span>}
+          </button>
+          
+          {/* ✅ زر Logout - يمسح Session */}
+          <button
+            onClick={async () => {
+              await signOut();
+              router.push("/");
+            }}
+            className="flex items-center gap-3 w-full bg-red-600 hover:bg-red-700 text-white py-2.5 px-3 rounded-lg transition-colors text-sm font-medium"
+          >
+            <LogOut size={17} />
+            {sidebarOpen && <span>تسجيل الخروج</span>}
+          </button>
         </div>
       </div>
 

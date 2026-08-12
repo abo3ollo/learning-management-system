@@ -1,4 +1,3 @@
-
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 
@@ -6,7 +5,7 @@ import { mutation, query } from "../_generated/server";
 async function generateTeacherId(ctx: any): Promise<string> {
   const teachers = await ctx.db
     .query("users")
-    .withIndex("by_role", (q:any) => q.eq("role", "teacher"))
+    .withIndex("by_role", (q: any) => q.eq("role", "teacher"))
     .collect();
   
   const nextNumber = teachers.length + 1;
@@ -17,61 +16,71 @@ async function generateTeacherId(ctx: any): Promise<string> {
 async function generateStudentId(ctx: any): Promise<string> {
   const students = await ctx.db
     .query("users")
-    .withIndex("by_role", (q:any) => q.eq("role", "student"))
+    .withIndex("by_role", (q: any) => q.eq("role", "student"))
     .collect();
   
   const nextNumber = students.length + 1;
   return `STU-${String(nextNumber).padStart(5, '0')}`;
 }
 
-// ✅ إنشاء مستخدم جديد (مع دعم حقول المعلم والطالب)
+// ✅ إنشاء مستخدم جديد
 export const createUser = mutation({
   args: {
-    clerkId:      v.string(),
-    email:        v.string(),
-    name:         v.string(),
-    phoneNumber:  v.optional(v.string()),
-    role:         v.union(
+    clerkId: v.string(),
+    email: v.string(),
+    name: v.string(),
+    phoneNumber: v.optional(v.string()),
+    tracks: v.optional(v.array(
+      v.union(
+        v.literal("platform"),
+        v.literal("aptitude"),
+        v.literal("academic"),
+      )
+    )),
+    role: v.union(
       v.literal("student"),
       v.literal("teacher"),
       v.literal("parent"),
       v.literal("admin"),
     ),
- 
+    status: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("approved"),
+        v.literal("rejected"),
+        v.literal("active"),
+        v.literal("inactive"),
+        v.literal("on_leave"),
+      )
+    ),
     // Student fields
-    studentId:      v.optional(v.string()),
-    birthDate:      v.optional(v.number()),
-    gender:         v.optional(v.union(v.literal("male"), v.literal("female"))),
-    address:        v.optional(v.string()),
-    grade:          v.optional(v.string()),
-    gradeId:        v.optional(v.id("grades")),
-    groupId:        v.optional(v.id("groups")),
-    
-    classId:        v.optional(v.id("classes")),
+    studentId: v.optional(v.string()),
+    birthDate: v.optional(v.number()),
+    gender: v.optional(v.union(v.literal("male"), v.literal("female"))),
+    address: v.optional(v.string()),
+    grade: v.optional(v.string()),
+    gradeId: v.optional(v.id("grades")),
+    groupId: v.optional(v.id("groups")),
+    classId: v.optional(v.id("classes")),
     enrollmentDate: v.optional(v.number()),
- 
     // Teacher fields
-    teacherId:      v.optional(v.string()),
+    teacherId: v.optional(v.string()),
     specialization: v.optional(v.string()),
-    qualification:  v.optional(v.string()),
-    experience:     v.optional(v.number()),
-    hireDate:       v.optional(v.number()),
-    salary:         v.optional(v.number()),
-    subjects:       v.optional(v.array(v.string())),
- 
+    qualification: v.optional(v.string()),
+    experience: v.optional(v.number()),
+    hireDate: v.optional(v.number()),
+    salary: v.optional(v.number()),
+    subjects: v.optional(v.array(v.string())),
     // Parent fields
-    parentId:       v.optional(v.string()),
-    workPhone:      v.optional(v.string()),
-    workAddress:    v.optional(v.string()),
-    jobTitle:       v.optional(v.string()),
-    nationalId:     v.optional(v.string()),
-    relationship:   v.optional(v.string()),
+    parentId: v.optional(v.string()),
+    workPhone: v.optional(v.string()),
+    workAddress: v.optional(v.string()),
+    jobTitle: v.optional(v.string()),
+    nationalId: v.optional(v.string()),
+    relationship: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Prevent duplicates:
-    // 1) If a user with this clerkId already exists — return it.
-    // 2) If a user with this email exists, link clerkId if missing and return that record instead of creating a duplicate.
-    // 3) If a user with this email exists and already has a different clerkId, return the existing record (do not create duplicate).
+    // Prevent duplicates
     const existingByClerk = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
@@ -85,55 +94,71 @@ export const createUser = mutation({
       .first();
 
     if (existingByEmail) {
-      // Attach clerkId to the existing record if it wasn't set yet so getCurrentUser will find it.
       if (!existingByEmail.clerkId) {
         await ctx.db.patch(existingByEmail._id, { clerkId: args.clerkId, updatedAt: Date.now() });
-      } else {
-        // If there is already a different clerkId, do not create a duplicate.
-        // Optionally: record an audit log or notify admin about the identity conflict.
       }
       return existingByEmail._id;
     }
- 
+
     const now = Date.now();
- 
+
+    // ✅ توليد معرفات تلقائية
+    let studentId = args.studentId;
+    let teacherId = args.teacherId;
+    let parentId = args.parentId;
+
+    if (args.role === "student" && !studentId) {
+      studentId = await generateStudentId(ctx);
+    }
+    if (args.role === "teacher" && !teacherId) {
+      teacherId = await generateTeacherId(ctx);
+    }
+    if (args.role === "parent" && !parentId) {
+      const parents = await ctx.db
+        .query("users")
+        .withIndex("by_role", (q: any) => q.eq("role", "parent"))
+        .collect();
+      const nextNumber = parents.length + 1;
+      parentId = `PAR-${String(nextNumber).padStart(5, '0')}`;
+    }
+
     return await ctx.db.insert("users", {
-      // Core
-      clerkId:     args.clerkId,
-      email:       args.email,
-      name:        args.name,
+      clerkId: args.clerkId,
+      email: args.email,
+      name: args.name,
       phoneNumber: args.phoneNumber,
-      role:        args.role,
-      status:      "pending",
-      createdAt:   now,
-      updatedAt:   now,
- 
+      tracks: args.tracks || [],
+      role: args.role,
+      status: args.status || "pending",
+      createdAt: now,
+      updatedAt: now,
+
       // Student
-      studentId:      args.studentId,
-      birthDate:      args.birthDate,
-      gender:         args.gender,
-      address:        args.address,
-      grade:          args.grade,
-      gradeId:        args.gradeId,
-      groupId:        args.groupId,
-      classId:        args.classId,
+      studentId: studentId,
+      birthDate: args.birthDate,
+      gender: args.gender,
+      address: args.address,
+      grade: args.grade,
+      gradeId: args.gradeId,
+      groupId: args.groupId,
+      classId: args.classId,
       enrollmentDate: args.enrollmentDate,
- 
+
       // Teacher
-      teacherId:      args.teacherId,
+      teacherId: teacherId,
       specialization: args.specialization,
-      qualification:  args.qualification,
-      experience:     args.experience,
-      hireDate:       args.hireDate,
-      salary:         args.salary,
-      subjects:       args.subjects,
- 
+      qualification: args.qualification,
+      experience: args.experience,
+      hireDate: args.hireDate,
+      salary: args.salary,
+      subjects: args.subjects,
+
       // Parent
-      parentId:     args.parentId,
-      workPhone:    args.workPhone,
-      workAddress:  args.workAddress,
-      jobTitle:     args.jobTitle,
-      nationalId:   args.nationalId,
+      parentId: parentId,
+      workPhone: args.workPhone,
+      workAddress: args.workAddress,
+      jobTitle: args.jobTitle,
+      nationalId: args.nationalId,
       relationship: args.relationship,
     });
   },
@@ -144,7 +169,9 @@ export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
+    if (!identity) {
+      return null;
+    }
 
     const user = await ctx.db
       .query("users")
@@ -168,14 +195,7 @@ export const getUserByEmail = mutation({
   },
 });
 
-
-// ✅ تصدير الدوال
-export const auth = {
-  createUser,
-  getCurrentUser,
-  getUserByEmail,
-};
-// التحقق من حالة التسجيل
+// ✅ التحقق من حالة التسجيل
 export const checkRegistrationStatus = query({
   args: {},
   handler: async (ctx) => {
@@ -192,8 +212,146 @@ export const checkRegistrationStatus = query({
     return {
       status: user.status,
       role: user.role,
+      tracks: user.tracks,
       rejectionReason: user.rejectionReason,
       createdAt: user.createdAt,
     };
   },
 });
+
+// ✅ تحديث حالة المستخدم
+export const updateUserStatus = mutation({
+  args: {
+    userId: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+      v.literal("active"),
+      v.literal("inactive"),
+      v.literal("on_leave"),
+    ),
+    rejectionReason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const admin = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!admin || admin.role !== "admin") {
+      throw new Error("غير مصرح: فقط الأدمن يمكنه تغيير الحالة");
+    }
+
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("المستخدم غير موجود");
+
+    await ctx.db.patch(args.userId, {
+      status: args.status,
+      rejectionReason: args.rejectionReason,
+      updatedAt: Date.now(),
+      ...(args.status === "active" || args.status === "approved" ? {
+        approvedAt: Date.now(),
+        approvedBy: admin._id,
+      } : {}),
+    });
+
+    // ✅ تسجيل في سجل التدقيق
+    await ctx.db.insert("auditLogs", {
+      userId: args.userId,
+      action: "update_status",
+      resourceType: "user",
+      resourceId: args.userId,
+      details: {
+        previousStatus: user.status,
+        approvedBy: admin.name || admin.email,
+        reason: args.rejectionReason,
+      },
+      createdAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ تحديث حالة الاشتراك
+export const updateSubscriptionStatus = mutation({
+  args: {
+    userId: v.id("users"),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("awaiting_approval"),
+      v.literal("active"),
+      v.literal("rejected"),
+      v.literal("expired"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db.get(args.userId);
+    if (!user) throw new Error("المستخدم غير موجود");
+
+    await ctx.db.patch(args.userId, {
+      subscriptionStatus: args.status,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+// ✅ جلب المستخدمين المنتظرين (للأدمن)
+export const getPendingUsers = query({
+  args: {
+    track: v.optional(
+      v.union(
+        v.literal("platform"),
+        v.literal("aptitude"),
+        v.literal("academic"),
+      )
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const admin = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!admin || admin.role !== "admin") {
+      throw new Error("غير مصرح: فقط الأدمن يمكنه الوصول");
+    }
+
+    let users = await ctx.db
+      .query("users")
+      .withIndex("by_status", (q) => q.eq("status", "pending"))
+      .collect();
+
+    // ✅ فلترة حسب المسار (باستخدام includes)
+    if (args.track) {
+      users = users.filter((u) => {
+        const userTracks = u.tracks || [];
+        return userTracks.includes(args.track as "platform" | "aptitude" | "academic");
+      });
+    }
+
+    return users;
+  },
+});
+
+export const auth = {
+  createUser,
+  getCurrentUser,
+  getUserByEmail,
+  checkRegistrationStatus,
+  updateUserStatus,
+  updateSubscriptionStatus,
+  getPendingUsers,
+};

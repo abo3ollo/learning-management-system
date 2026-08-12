@@ -25,6 +25,7 @@ import {
   FolderOpen,
   ChevronLeft,
   ChevronRight,
+  Home,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -78,10 +79,9 @@ export default function TeacherLayout({
     { label: "مجموعاتي", icon: FolderOpen, href: "/teacher/groups" },
     { label: "الامتحانات", icon: ClipboardList, href: "/teacher/exams" },
     { label: "الواجبات", icon: FileText, href: "/teacher/assignments" },
-    { label: "التحصيلات", icon: School, href: "/teacher/materials" },
+    { label: "القدرات", icon: School, href: "/teacher/aptitude" },
     { label: "المحاضرات المباشرة", icon: GraduationCap, href: "/teacher/live-classes" },
     { label: " Chatbox", icon: IoChatbubbleOutline, href: "/teacher/chatbox" },
-
   ];
 
   const isActive = (href: string) => {
@@ -95,6 +95,12 @@ export default function TeacherLayout({
   const handleSignOut = () => {
     signOut();
     router.push("/");
+  };
+
+  // ✅ دالة الذهاب للصفحة الرئيسية
+  const handleGoHome = () => {
+    router.push("/");
+    router.refresh();
   };
 
   return (
@@ -137,7 +143,7 @@ export default function TeacherLayout({
         )}
 
         {/* Navigation */}
-        <nav className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-200px)]">
+        <nav className="p-4 space-y-1 overflow-y-auto h-[calc(100vh-280px)]">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.href);
@@ -162,8 +168,22 @@ export default function TeacherLayout({
           })}
         </nav>
 
-        {/* ✅ Logout Button - في أسفل الـ Sidebar */}
-        <div className="absolute bottom-0 right-0 left-0 p-4 border-t border-[#c0c8c9] bg-white">
+        {/* ✅ Home + Logout Buttons - في أسفل الـ Sidebar */}
+        <div className="absolute bottom-0 right-0 left-0 p-4 border-t border-[#c0c8c9] bg-white space-y-2">
+          {/* زر Home */}
+          <button
+            onClick={handleGoHome}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-[#001f24] hover:bg-[#f0f4f4] ${
+              !isSidebarOpen && "justify-center"
+            }`}
+          >
+            <Home className="h-5 w-5" />
+            {isSidebarOpen && (
+              <span className="text-sm font-medium">الرئيسية</span>
+            )}
+          </button>
+          
+          {/* زر Logout */}
           <button
             onClick={handleSignOut}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-red-600 hover:bg-red-50 hover:text-red-700 ${

@@ -16,6 +16,16 @@ export default defineSchema({
       v.literal("parent"),
       v.literal("admin"),
     ),
+    // ✅ نغيرها إلى tracks (مصفوفة)
+    tracks: v.optional(
+      v.array(
+        v.union(
+          v.literal("platform"),
+          v.literal("aptitude"),
+          v.literal("academic"),
+        ),
+      ),
+    ),
     status: v.union(
       v.literal("pending"),
       v.literal("approved"),
@@ -1309,37 +1319,57 @@ export default defineSchema({
     .index("by_type", ["type"])
     .index("by_isActive", ["isActive"]),
 
+  academicPurchases: defineTable({
+    materialId: v.id("teacherMaterials"),
+    teacherId: v.id("users"),
+    studentId: v.id("users"),
+    amount: v.number(),
+    currency: v.string(),
+    paymentProof: v.string(), // رابط الصورة
+    status: v.union(
+      v.literal("pending"),
+      v.literal("approved"),
+      v.literal("rejected"),
+    ),
+    rejectionReason: v.optional(v.string()),
+    adminNotes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_studentId", ["studentId"])
+    .index("by_teacherId", ["teacherId"])
+    .index("by_materialId", ["materialId"])
+    .index("by_status", ["status"])
+    .index("by_createdAt", ["createdAt"]),
 
-    
-
-transactions: defineTable({
-  studentId: v.id("users"),
-  parentId: v.optional(v.id("users")),
-  type: v.union(
-    v.literal("platform"),
-    v.literal("aptitude"),
-    v.literal("purchase")
-  ),
-  category: v.string(),
-  description: v.string(),
-  descriptionAr: v.string(),
-  amount: v.number(),
-  currency: v.string(),
-  status: v.union(
-    v.literal("pending"),
-    v.literal("completed"),
-    v.literal("refunded"),
-    v.literal("failed")
-  ),
-  referenceId: v.string(),
-  referenceType: v.string(),
-  paymentProof: v.optional(v.string()),
-  createdAt: v.number(),
-  updatedAt: v.optional(v.number()),
-})
-.index("by_student", ["studentId"])
-.index("by_parent", ["parentId"])
-.index("by_type", ["type"])
-.index("by_status", ["status"])
-.index("by_created", ["createdAt"]),
+  transactions: defineTable({
+    studentId: v.id("users"),
+    parentId: v.optional(v.id("users")),
+    type: v.union(
+      v.literal("platform"),
+      v.literal("aptitude"),
+      v.literal("purchase"),
+    ),
+    category: v.string(),
+    description: v.string(),
+    descriptionAr: v.string(),
+    amount: v.number(),
+    currency: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("completed"),
+      v.literal("refunded"),
+      v.literal("failed"),
+    ),
+    referenceId: v.string(),
+    referenceType: v.string(),
+    paymentProof: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_student", ["studentId"])
+    .index("by_parent", ["parentId"])
+    .index("by_type", ["type"])
+    .index("by_status", ["status"])
+    .index("by_created", ["createdAt"]),
 });

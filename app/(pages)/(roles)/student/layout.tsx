@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useClerk } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { SignOutButton } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
@@ -22,6 +21,7 @@ import {
   FileText,
   Megaphone,
   School,
+  Home,
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { SiWikibooks } from "react-icons/si";
@@ -38,6 +38,7 @@ export default function StudentLayout({
   children: React.ReactNode;
 }) {
   const { isLoaded, isSignedIn } = useAuth();
+  const { signOut } = useClerk();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -64,8 +65,6 @@ export default function StudentLayout({
 
   // قائمة التنقل الرئيسية
   const navItems = [
-    // { label: "اختياراتي", icon: SiWikibooks , href: "/student/my-courses" },
-    // { label: "فصلي", icon: School , href: "/student/my-classes" },
     { label: "مجموعاتي", icon: Circle , href: "/student/groups" },
     { label: "واجبائي", icon: BsFileCheck , href: "/student/my-assignments" },
     { label: "امتحاناتي", icon: PiExam , href: "/student/my-exams" },
@@ -73,13 +72,8 @@ export default function StudentLayout({
     { label: "حضوري", icon: Circle , href: "/student/attendance" },
     { label: " Chatbox", icon: IoChatbubbleOutline, href: "/student/chatbox" },
     { label: " المشتريات", icon: FaStore, href: "/student/purchases" },
-    { label: "التحصيلي", icon: IoIosCheckmarkCircleOutline, href: "/student/aptitude" },
+    // { label: "التحصيلي", icon: IoIosCheckmarkCircleOutline, href: "/student/aptitude" },
     { label: "كشف الحساب", icon: AiOutlineTransaction, href: "/student/transactions" },
-    // { label: "شهاداتي", icon: Award , href: "/student/certificates" },
-    // { label: "المنجر", icon: LayoutDashboard , href: "/student/dashboard" },
-    // { label: "الإعلانات", icon: Megaphone , href: "/student/announcements" },
-    // { label: "إشعاراتي", icon: Bell , href: "/student/notifications" },
-    // { label: "ملفي الشخصي", icon: User , href: "/student/profile" },
   ];
 
   return (
@@ -133,7 +127,7 @@ export default function StudentLayout({
           })}
         </nav>
 
-        {/* User + logout */}
+        {/* User + Home + Logout */}
         <div className="border-t border-[#03363d] p-4">
           {sidebarOpen && (
             <div className="mb-3">
@@ -144,12 +138,30 @@ export default function StudentLayout({
               <p className="text-xs text-[#759fa7] truncate">{currentUser.email}</p>
             </div>
           )}
-          <SignOutButton>
-            <button className="flex items-center gap-3 w-full bg-[#03363d] hover:bg-[#032a30] text-white py-2.5 px-3 rounded-lg transition-colors text-sm font-medium">
-              <LogOut size={17} />
-              {sidebarOpen && <span>Logout</span>}
-            </button>
-          </SignOutButton>
+          
+          {/* ✅ زر Home - يروح للصفحة الرئيسية مع الحفاظ على Session */}
+          <button
+            onClick={() => {
+              router.push("/");
+              router.refresh();
+            }}
+            className="flex items-center gap-3 w-full bg-[#03363d] hover:bg-[#032a30] text-white py-2.5 px-3 rounded-lg transition-colors text-sm font-medium mb-2"
+          >
+            <Home size={17} />
+            {sidebarOpen && <span>الرئيسية</span>}
+          </button>
+          
+          {/* ✅ زر Logout - يمسح Session */}
+          <button
+            onClick={async () => {
+              await signOut();
+              router.push("/");
+            }}
+            className="flex items-center gap-3 w-full bg-red-600 hover:bg-red-700 text-white py-2.5 px-3 rounded-lg transition-colors text-sm font-medium"
+          >
+            <LogOut size={17} />
+            {sidebarOpen && <span>تسجيل الخروج</span>}
+          </button>
         </div>
       </div>
 

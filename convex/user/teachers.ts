@@ -379,14 +379,17 @@ export const getPublicTeachers = query({
     subject: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // ✅ لا نتحقق من الصلاحيات - صفحة عامة
     let teachers = await ctx.db
       .query("users")
       .withIndex("by_role", (q) => q.eq("role", "teacher"))
       .collect();
 
-    // فلترة المعلمين النشطين فقط
-    teachers = teachers.filter((t) => t.status === "active");
+    // ✅ فلترة المعلمين النشطين أو الم-approved (كل المعلمين)
+    teachers = teachers.filter((t) => 
+      t.status === "active" || t.status === "approved"
+    );
+
+    // ✅ إزالة أي فلتر على track - كل المعلمين يظهروا
 
     // فلترة حسب البحث
     if (args.search && args.search.trim() !== "") {

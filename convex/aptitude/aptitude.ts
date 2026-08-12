@@ -362,3 +362,74 @@ export const getAptitudeStats = query({
     };
   },
 });
+
+
+// ✅ جلب حالة الشراء للطالب الحالي (للتحقق من الموافقة)
+export const getMyAptitudePurchaseStatus = query({
+  args: {
+    teacherId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const student = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!student) throw new Error("المستخدم غير موجود");
+
+    const purchases = await ctx.db
+      .query("aptitudePurchases")
+      .withIndex("by_studentId", (q) => q.eq("studentId", student._id))
+      .collect();
+
+    // البحث عن طلب لهذا المعلم
+    const purchase = purchases.find((p) => p.teacherId === args.teacherId);
+
+    if (!purchase) return null;
+
+    return {
+      ...purchase,
+      status: purchase.status, // pending | approved | rejected
+    };
+  },
+});
+
+// ✅ جلب جميع طلبات القدرات للطالب مع حالة الموافقة
+export const getMyAptitudePurchasesWithStatus = query({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const student = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!student) throw new Error("المستخدم غير موجود");
+
+    const purchases = await ctx.db
+      .query("aptitudePurchases")
+      .withIndex("by_studentId", (q) => q.eq("studentId", student._id))
+      .order("desc")
+      .collect();
+
+    const purchasesWithDetails = await Promise.all(
+      purchases.map(async (purchase) => {
+        const teacher = await ctx.db.get(purchase.teacherId);
+        return {
+          ...purchase,
+          teacherName: teacher?.name || "غير معروف",
+          teacherSpecialization: teacher?.specialization || "",
+          isApproved: purchase.status === "approved",
+          isPending: purchase.status === "pending",
+          isRejected: purchase.status === "rejected",
+        };
+      })
+    );
+
+    return purchasesWithDetails;
+  },
+});

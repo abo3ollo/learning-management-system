@@ -1,6 +1,8 @@
+// app/(pages)/(roles)/admin/approvals/page.tsx
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -45,6 +47,8 @@ export default function AdminApprovalsPage() {
   const [showRejectInput, setShowRejectInput] = useState<string | null>(null);
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
   const [expandedParent, setExpandedParent] = useState<string | null>(null);
+  const [receiptUrls, setReceiptUrls] = useState<Record<string, string>>({});
+  const [loadingReceipts, setLoadingReceipts] = useState<Record<string, boolean>>({});
 
   // ── Queries ───────────────────────────────────────────────────
   const pendingUsers     = useQuery(api.user.admin.getPendingRegistrations);
@@ -53,6 +57,7 @@ export default function AdminApprovalsPage() {
 
   const approveUser = useMutation(api.user.admin.approveUser);
   const rejectUser  = useMutation(api.user.admin.rejectUser);
+  const getFileUrl = useMutation(api.teacherMaterials.teacherMaterials.getFileUrl);
 
   // ── Enrich users with approval/payment data ───────────────────
   const users = (pendingUsers ?? []).map((user: any) => {
@@ -60,7 +65,6 @@ export default function AdminApprovalsPage() {
       (r: any) => r.studentId === user._id || r.userId === user._id
     );
     
-    // ✅ جلب الطلاب المرتبطين بولي الأمر
     let linkedStudents: any[] = [];
     let hasStudents = false;
     
@@ -69,7 +73,7 @@ export default function AdminApprovalsPage() {
       linkedStudents = links.map((link: any) => ({
         studentId: link.studentId,
         studentName: link.student?.name || "غير معروف",
-        studentEmail: link.student?.email || "لا يوجد بريد", // ✅ التأكد من وجود البريد
+        studentEmail: link.student?.email || "لا يوجد بريد",
         student: link.student,
         relationship: link.relationship || "ولي أمر",
         isPrimary: link.isPrimary || false,
@@ -77,11 +81,20 @@ export default function AdminApprovalsPage() {
       hasStudents = linkedStudents.length > 0;
     }
     
+    // ✅ تحقق إذا كان receiptUrl هو storageId
+    const receiptValue = request?.paymentProof || null;
+    const isStorageId = receiptValue && 
+      !receiptValue.startsWith("http") && 
+      !receiptValue.startsWith("data:image") && 
+      !receiptValue.startsWith("/api/storage/");
+    
     return {
       ...user,
       approvalRequest: request ?? null,
       hasPaid: !!request?.paymentProof,
-      receiptUrl: request?.paymentProof ?? null,
+      receiptUrl: receiptValue,
+      receiptStorageId: isStorageId ? receiptValue : null,
+      isStorageId: isStorageId,
       requestedAt: request?.createdAt ?? null,
       amount: request?.amount ?? null,
       currency: request?.currency ?? null,
@@ -89,10 +102,33 @@ export default function AdminApprovalsPage() {
       requestStatus: request?.status ?? null,
       linkedStudents,
       hasStudents,
-      // ✅ التأكد من وجود البريد الإلكتروني
       displayEmail: user.email || "لا يوجد بريد",
     };
   });
+
+  // ✅ جلب رابط الإيصال عند اختيار مستخدم
+  useEffect(() => {
+    const fetchReceiptUrl = async () => {
+      if (!selectedUser?.receiptStorageId) return;
+      if (receiptUrls[selectedUser._id]) return;
+      
+      setLoadingReceipts(prev => ({ ...prev, [selectedUser._id]: true }));
+      try {
+        const url = await getFileUrl({ 
+          storageId: selectedUser.receiptStorageId as any 
+        });
+        if (url) {
+          setReceiptUrls(prev => ({ ...prev, [selectedUser._id]: url }));
+        }
+      } catch (error) {
+        console.error("Error fetching receipt URL:", error);
+      } finally {
+        setLoadingReceipts(prev => ({ ...prev, [selectedUser._id]: false }));
+      }
+    };
+
+    fetchReceiptUrl();
+  }, [selectedUser, getFileUrl, receiptUrls]);
 
   // ── Filters ───────────────────────────────────────────────────
   const filtered = users.filter((u: any) => {
@@ -155,6 +191,14 @@ export default function AdminApprovalsPage() {
       </div>
     );
   }
+
+  // ✅ الحصول على رابط الإيصال للعرض
+  const getReceiptDisplayUrl = (user: any) => {
+    if (user.isStorageId) {
+      return receiptUrls[user._id] || null;
+    }
+    return user.receiptUrl || null;
+  };
 
   return (
     <div className="min-h-screen bg-[#f7fafa]" dir="rtl">
@@ -254,12 +298,12 @@ export default function AdminApprovalsPage() {
                 </div>
               ) : (
                 <div className="divide-y divide-gray-50">
-                  {filtered.map((user: any) => {
+                  {filtered.map((user: any ,index: number) => {
                     const role = roleMap[user.role];
                     const isSelected = selectedUser?._id === user._id;
                     return (
                       <div
-                        key={user._id}
+                        key={`${user._id}-${index}`} 
                         onClick={() => setSelectedUser(isSelected ? null : user)}
                         className={`flex items-center gap-4 px-5 py-4 cursor-pointer transition-colors ${
                           isSelected ? "bg-[#e0f5f7]" : "hover:bg-[#f7fafa]"
@@ -279,7 +323,6 @@ export default function AdminApprovalsPage() {
                             <span className={`text-xs px-2 py-0.5 rounded-full ${role?.color ?? "bg-gray-100 text-gray-600"}`}>
                               {role?.label ?? user.role}
                             </span>
-                            {/* ✅ أيقونة حالة الاتصال بولي الأمر */}
                             {user.role === "parent" && (
                               user.hasStudents ? (
                                 <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -294,7 +337,6 @@ export default function AdminApprovalsPage() {
                               )
                             )}
                           </div>
-                          {/* ✅ عرض البريد الإلكتروني بشكل صحيح */}
                           <p className="text-xs text-gray-400 truncate mt-0.5">
                             <Mail className="h-3 w-3 inline ml-1" />
                             {user.displayEmail || user.email || "لا يوجد بريد"}
@@ -371,7 +413,6 @@ export default function AdminApprovalsPage() {
                           </span>
                         )}
                       </div>
-                      {/* ✅ عرض البريد الإلكتروني في الـ Header */}
                       <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
                         <Mail className="h-3 w-3" />
                         {selectedUser.displayEmail || selectedUser.email || "لا يوجد بريد"}
@@ -389,7 +430,7 @@ export default function AdminApprovalsPage() {
                   </button>
                 </div>
 
-                {/* ✅ عرض حالة الاتصال بولي الأمر */}
+                {/* Parent students */}
                 {selectedUser.role === "parent" && (
                   <div className="mb-4 p-3 rounded-xl border">
                     <div className="flex items-center justify-between">
@@ -421,7 +462,6 @@ export default function AdminApprovalsPage() {
                       )}
                     </div>
                     
-                    {/* ✅ عرض قائمة الطلاب المرتبطين مع البريد الإلكتروني */}
                     {expandedParent === selectedUser._id && selectedUser.hasStudents && (
                       <div className="mt-3 space-y-2 border-t pt-3">
                         {selectedUser.linkedStudents.map((student: any, idx: number) => (
@@ -434,7 +474,6 @@ export default function AdminApprovalsPage() {
                               </div>
                               <div>
                                 <p className="text-sm font-medium text-[#001f24]">{student.studentName}</p>
-                                {/* ✅ عرض البريد الإلكتروني للطالب */}
                                 <p className="text-xs text-gray-400 flex items-center gap-1">
                                   <Mail className="h-3 w-3" />
                                   {student.studentEmail || student.student?.email || "لا يوجد بريد"}
@@ -675,33 +714,48 @@ export default function AdminApprovalsPage() {
                       </div>
                     )}
 
+                    {/* ✅ عرض الإيصال مع دعم storageId */}
                     {selectedUser.receiptUrl && (
                       <div>
                         <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
                           <Image className="h-3.5 w-3.5" /> صورة الإيصال
                         </p>
-                        <div
-                          className="relative rounded-xl overflow-hidden border border-gray-200 cursor-pointer group"
-                          onClick={() => setImageModalUrl(selectedUser.receiptUrl)}
-                        >
-                          <img
-                            src={selectedUser.receiptUrl}
-                            alt="إيصال الدفع"
-                            className="w-full h-48 object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = "/images/no-image.png";
-                            }}
-                          />
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                            <Eye className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        {loadingReceipts[selectedUser._id] ? (
+                          <div className="flex items-center justify-center h-48 bg-gray-100 rounded-xl">
+                            <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
                           </div>
-                        </div>
-                        <button
-                          onClick={() => setImageModalUrl(selectedUser.receiptUrl)}
-                          className="w-full mt-2 flex items-center justify-center gap-2 text-sm text-[#1a7a8a] hover:text-[#001f24] border border-[#1a7a8a]/20 hover:border-[#1a7a8a] py-2 rounded-xl transition-colors"
-                        >
-                          <Eye className="h-4 w-4" /> عرض بالحجم الكامل
-                        </button>
+                        ) : (
+                          <div
+                            className="relative rounded-xl overflow-hidden border border-gray-200 cursor-pointer group"
+                            onClick={() => {
+                              const displayUrl = getReceiptDisplayUrl(selectedUser);
+                              if (displayUrl) setImageModalUrl(displayUrl);
+                            }}
+                          >
+                            <img
+                              src={getReceiptDisplayUrl(selectedUser) || "/images/no-image.png"}
+                              alt="إيصال الدفع"
+                              className="w-full h-48 object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = "/images/no-image.png";
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                              <Eye className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </div>
+                          </div>
+                        )}
+                        {getReceiptDisplayUrl(selectedUser) && (
+                          <button
+                            onClick={() => {
+                              const displayUrl = getReceiptDisplayUrl(selectedUser);
+                              if (displayUrl) setImageModalUrl(displayUrl);
+                            }}
+                            className="w-full mt-2 flex items-center justify-center gap-2 text-sm text-[#1a7a8a] hover:text-[#001f24] border border-[#1a7a8a]/20 hover:border-[#1a7a8a] py-2 rounded-xl transition-colors"
+                          >
+                            <Eye className="h-4 w-4" /> عرض بالحجم الكامل
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

@@ -1,9 +1,12 @@
+// app/_components/transactions/TransactionDetailsModal.tsx
 "use client";
 
-import { X, User, Package, Calendar, DollarSign, FileText, CheckCircle, XCircle, Clock, Image as ImageIcon } from "lucide-react";
-import Image from "next/image";
+import { useState, useEffect } from "react";
+import { X, User, Package, Calendar, DollarSign, FileText, CheckCircle, XCircle, Clock, Image as ImageIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { arSA } from "date-fns/locale";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 interface TransactionDetailsModalProps {
   isOpen: boolean;
@@ -41,6 +44,54 @@ export function TransactionDetailsModal({
   transaction,
   lang = "ar",
 }: TransactionDetailsModalProps) {
+  const [imageError, setImageError] = useState(false);
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+
+  // ✅ استخدم mutation لجلب الرابط من storageId
+  const getFileUrl = useMutation(api.teacherMaterials.teacherMaterials.getFileUrl);
+
+  // ✅ جلب الرابط عند فتح المودال
+  useEffect(() => {
+    const fetchImageUrl = async () => {
+      if (!transaction?.paymentProof) {
+        setImageLoading(false);
+        return;
+      }
+
+      // ✅ إذا كان الرابط مباشر (http, data:image, /api/storage)
+      if (transaction.paymentProof.startsWith("http") || 
+          transaction.paymentProof.startsWith("data:image") || 
+          transaction.paymentProof.startsWith("/api/storage/")) {
+        setImageUrl(transaction.paymentProof);
+        setImageLoading(false);
+        return;
+      }
+
+      // ✅ إذا كان storageId (نخزنها كـ string)
+      try {
+        const url = await getFileUrl({ storageId: transaction.paymentProof as any });
+        if (url) {
+          setImageUrl(url);
+        } else {
+          setImageError(true);
+        }
+      } catch (error) {
+        console.error("Error fetching file URL:", error);
+        setImageError(true);
+      } finally {
+        setImageLoading(false);
+      }
+    };
+
+    if (isOpen) {
+      setImageLoading(true);
+      setImageError(false);
+      setImageUrl(null);
+      fetchImageUrl();
+    }
+  }, [isOpen, transaction, getFileUrl]);
+
   if (!isOpen || !transaction) return null;
 
   const status = statusMap[transaction.status] || statusMap.pending;
@@ -56,6 +107,9 @@ export function TransactionDetailsModal({
     aptitude: lang === "ar" ? "تحصيلات" : "Aptitude",
     purchase: lang === "ar" ? "مشتريات" : "Purchase",
   };
+
+  // ✅ الحصول على رابط الصورة النهائي
+  const displayImageUrl = imageUrl || transaction?.paymentProof;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -147,18 +201,38 @@ export function TransactionDetailsModal({
                 <ImageIcon className="h-4 w-4 text-[#1a7a8a]" />
                 إيصال الدفع
               </h3>
-              <div className="relative w-full h-100 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                <Image
-                  src={transaction.paymentProof}
-                  alt="إيصال الدفع"
-                  fill
-                  className="object-contain"
-                  sizes="(max-width: 768px) 90vw, 60vw"
-                />
-              </div>
-              <p className="text-xs text-gray-400 mt-2 text-center">
-                اضغط على الصورة لتكبيرها
-              </p>
+              {imageLoading ? (
+                <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg">
+                  <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
+                </div>
+              ) : displayImageUrl && !imageError ? (
+                <div className="relative w-full h-64 md:h-96 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                  <img
+                    src={displayImageUrl}
+                    alt="إيصال الدفع"
+                    className="w-full h-full object-contain"
+                    onError={() => {
+                      setImageError(true);
+                      setImageLoading(false);
+                    }}
+                    onLoad={() => {
+                      setImageLoading(false);
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center justify-center h-64 bg-gray-50 rounded-lg border border-gray-200">
+                  <div className="text-center">
+                    <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">لا يوجد إيصال مرفق</p>
+                  </div>
+                </div>
+              )}
+              {displayImageUrl && !imageError && (
+                <p className="text-xs text-gray-400 mt-2 text-center">
+                  اضغط مع الاستمرار (أو زر الفتح) لتكبير الصورة
+                </p>
+              )}
             </div>
           )}
 

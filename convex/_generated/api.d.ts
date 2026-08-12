@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as academic_academic from "../academic/academic.js";
 import type * as admin_approvals from "../admin/approvals.js";
 import type * as aptitude_aptitude from "../aptitude/aptitude.js";
 import type * as assignments_assignments from "../assignments/assignments.js";
@@ -54,6 +55,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "academic/academic": typeof academic_academic;
   "admin/approvals": typeof admin_approvals;
   "aptitude/aptitude": typeof aptitude_aptitude;
   "assignments/assignments": typeof assignments_assignments;

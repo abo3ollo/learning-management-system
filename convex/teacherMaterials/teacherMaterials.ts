@@ -3,29 +3,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 
-
-// ✅ إضافة دالة توليد رابط رفع الملف
-export const generateUploadUrl = mutation({
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("غير مصرح");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) throw new Error("المستخدم غير موجود");
-    if (user.role !== "teacher" && user.role !== "admin") {
-      throw new Error("غير مصرح: فقط المعلمون والأدمن يمكنهم رفع الملفات");
-    }
-
-    // ✅ توليد رابط رفع الملف
-    const uploadUrl = await ctx.storage.generateUploadUrl();
-    return uploadUrl;
-  },
-});
-
 // ✅ جلب مواد معلم معين
 export const getTeacherMaterials = query({
   args: {
@@ -60,10 +37,10 @@ export const getTeacherMaterials = query({
   },
 });
 
-// ✅ جلب مواد معلم معين (عام - بدون صلاحيات)
+// ✅ جلب المواد العامة (للعرض بدون تسجيل دخول)
 export const getPublicTeacherMaterials = query({
   args: {
-    teacherId: v.id("users"),
+    teacherId: v.optional(v.id("users")),
     type: v.optional(v.union(
       v.literal("pdf"),
       v.literal("video"),
@@ -73,10 +50,11 @@ export const getPublicTeacherMaterials = query({
     )),
   },
   handler: async (ctx, args) => {
-    let materials = await ctx.db
-      .query("teacherMaterials")
-      .withIndex("by_teacher", (q) => q.eq("teacherId", args.teacherId))
-      .collect();
+    let materials = await ctx.db.query("teacherMaterials").collect();
+
+    if (args.teacherId) {
+      materials = materials.filter((m) => m.teacherId === args.teacherId);
+    }
 
     materials = materials.filter((m) => m.isPublished === true);
 
@@ -132,7 +110,6 @@ export const createMaterial = mutation({
 
     if (!user) throw new Error("المستخدم غير موجود");
     
-    // ✅ التحقق من أن المستخدم هو المعلم نفسه أو أدمن
     if (user.role !== "admin" && user.role !== "teacher") {
       throw new Error("غير مصرح");
     }
@@ -149,18 +126,14 @@ export const createMaterial = mutation({
 
     return { success: true, materialId };
   },
-  
 });
 
+// ✅ جلب رابط الملف من storage (Query)
 export const getMaterialFileUrl = query({
   args: {
     storageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("غير مصرح");
-
-    // جلب رابط الملف من Convex Storage
     const url = await ctx.storage.getUrl(args.storageId);
     return url;
   },
@@ -174,7 +147,6 @@ export const updateMaterial = mutation({
     titleAr: v.optional(v.string()),
     description: v.optional(v.string()),
     descriptionAr: v.optional(v.string()),
-    // ✅ إضافة type
     type: v.optional(v.union(
       v.literal("pdf"),
       v.literal("video"),
@@ -185,7 +157,6 @@ export const updateMaterial = mutation({
     fileUrl: v.optional(v.string()),
     fileSize: v.optional(v.string()),
     duration: v.optional(v.string()),
-    // ✅ إضافة subject و grade
     subject: v.optional(v.string()),
     grade: v.optional(v.string()),
     questions: v.optional(v.array(
@@ -200,7 +171,6 @@ export const updateMaterial = mutation({
     deadline: v.optional(v.number()),
     isPublished: v.optional(v.boolean()),
     displayOrder: v.optional(v.number()),
-    // ✅ إضافة price و currency
     price: v.optional(v.number()),
     currency: v.optional(v.string()),
   },
@@ -224,7 +194,6 @@ export const updateMaterial = mutation({
 
     const { materialId, ...fields } = args;
     
-    // ✅ إزالة undefined values
     const cleanFields: any = {};
     for (const [key, value] of Object.entries(fields)) {
       if (value !== undefined && value !== null) {
@@ -267,6 +236,36 @@ export const deleteMaterial = mutation({
   },
 });
 
+// ✅ جلب رابط الملف من storage (Mutation - للاستخدام في المودال)
+export const getFileUrl = mutation({
+  args: {
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const url = await ctx.storage.getUrl(args.storageId);
+    return url;
+  },
+});
+
+// ✅ توليد رابط رفع الملف (السماح للجميع)
+export const generateUploadUrl = mutation({
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) throw new Error("المستخدم غير موجود");
+    
+    // ✅ السماح للجميع (طلاب، معلمين، أدمن، أولياء أمور)
+    const uploadUrl = await ctx.storage.generateUploadUrl();
+    return uploadUrl;
+  },
+});
+
 // ✅ تصدير الدوال
 export const teacherMaterials = {
   getTeacherMaterials,
@@ -274,4 +273,7 @@ export const teacherMaterials = {
   createMaterial,
   updateMaterial,
   deleteMaterial,
+  getMaterialFileUrl,
+  getFileUrl,
+  generateUploadUrl,
 };

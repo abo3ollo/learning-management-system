@@ -7,13 +7,20 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/trips(.*)',
-
+  '/aptitude(.*)', // ✅ مسار القدرات عام
+  '/academic(.*)', // ✅ مسار التحصيلي عام
+  '/subscription(.*)', // ✅ صفحة الاشتراك عامة
 ]);
 
 const isAuthRoute = createRouteMatcher([
   '/onboarding(.*)',
   '/pending-approval(.*)',
   '/account-rejected(.*)',
+  '/platform(.*)', // ✅ مسار المنصة محمي
+  '/student(.*)',
+  '/teacher(.*)',
+  '/parent(.*)',
+  '/admin(.*)',
 ]);
 
 export default clerkMiddleware(async (auth, req: NextRequest) => {
@@ -30,7 +37,6 @@ export default clerkMiddleware(async (auth, req: NextRequest) => {
   }
 
   // Auth routes and all protected routes — allow through
-  // Role enforcement happens in layouts/pages via Convex
   return NextResponse.next();
 });
 

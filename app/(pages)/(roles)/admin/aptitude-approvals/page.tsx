@@ -135,7 +135,7 @@ export default function AdminAptitudeApprovalsPage() {
               <ArrowRight className="h-5 w-5" />
             </Link>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">قبول التحصيلي</h1>
+              <h1 className="text-xl font-bold text-gray-900">قبول القدرات</h1>
               <p className="text-sm text-gray-500">مراجعة وإدارة طلبات برامج القدرات</p>
             </div>
           </div>

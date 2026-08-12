@@ -1,4 +1,4 @@
-// app/(pages)/(roles)/teacher/materials/page.tsx
+// app/(pages)/(roles)/teacher/aptitude/page.tsx
 
 "use client";
 

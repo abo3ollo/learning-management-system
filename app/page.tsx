@@ -1112,7 +1112,7 @@ export default function LandingPage() {
                   ? "سجل في برامج التحصيل الدراسي لتحسين مستواك الأكاديمي"
                   : "Register for academic achievement programs to improve your academic level"}
               </p>
-              <Link href="/aptitude">
+              <Link href="/academic">
                 <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
                   {lang === "ar" ? "سجل الآن" : "Register Now"}
                   <ArrowRight className="h-4 w-4 ml-2" />
@@ -1135,7 +1135,7 @@ export default function LandingPage() {
                   ? "استعد لاختبارات القدرات مع أفضل المدربين والمواد التدريبية"
                   : "Prepare for aptitude tests with the best trainers and training materials"}
               </p>
-              <Link href={isSignedIn ? "/subscriptions?type=aptitude" : "/sign-in"}>
+              <Link href="/aptitude">
                 <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
                   {lang === "ar" ? "سجل الآن" : "Register Now"}
                   <ArrowRight className="h-4 w-4 ml-2" />

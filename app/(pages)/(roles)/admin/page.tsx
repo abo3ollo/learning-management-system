@@ -150,28 +150,28 @@ export default function AdminDashboard() {
 
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         {/* تنبيه الطلبات المعلقة */}
-        {pendingCount > 0 && (
-          <div className="flex items-center justify-between bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl px-6 py-4 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center">
-                <Users className="h-6 w-6 text-amber-600" />
+          {pendingCount > 0 && (
+            <div className="flex items-center justify-between bg-linear-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl px-6 py-4 shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 flex items-center justify-center">
+                  <Users className="h-6 w-6 text-amber-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">
+                    {pendingCount} طلب {pendingCount === 1 ? "تسجيل" : "تسجيلات"} معلق
+                  </p>
+                  <p className="text-sm text-gray-500">مراجعة وقبول الحسابات الجديدة</p>
+                </div>
               </div>
-              <div>
-                <p className="font-semibold text-gray-900">
-                  {pendingCount} طلب {pendingCount === 1 ? "تسجيل" : "تسجيلات"} معلق
-                </p>
-                <p className="text-sm text-gray-500">مراجعة وقبول الحسابات الجديدة</p>
-              </div>
+              <Link
+                href="/admin/approvals"
+                className="flex items-center gap-2 text-sm font-medium bg-[#001f24] text-white px-5 py-2.5 rounded-xl hover:bg-[#03363d] transition-all shadow-lg hover:shadow-xl"
+              >
+                مراجعة الآن
+                <ChevronRight className="h-4 w-4" />
+              </Link>
             </div>
-            <Link
-              href="/admin/approvals"
-              className="flex items-center gap-2 text-sm font-medium bg-[#001f24] text-white px-5 py-2.5 rounded-xl hover:bg-[#03363d] transition-all shadow-lg hover:shadow-xl"
-            >
-              مراجعة الآن
-              <ChevronRight className="h-4 w-4" />
-            </Link>
-          </div>
-        )}
+          )}
 
         {/* بطاقات الإحصائيات */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

@@ -1,3 +1,4 @@
+// app/(pages)/onboarding/page.tsx
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -8,15 +9,27 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 
 import {
-  User, Phone, Mail, Calendar, MapPin,
-  BookOpen, GraduationCap, Users, ChevronRight,
-  ChevronLeft, Check, Loader2, AlertCircle,
-  Building, Briefcase, Heart, Shield,
+  User,
+  Phone,
+  Mail,
+  Calendar,
+  MapPin,
+  BookOpen,
+  GraduationCap,
+  Users,
+  ChevronRight,
+  ChevronLeft,
+  Check,
+  Loader2,
+  AlertCircle,
+  Building,
+  Briefcase,
+  Shield,
 } from "lucide-react";
-import SubscriptionModal from "@/app/_components/SubscriptionModal";
 import { ChildRegistrationModal } from "@/app/_components/ChildRegistrationModal";
 
 // ── Types ──────────────────────────────────────────────────────────
+type Track = "platform" | "aptitude" | "academic";
 type Role = "student" | "teacher" | "parent" | "admin";
 
 interface FormData {
@@ -24,6 +37,7 @@ interface FormData {
   name: string;
   phoneNumber: string;
   email: string;
+  tracks: Track[];
   role: Role | "";
   // Student
   birthDate: string;
@@ -44,10 +58,24 @@ interface FormData {
 }
 
 const initialForm: FormData = {
-  name: "", phoneNumber: "", email: "", role: "",
-  birthDate: "", gender: "", address: "", gradeId: "", groupId: "",
-  specialization: "", qualification: "", experience: "", subjects: [],
-  relationship: "", workPhone: "", jobTitle: "", nationalId: "",
+  name: "",
+  phoneNumber: "",
+  email: "",
+  tracks: [],
+  role: "",
+  birthDate: "",
+  gender: "",
+  address: "",
+  gradeId: "",
+  groupId: "",
+  specialization: "",
+  qualification: "",
+  experience: "",
+  subjects: [],
+  relationship: "",
+  workPhone: "",
+  jobTitle: "",
+  nationalId: "",
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -62,14 +90,7 @@ export default function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
 
   // ✅ Flow control flags
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [showChildModal, setShowChildModal] = useState(false);
-  const [subscriptionData, setSubscriptionData] = useState<{
-    studentId: string;
-    gradeId: string;
-    role: "student" | "parent";
-    childName?: string;
-  } | null>(null);
 
   // ── Queries ───────────────────────────────────────────────────
   const currentUser = useQuery(
@@ -98,85 +119,100 @@ export default function OnboardingPage() {
     }
   }, [user]);
 
-  // ✅ Redirect logic - جميع حالات التوجيه في useEffect واحد
+  // ✅ Redirect logic
   useEffect(() => {
     if (!currentUser) return;
 
-    // ✅ إذا كان أي مودال مفتوحاً، لا تقم بالتوجيه
-    if (showSubscriptionModal || showChildModal) {
+    if (showChildModal) {
       return;
     }
 
-    // ✅ حالة Active أو Approved - توجيه حسب الدور
     if (currentUser.status === "active" || currentUser.status === "approved") {
-      const routes: Record<string, string> = {
-        student: "/student",
-        teacher: "/teacher",
-        parent: "/parent",
-        admin: "/admin", // ✅ تم إضافة Admin هنا
-      };
-      router.replace(routes[currentUser.role] ?? "/dashboard");
+      const tracks = (currentUser as any).tracks || [];
+
+      if (tracks.includes("platform")) {
+        const routes: Record<string, string> = {
+          student: "/student",
+          teacher: "/teacher",
+          parent: "/parent",
+          admin: "/admin",
+        };
+        router.replace(routes[currentUser.role] ?? "/dashboard");
+        return;
+      }
+
+      if (tracks.includes("aptitude")) {
+        router.replace("/aptitude");
+        return;
+      }
+
+      if (tracks.includes("academic")) {
+        router.replace("/academic");
+        return;
+      }
+
+      if (tracks.length === 0) {
+        router.replace("/onboarding");
+        return;
+      }
+
       return;
     }
 
-    // ✅ حالة مرفوض
     if (currentUser.status === "rejected") {
       router.replace("/account-rejected");
       return;
     }
 
-    // ✅ حالة قيد الانتظار
     if (currentUser.status === "pending") {
       router.replace("/pending-approval");
     }
-  }, [currentUser, showSubscriptionModal, showChildModal, router]);
+  }, [currentUser, showChildModal, router]);
 
-  // ✅ useEffect إضافي للـ Admin فقط - كطبقة أمان إضافية
-  useEffect(() => {
-    // تأكد من وجود currentUser وعدم فتح أي مودال
-    if (!currentUser || showSubscriptionModal || showChildModal) return;
-    
-    // تحقق من دور Admin وحالة Active
-    if (currentUser.role === "admin" && (currentUser.status === "active" || currentUser.status === "approved")) {
-      router.replace("/admin");
-    }
-  }, [currentUser, showSubscriptionModal, showChildModal, router]);
+  // ✅ Handle child registration
+  const handleChildRegistered = useCallback(
+    (childId: string, gradeId: string, childName: string) => {
+      setShowChildModal(false);
 
-  // ✅ Called by SubscriptionModal when user completes or skips
-  const handleSubscriptionDone = useCallback(() => {
-    setShowSubscriptionModal(false);
-    router.replace("/pending-approval");
-  }, [router]);
-
-  // ✅ معالج إكمال تسجيل الطفل - يفتح SubscriptionModal مباشرة
-  const handleChildRegistered = useCallback((childId: string, gradeId: string, childName: string) => {
-    // ✅ إغلاق مودال تسجيل الطفل أولاً
-    setShowChildModal(false);
-
-    // ✅ تعيين بيانات الاشتراك
-    setSubscriptionData({
-      studentId: childId,
-      gradeId: gradeId,
-      role: "parent",
-      childName: childName || "الطفل",
-    });
-
-    // ✅ فتح SubscriptionModal مباشرة
-    setShowSubscriptionModal(true);
-  }, []);
+      // ✅ بعد تسجيل الطفل → روح للصفحة الرئيسية
+      router.push(`/subscription?userId=${childId}&gradeId=${gradeId}&role=parent&childName=${encodeURIComponent(childName)}`);
+    },
+    [router]
+  );
 
   // ── Form helpers ──────────────────────────────────────────────
   const update = (field: keyof FormData, value: any) =>
     setFormData((prev) => ({ ...prev, [field]: value }));
 
+  const toggleTrack = (track: Track) => {
+    if (formData.tracks.includes(track)) {
+      setFormData((prev) => ({
+        ...prev,
+        tracks: prev.tracks.filter((t) => t !== track),
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        tracks: [...prev.tracks, track],
+      }));
+    }
+  };
+
   const validateStep1 = () => {
-    if (!formData.role) return "يرجى اختيار الدور";
+    if (formData.tracks.length === 0) return "يرجى اختيار مسار واحد على الأقل";
     if (!formData.name.trim()) return "يرجى إدخال الاسم";
     if (!formData.phoneNumber) return "يرجى إدخال رقم الهاتف";
     return null;
   };
 
   const validateStep2 = () => {
+    if (formData.tracks.includes("platform")) {
+      if (!formData.role) return "يرجى اختيار الدور";
+    }
+    return null;
+  };
+
+  const validateStep3 = () => {
     if (formData.role === "student") {
       if (!formData.birthDate) return "يرجى إدخال تاريخ الميلاد";
       if (!formData.gender) return "يرجى اختيار الجنس";
@@ -189,24 +225,54 @@ export default function OnboardingPage() {
     if (formData.role === "parent") {
       if (!formData.relationship) return "يرجى إدخال صلة القرابة";
     }
-    if (formData.role === "admin") {
-      return null;
-    }
     return null;
   };
 
   const handleNext = () => {
     setError(null);
-    const err = currentStep === 1 ? validateStep1() : validateStep2();
-    if (err) { setError(err); return; }
-    setCurrentStep((s) => s + 1);
+    const err = validateStep1();
+    if (err) {
+      setError(err);
+      return;
+    }
+
+    const hasOnlyAptitude = formData.tracks.includes("aptitude") && !formData.tracks.includes("platform") && !formData.tracks.includes("academic");
+    const hasOnlyAcademic = formData.tracks.includes("academic") && !formData.tracks.includes("platform") && !formData.tracks.includes("aptitude");
+
+    if (hasOnlyAptitude || hasOnlyAcademic) {
+      setFormData((prev) => ({ ...prev, role: "student" }));
+      handleSubmit();
+      return;
+    }
+
+    if (formData.tracks.includes("platform")) {
+      setCurrentStep(2);
+    }
   };
 
   // ── Submit ────────────────────────────────────────────────────
   const handleSubmit = async () => {
     setError(null);
-    const err = validateStep2();
-    if (err) { setError(err); return; }
+
+    if (formData.tracks.includes("platform")) {
+      if (currentStep === 2) {
+        const err = validateStep2();
+        if (err) {
+          setError(err);
+          return;
+        }
+        setCurrentStep(3);
+        return;
+      }
+      if (currentStep === 3) {
+        const err = validateStep3();
+        if (err) {
+          setError(err);
+          return;
+        }
+      }
+    }
+
     if (!user) return;
 
     setIsSubmitting(true);
@@ -214,59 +280,65 @@ export default function OnboardingPage() {
       const selectedGrade = grades?.find((g: any) => g._id === formData.gradeId);
       const gradeName = selectedGrade?.name || "";
 
+      let role = formData.role as Role;
+      if (!formData.tracks.includes("platform")) {
+        role = "student";
+      }
+
       const result = await createUser({
         clerkId: user.id,
         email: user.emailAddresses[0]?.emailAddress ?? "",
         name: formData.name.trim(),
         phoneNumber: formData.phoneNumber,
-        role: formData.role as Role,
-        birthDate: formData.birthDate
-          ? new Date(formData.birthDate).getTime()
-          : undefined,
-        gender: formData.gender || undefined,
-        address: formData.address || undefined,
-        grade: gradeName,
-        gradeId: formData.gradeId
-          ? (formData.gradeId as Id<"grades">)
-          : undefined,
-        groupId: formData.groupId
-          ? (formData.groupId as Id<"groups">)
-          : undefined,
-        specialization: formData.specialization || undefined,
-        qualification: formData.qualification || undefined,
-        experience: formData.experience
-          ? Number(formData.experience)
-          : undefined,
-        subjects: formData.subjects.length > 0
-          ? formData.subjects
-          : undefined,
-        relationship: formData.relationship || undefined,
-        workPhone: formData.workPhone || undefined,
-        jobTitle: formData.jobTitle || undefined,
-        nationalId: formData.nationalId || undefined,
+        tracks: formData.tracks,
+        role: role,
+        status: "pending",
+
+        ...(formData.tracks.includes("platform") && {
+          birthDate: formData.birthDate ? new Date(formData.birthDate).getTime() : undefined,
+          gender: formData.gender || undefined,
+          address: formData.address || undefined,
+          grade: gradeName,
+          gradeId: formData.gradeId ? (formData.gradeId as Id<"grades">) : undefined,
+          groupId: formData.groupId ? (formData.groupId as Id<"groups">) : undefined,
+          specialization: formData.specialization || undefined,
+          qualification: formData.qualification || undefined,
+          experience: formData.experience ? Number(formData.experience) : undefined,
+          subjects: formData.subjects.length > 0 ? formData.subjects : undefined,
+          relationship: formData.relationship || undefined,
+          workPhone: formData.workPhone || undefined,
+          jobTitle: formData.jobTitle || undefined,
+          nationalId: formData.nationalId || undefined,
+        }),
       });
 
       const newUserId = result as unknown as string;
-      const gradeId = formData.gradeId;
 
-      if (formData.role === "student") {
-        // ✅ الطالب: فتح SubscriptionModal مباشرة
-        setShowSubscriptionModal(true);
-        setSubscriptionData({
-          studentId: newUserId,
-          gradeId: gradeId,
-          role: "student",
-        });
-      } else if (formData.role === "parent") {
-        // ✅ ولي الأمر: فتح ChildRegistrationModal لتسجيل الطفل
-        setShowChildModal(true);
+      // ✅ التوجيه حسب المسار
+      if (formData.tracks.includes("platform")) {
+        if (role === "student") {
+          console.log("🟢 [Onboarding] Redirecting to subscription page");
+          const subscriptionUrl = `/subscription?userId=${newUserId}&gradeId=${formData.gradeId}&role=student`;
+          console.log("🟢 [Onboarding] URL:", subscriptionUrl);
+
+          // ✅ استخدام window.location.href لتغيير الصفحة فوراً
+          window.location.href = subscriptionUrl;
+        } else if (role === "parent") {
+          setShowChildModal(true);
+        } else {
+          router.replace("/pending-approval");
+        }
       } else {
-        // ✅ Teacher, Admin يذهبون مباشرة إلى pending-approval
-        router.replace("/pending-approval");
+        if (formData.tracks.includes("aptitude")) {
+          router.replace("/aptitude");
+        } else if (formData.tracks.includes("academic")) {
+          router.replace("/academic");
+        } else {
+          router.replace("/pending-approval");
+        }
       }
-
     } catch (err: any) {
-      setError(err.message || "حدث خطأ أثناء التسجيل، يرجى المحاولة مجدداً");
+      setError(err.message || "حدث خطأ أثناء التسجيل");
     } finally {
       setIsSubmitting(false);
     }
@@ -282,20 +354,26 @@ export default function OnboardingPage() {
   }
 
   // ── Render ────────────────────────────────────────────────────
-  const roleOptions: { value: Role; label: string; icon: any; desc: string }[] = [
-    { value: "student", label: "طالب", icon: GraduationCap, desc: "سجّل كطالب للوصول للدورات والامتحانات" },
-    { value: "teacher", label: "معلم", icon: BookOpen, desc: "سجّل كمعلم لإدارة الدورات والطلاب" },
-    { value: "parent", label: "ولي أمر", icon: Users, desc: "سجّل كولي أمر لمتابعة أداء أبنائك" },
-    { value: "admin", label: "أدمن", icon: Shield, desc: "سجّل كأدمن لإدارة المنصة والمستخدمين" },
+  const trackOptions = [
+    { value: "platform" as Track, label: "منصة", icon: GraduationCap, desc: "دروس ومواد تعليمية مع معلمين" },
+    { value: "aptitude" as Track, label: "قدرات", icon: Users, desc: "اختبارات ومهارات قدرات" },
+    { value: "academic" as Track, label: "تحصيلي", icon: BookOpen, desc: "تحصيل دراسي ومراجعة" },
   ];
 
-  // ❌ تم حذف التوجيه من هنا - لم يعد هناك أي router.replace في جسم الدالة
+  const roleOptions = [
+    { value: "student", label: "طالب", icon: GraduationCap, desc: "دورات وامتحانات" },
+    { value: "teacher", label: "معلم", icon: BookOpen, desc: "إدارة الدورات والطلاب" },
+    { value: "parent", label: "ولي أمر", icon: Users, desc: "متابعة أداء أبنائك" },
+    { value: "admin", label: "أدمن", icon: Shield, desc: "إدارة المنصة" },
+  ];
+
+  const hasPlatform = (formData.tracks || []).includes("platform");
+  const totalSteps = hasPlatform ? 3 : 1;
 
   return (
     <>
       <div className="min-h-screen bg-linear-to-br from-[#f0f4f8] to-[#e8f4f8] flex items-center justify-center p-4" dir="rtl">
         <div className="w-full max-w-lg">
-
           {/* Header */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-[#001f24] rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -307,22 +385,23 @@ export default function OnboardingPage() {
 
           {/* Step indicator */}
           <div className="flex items-center justify-center gap-2 mb-6">
-            {[1, 2].map((s) => (
+            {[1, 2, 3].slice(0, totalSteps).map((s) => (
               <div key={s} className="flex items-center gap-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${currentStep >= s
-                    ? "bg-[#001f24] text-white"
-                    : "bg-gray-200 text-gray-500"
-                  }`}>
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${currentStep >= s ? "bg-[#001f24] text-white" : "bg-gray-200 text-gray-500"
+                    }`}
+                >
                   {currentStep > s ? <Check className="h-4 w-4" /> : s}
                 </div>
-                {s < 2 && <div className={`w-12 h-0.5 ${currentStep > s ? "bg-[#001f24]" : "bg-gray-200"}`} />}
+                {s < totalSteps && (
+                  <div className={`w-12 h-0.5 ${currentStep > s ? "bg-[#001f24]" : "bg-gray-200"}`} />
+                )}
               </div>
             ))}
           </div>
 
           {/* Card */}
           <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
-
             {/* Error */}
             {error && (
               <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-100 px-4 py-3 rounded-xl mb-5 text-sm">
@@ -331,112 +410,168 @@ export default function OnboardingPage() {
               </div>
             )}
 
-            {/* ── STEP 1 ────────────────────────────────────── */}
+            {/* ── STEP 1: اختيار المسارات ────────────────────── */}
             {currentStep === 1 && (
               <div className="space-y-5">
-                <h2 className="text-lg font-bold text-[#001f24]">المعلومات الأساسية</h2>
+                <h2 className="text-lg font-bold text-[#001f24]">اختر مساراتك</h2>
+                <p className="text-sm text-gray-500">يمكنك اختيار أكثر من مسار</p>
 
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 block mb-3">
-                    اختر دورك <span className="text-red-500">*</span>
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {roleOptions.map((opt) => {
-                      const Icon = opt.icon;
-                      return (
-                        <button
-                          key={opt.value}
-                          type="button"
-                          onClick={() => update("role", opt.value)}
-                          className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 text-center transition-all ${formData.role === opt.value
-                              ? "border-[#1a7a8a] bg-[#e0f5f7]"
-                              : "border-gray-100 hover:border-gray-200 bg-gray-50"
+                <div className="grid grid-cols-3 gap-3">
+                  {trackOptions.map((opt) => {
+                    const Icon = opt.icon;
+                    const isSelected = formData.tracks.includes(opt.value);
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => toggleTrack(opt.value)}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 text-center transition-all ${isSelected
+                            ? "border-[#1a7a8a] bg-[#e0f5f7] shadow-md"
+                            : "border-gray-100 hover:border-gray-300 bg-gray-50"
+                          }`}
+                      >
+                        <div
+                          className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isSelected ? "bg-[#1a7a8a] text-white" : "bg-gray-200 text-gray-500"
                             }`}
                         >
-                          <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${formData.role === opt.value ? "bg-[#1a7a8a]" : "bg-gray-200"
-                            }`}>
-                            <Icon className={`h-6 w-6 ${formData.role === opt.value ? "text-white" : "text-gray-500"}`} />
-                          </div>
-                          <div>
-                            <p className="font-semibold text-[#001f24] text-sm">{opt.label}</p>
-                            <p className="text-xs text-gray-400 line-clamp-2">{opt.desc}</p>
-                          </div>
-                          {formData.role === opt.value && (
-                            <Check className="h-4 w-4 text-[#1a7a8a]" />
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
+                          <Icon className="h-7 w-7" />
+                        </div>
+                        <p className="font-bold text-[#001f24]">{opt.label}</p>
+                        <p className="text-xs text-gray-400 text-center">{opt.desc}</p>
+                        {isSelected && <Check className="h-4 w-4 text-[#1a7a8a]" />}
+                      </button>
+                    );
+                  })}
                 </div>
 
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 block mb-1">
-                    الاسم الكامل <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <User className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(e) => update("name", e.target.value)}
-                      placeholder="أدخل اسمك الكامل"
-                      className="w-full border border-gray-200 rounded-xl pr-10 pl-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a7a8a]/20 focus:border-[#1a7a8a]"
-                    />
+                {/* Name + Phone + Email */}
+                <div className="mt-4 space-y-4">
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 block mb-1">
+                      الاسم الكامل <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <User className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => update("name", e.target.value)}
+                        placeholder="أدخل اسمك الكامل"
+                        className="w-full border border-gray-200 rounded-xl pr-10 pl-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a7a8a]/20 focus:border-[#1a7a8a]"
+                      />
+                    </div>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {formData.name ? "✅ تم جلب الاسم من حسابك" : "سيتم جلب الاسم من حسابك"}
-                  </p>
-                </div>
 
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 block mb-1">
-                    رقم الهاتف <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="tel"
-                      value={formData.phoneNumber}
-                      onChange={(e) => update("phoneNumber", e.target.value)}
-                      placeholder="01xxxxxxxxx"
-                      className="w-full border border-gray-200 rounded-xl pr-10 pl-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a7a8a]/20 focus:border-[#1a7a8a]"
-                    />
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 block mb-1">
+                      رقم الهاتف <span className="text-red-500">*</span>
+                    </label>
+                    <div className="relative">
+                      <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="tel"
+                        value={formData.phoneNumber}
+                        onChange={(e) => update("phoneNumber", e.target.value)}
+                        placeholder="01xxxxxxxxx"
+                        className="w-full border border-gray-200 rounded-xl pr-10 pl-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a7a8a]/20 focus:border-[#1a7a8a]"
+                      />
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <label className="text-sm font-semibold text-gray-700 block mb-1">البريد الإلكتروني</label>
-                  <div className="relative">
-                    <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                    <input
-                      type="email"
-                      value={formData.email}
-                      readOnly
-                      className="w-full border border-gray-100 rounded-xl pr-10 pl-4 py-3 text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
-                    />
+                  <div>
+                    <label className="text-sm font-semibold text-gray-700 block mb-1">
+                      البريد الإلكتروني
+                    </label>
+                    <div className="relative">
+                      <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <input
+                        type="email"
+                        value={formData.email}
+                        readOnly
+                        className="w-full border border-gray-100 rounded-xl pr-10 pl-4 py-3 text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">✅ تم جلب البريد الإلكتروني من حسابك</p>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">✅ تم جلب البريد الإلكتروني من حسابك</p>
                 </div>
 
                 <button
                   type="button"
                   onClick={handleNext}
-                  className="w-full flex items-center justify-center gap-2 bg-[#001f24] hover:bg-[#03363d] text-white font-semibold py-3 rounded-xl transition-colors"
+                  disabled={formData.tracks.length === 0 || !formData.name || !formData.phoneNumber || isSubmitting}
+                  className="w-full flex items-center justify-center gap-2 bg-[#001f24] hover:bg-[#03363d] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors"
                 >
-                  التالي
-                  <ChevronLeft className="h-4 w-4" />
+                  {isSubmitting ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> جاري التسجيل...</>
+                  ) : hasPlatform ? (
+                    <>التالي <ChevronLeft className="h-4 w-4" /></>
+                  ) : (
+                    <>إنشاء الحساب <Check className="h-4 w-4" /></>
+                  )}
                 </button>
               </div>
             )}
 
-            {/* ── STEP 2 ────────────────────────────────────── */}
-            {currentStep === 2 && (
+            {/* ── STEP 2: اختيار الدور (للمنصة فقط) ────────── */}
+            {currentStep === 2 && hasPlatform && (
               <div className="space-y-5">
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setCurrentStep(1)}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <ChevronRight className="h-4 w-4 text-gray-500" />
+                  </button>
+                  <h2 className="text-lg font-bold text-[#001f24]">اختر دورك</h2>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  {roleOptions.map((opt) => {
+                    const Icon = opt.icon;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => update("role", opt.value)}
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 text-center transition-all ${formData.role === opt.value
+                            ? "border-[#1a7a8a] bg-[#e0f5f7]"
+                            : "border-gray-100 hover:border-gray-200 bg-gray-50"
+                          }`}
+                      >
+                        <div
+                          className={`w-12 h-12 rounded-xl flex items-center justify-center ${formData.role === opt.value ? "bg-[#1a7a8a]" : "bg-gray-200"
+                            }`}
+                        >
+                          <Icon className={`h-6 w-6 ${formData.role === opt.value ? "text-white" : "text-gray-500"}`} />
+                        </div>
+                        <p className="font-semibold text-[#001f24] text-sm">{opt.label}</p>
+                        <p className="text-xs text-gray-400">{opt.desc}</p>
+                        {formData.role === opt.value && <Check className="h-4 w-4 text-[#1a7a8a]" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={!formData.role}
+                  className="w-full flex items-center justify-center gap-2 bg-[#001f24] hover:bg-[#03363d] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors"
+                >
+                  التالي ← بيانات إضافية
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            {/* ── STEP 3: بيانات إضافية (للمنصة فقط) ────────── */}
+            {currentStep === 3 && hasPlatform && (
+              <div className="space-y-5">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep(2)}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   >
                     <ChevronRight className="h-4 w-4 text-gray-500" />
@@ -449,7 +584,7 @@ export default function OnboardingPage() {
                   </h2>
                 </div>
 
-                {/* ── Admin fields ──────────────────────────── */}
+                {/* Admin fields */}
                 {formData.role === "admin" && (
                   <div className="space-y-4">
                     <div className="bg-[#e0f5f7] rounded-xl p-4 text-center">
@@ -460,7 +595,6 @@ export default function OnboardingPage() {
                         ⏳ سيتم تفعيل حسابك بعد موافقة الأدمن الرئيسي
                       </div>
                     </div>
-
                     <div>
                       <label className="text-sm font-semibold text-gray-700 block mb-1">العنوان (اختياري)</label>
                       <div className="relative">
@@ -477,7 +611,7 @@ export default function OnboardingPage() {
                   </div>
                 )}
 
-                {/* ── Student fields ───────────────────────── */}
+                {/* Student fields */}
                 {formData.role === "student" && (
                   <>
                     <div className="grid grid-cols-2 gap-4">
@@ -525,7 +659,9 @@ export default function OnboardingPage() {
                       >
                         <option value="">اختر الصف</option>
                         {grades?.map((g) => (
-                          <option key={g._id} value={g._id}>{g.name}</option>
+                          <option key={g._id} value={g._id}>
+                            {g.name}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -540,7 +676,9 @@ export default function OnboardingPage() {
                         >
                           <option value="">اختر المجموعة (اختياري)</option>
                           {groups.map((g) => (
-                            <option key={g._id} value={g._id}>{g.name}</option>
+                            <option key={g._id} value={g._id}>
+                              {g.name}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -562,7 +700,7 @@ export default function OnboardingPage() {
                   </>
                 )}
 
-                {/* ── Teacher fields ───────────────────────── */}
+                {/* Teacher fields */}
                 {formData.role === "teacher" && (
                   <>
                     <div>
@@ -591,7 +729,6 @@ export default function OnboardingPage() {
                         <option value="bachelor">بكالوريوس</option>
                         <option value="master">ماجستير</option>
                         <option value="phd">دكتوراه</option>
-                        <option value="diploma education teaching">دبلوم تربية وتعليم</option>
                       </select>
                     </div>
                     <div>
@@ -621,7 +758,7 @@ export default function OnboardingPage() {
                   </>
                 )}
 
-                {/* ── Parent fields ────────────────────────── */}
+                {/* Parent fields */}
                 {formData.role === "parent" && (
                   <>
                     <div>
@@ -684,10 +821,11 @@ export default function OnboardingPage() {
                   disabled={isSubmitting}
                   className="w-full flex items-center justify-center gap-2 bg-[#001f24] hover:bg-[#03363d] disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors"
                 >
-                  {isSubmitting
-                    ? <><Loader2 className="h-4 w-4 animate-spin" /> جاري التسجيل...</>
-                    : <><Check className="h-4 w-4" /> إنشاء الحساب</>
-                  }
+                  {isSubmitting ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> جاري التسجيل...</>
+                  ) : (
+                    <><Check className="h-4 w-4" /> إنشاء الحساب</>
+                  )}
                 </button>
               </div>
             )}
@@ -695,34 +833,15 @@ export default function OnboardingPage() {
         </div>
       </div>
 
-      {/* ✅ Child Registration Modal - for parents */}
+      {/* ✅ Child Registration Modal */}
       <ChildRegistrationModal
         isOpen={showChildModal}
         onClose={() => {
           setShowChildModal(false);
-          // لو المستخدم أغلق المودال يدوياً بدون تسجيل طفل → pending-approval
-          if (!showSubscriptionModal) {
-            setTimeout(() => router.replace("/pending-approval"), 100);
-          }
         }}
         parentId={currentUser?._id || ""}
         onSuccess={handleChildRegistered}
       />
-
-      {/* ✅ Subscription modal - with high z-index */}
-      {showSubscriptionModal && currentUser && subscriptionData && (
-        <div className="relative z-9999">
-          <SubscriptionModal
-            isOpen={showSubscriptionModal}
-            userId={currentUser._id}
-            gradeId={subscriptionData.gradeId as Id<"grades">}
-            childId={subscriptionData.role === "parent" ? subscriptionData.studentId as Id<"users"> : undefined}
-            childName={subscriptionData.role === "parent" ? subscriptionData.childName : undefined}
-            onClose={handleSubscriptionDone}
-            onSuccess={handleSubscriptionDone}
-          />
-        </div>
-      )}
     </>
   );
 }
