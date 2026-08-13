@@ -24,6 +24,7 @@ import {
   Bell,
   CircleDollarSign,
   Home,
+  Package,
 } from "lucide-react";
 import { Loader2 } from "lucide-react";
 import { RiParentFill } from "react-icons/ri";
@@ -79,14 +80,17 @@ export default function AdminLayout({
     { href: "/admin/questions", label: "بنك الأسئلة", icon: FaClipboardQuestion },
     { href: "/admin/assignments", label: "الواجبات", icon: FileText },
     { href: "/admin/exams", label: "الامتحانات", icon: PiExam },
-    { href: "/admin/approvals", label: "الموافقة", icon: ClipboardCheck },
+
+
     { href: "/admin/landing", label: "البرتوفوليو", icon: MdOutlineHomeMax },
     { href: "/admin/chatbox", label: "Chat Box", icon: IoChatbubbleOutline },
     { href: "/admin/notifications", label: "الإشعارات", icon: Bell },
     { href: "/admin/subscriptions", label: "الاشتراكات", icon: CircleDollarSign },
-    { href: "/admin/inventory", label: "المخزن", icon: FaStore },
-    { href: "/admin/purchases", label: "تفاصيل المشتريات", icon: BiPurchaseTag },
+    { href: "/admin/inventory", label: "المستودعات", icon: Package  },
     { href: "/admin/transactions", label: "كشف الحساب", icon: AiOutlineTransaction },
+    { href: "/admin/purchases", label: "تفاصيل المشتريات", icon: FaStore },
+    { href: "/admin/approvals", label: "الموافقة علي التسجيلات", icon: ClipboardCheck },
+    { href: "/admin/subscription-approvals", label: "الموافقة على الاشتراكات", icon: ClipboardCheck },
     { href: "/admin/aptitude-approvals", label: "الموافقة على القدرات", icon: IoIosCheckmarkCircleOutline },
     { href: "/admin/academic-approvals", label: "الموافقة على التحصيلات", icon: HiAcademicCap  },
     { href: "/admin/settings", label: "الإعدادات", icon: Settings },

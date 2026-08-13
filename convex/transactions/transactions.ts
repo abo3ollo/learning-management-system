@@ -1,3 +1,5 @@
+// convex/transactions/transactions.ts
+
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 
@@ -115,7 +117,6 @@ export const getTransactionsByTrack = query({
       .withIndex("by_student", (q) => q.eq("studentId", args.studentId))
       .collect();
 
-    // فلترة حسب نوع المعاملة
     return transactions.filter((t) => {
       if (args.track === "platform") return t.type === "platform";
       if (args.track === "aptitude") return t.type === "aptitude";
@@ -173,8 +174,10 @@ export const getAllTransactions = query({
     if (args.searchQuery) {
       const search = args.searchQuery.toLowerCase();
       transactions = transactions.filter((t) => {
-        return t.description.toLowerCase().includes(search) ||
-               t.descriptionAr.includes(search);
+        return t.description?.toLowerCase().includes(search) ||
+               t.descriptionAr?.toLowerCase().includes(search) ||
+               t.studentId?.toString().toLowerCase().includes(search) ||
+               t.referenceId?.toLowerCase().includes(search);
       });
     }
 
@@ -190,7 +193,7 @@ export const getAllTransactions = query({
       transactions = transactions.slice(0, args.limit);
     }
 
-    const transactionsWithStudents = await Promise.all(
+    const transactionsWithDetails = await Promise.all(
       transactions.map(async (t) => {
         const student = await ctx.db.get(t.studentId);
         const parent = t.parentId ? await ctx.db.get(t.parentId) : null;
@@ -203,7 +206,7 @@ export const getAllTransactions = query({
       })
     );
 
-    return transactionsWithStudents;
+    return transactionsWithDetails;
   },
 });
 
@@ -231,6 +234,63 @@ export const updateTransactionStatus = mutation({
     });
 
     return { success: true };
+  },
+});
+
+// ✅ تحديث حالة المعاملة حسب referenceId (للأدمن)
+export const updateTransactionStatusByReference = mutation({
+  args: {
+    referenceId: v.string(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("completed"),
+      v.literal("refunded"),
+      v.literal("failed")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const admin = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!admin || admin.role !== "admin") {
+      throw new Error("غير مصرح: فقط الأدمن يمكنه الوصول");
+    }
+
+    // ✅ جلب المعاملات المرتبطة بهذا referenceId
+    const transactions = await ctx.db
+      .query("transactions")
+      .filter((q) => q.eq(q.field("referenceId"), args.referenceId))
+      .collect();
+
+    if (transactions.length === 0) {
+      throw new Error("لا توجد معاملات مرتبطة بهذا المرجع");
+    }
+
+    for (const tx of transactions) {
+      await ctx.db.patch(tx._id, {
+        status: args.status,
+        updatedAt: Date.now(),
+      });
+    }
+
+    // ✅ تسجيل في سجل التدقيق
+    await ctx.db.insert("auditLogs", {
+      userId: admin._id,
+      action: "UPDATE_TRANSACTION_STATUS_BY_REFERENCE",
+      resourceType: "transaction",
+      resourceId: args.referenceId,
+      details: {
+        updatedBy: admin.email,
+      },
+      createdAt: Date.now(),
+    });
+
+    return { success: true, updatedCount: transactions.length };
   },
 });
 
@@ -337,39 +397,32 @@ export const getChildrenTransactions = query({
 
     if (!user) throw new Error("المستخدم غير موجود");
 
-    // ✅ تأكد أن المستخدم هو ولي الأمر أو أدمن
     if (user.role !== "parent" && user.role !== "admin") {
       throw new Error("غير مصرح: فقط ولي الأمر أو الأدمن يمكنه الوصول");
     }
 
-    // ✅ لو المستخدم ولي أمر، تأكد أن parentId هو نفسه
     if (user.role === "parent" && user._id !== args.parentId) {
       throw new Error("غير مصرح: يمكنك فقط رؤية معاملات أبنائك");
     }
 
-    // ✅ جلب المعاملات
     let transactions = await ctx.db
       .query("transactions")
       .withIndex("by_parent", (q) => q.eq("parentId", args.parentId))
       .order("desc")
       .collect();
 
-    // ✅ فلترة حسب الابن المحدد
     if (args.childId) {
       transactions = transactions.filter((t) => t.studentId === args.childId);
     }
 
-    // ✅ فلترة حسب النوع
     if (args.type) {
       transactions = transactions.filter((t) => t.type === args.type);
     }
 
-    // ✅ فلترة حسب الحالة
     if (args.status) {
       transactions = transactions.filter((t) => t.status === args.status);
     }
 
-    // ✅ فلترة حسب التاريخ
     if (args.startDate) {
       transactions = transactions.filter((t) => t.createdAt >= args.startDate!);
     }
@@ -378,7 +431,6 @@ export const getChildrenTransactions = query({
       transactions = transactions.filter((t) => t.createdAt <= args.endDate!);
     }
 
-    // ✅ جلب بيانات الطلاب
     const transactionsWithStudents = await Promise.all(
       transactions.map(async (t) => {
         const student = await ctx.db.get(t.studentId);
@@ -395,8 +447,6 @@ export const getChildrenTransactions = query({
   },
 });
 
-
-
 // ✅ جلب معاملات الطالب مع إحصائيات مفصلة
 export const getStudentTransactionsWithDetails = query({
   args: {
@@ -412,7 +462,6 @@ export const getStudentTransactionsWithDetails = query({
       .order("desc")
       .collect();
 
-    // جلب بيانات إضافية لكل معاملة
     const transactionsWithDetails = await Promise.all(
       transactions.map(async (t) => {
         const student = await ctx.db.get(t.studentId);
@@ -427,8 +476,6 @@ export const getStudentTransactionsWithDetails = query({
     return transactionsWithDetails;
   },
 });
-
-
 
 // ✅ جلب إحصائيات الطالب
 export const getStudentStats = query({
@@ -491,3 +538,16 @@ export const getStudentStats = query({
   },
 });
 
+// ✅ تصدير الدوال
+export const transactions = {
+  createTransaction,
+  getStudentTransactions,
+  getTransactionsByTrack,
+  getAllTransactions,
+  updateTransactionStatus,
+  updateTransactionStatusByReference,
+  getTransactionStats,
+  getChildrenTransactions,
+  getStudentTransactionsWithDetails,
+  getStudentStats,
+};

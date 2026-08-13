@@ -1,12 +1,13 @@
+// app/(pages)/(roles)/student/dashboard/page.tsx
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
-import { useEffect } from "react";
 import {
   Bell,
   Calendar,
@@ -33,6 +34,8 @@ import {
   Ban,
   ChevronLeft,
   ChevronRight,
+  CreditCard,
+  Loader2,
 } from "lucide-react";
 import { MdOutlinePermMedia } from "react-icons/md";
 import { SiGoogleclassroom } from "react-icons/si";
@@ -119,6 +122,10 @@ export default function StudentDashboard() {
   const currentUser = useQuery(api.user.auth.getCurrentUser);
   const [showSchedule, setShowSchedule] = useState<string | null>(null);
   const [activeEventTab, setActiveEventTab] = useState<"all" | "assignments" | "exams">("all");
+
+  // ✅ التحقق من حالة الاشتراك
+  const subscriptionStatus = currentUser?.subscriptionStatus;
+  const hasActiveSubscription = subscriptionStatus === "active";
 
   // ✅ جلب الإشعارات من قاعدة البيانات
   const notifications = useQuery(
@@ -275,6 +282,9 @@ export default function StudentDashboard() {
   // ✅ قائمة الإشعارات (من قاعدة البيانات)
   const notificationList = notifications || [];
 
+  // ✅ تحديد ما إذا كان المحتوى الرئيسي يظهر (فقط عند الاشتراك النشط)
+  const showContent = hasActiveSubscription;
+
   return (
     <div className="min-h-full bg-[#f7fafa] p-6">
       <div className="max-w-7xl mx-auto">
@@ -283,6 +293,13 @@ export default function StudentDashboard() {
           <div>
             <h1 className="text-2xl font-bold text-[#001f24]">لوحة التحكم</h1>
             <p className="text-sm text-gray-500 mt-0.5">مرحباً بك، {currentUser.name}</p>
+            {/* ✅ عرض حالة الاشتراك */}
+            {!hasActiveSubscription && (
+              <div className="mt-1 text-xs text-amber-600 bg-amber-100 px-3 py-1 rounded-full inline-flex items-center gap-1">
+                <CreditCard className="h-3 w-3" />
+                ⚠️ يرجى دفع الاشتراك للوصول إلى جميع الخدمات
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <Link href="/student/notifications">
@@ -305,401 +322,427 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
-          <Card>
-            <CardContent className="p-3 text-center">
-              <p className="text-xl font-bold text-[#1a7a8a]">{stats.groups}</p>
-              <p className="text-xs text-gray-500">مجموعات</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 text-center">
-              <p className="text-xl font-bold text-blue-600">{stats.assignments}</p>
-              <p className="text-xs text-gray-500">واجبات</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 text-center">
-              <p className="text-xl font-bold text-purple-600">{stats.exams}</p>
-              <p className="text-xs text-gray-500">امتحانات</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-3 text-center">
-              <p className="text-xl font-bold text-green-600">{stats.total}</p>
-              <p className="text-xs text-gray-500">إجمالي الأحداث</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - 2/3 of page */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* My Groups */}
-            <div>
-              <h2 className="text-lg font-semibold text-[#001f24] mb-4 flex items-center gap-2">
-                <Users className="h-5 w-5 text-[#1a7a8a]" />
-                مجموعاتي الدراسية
-              </h2>
-
-              {!studentGroups || studentGroups.length === 0 ? (
-                <Card className="p-8 text-center">
-                  <Users className="h-12 w-12 mx-auto text-gray-300 mb-2" />
-                  <p className="text-gray-500">لم تسجل في أي مجموعة بعد</p>
-                  <Link href="/student/groups">
-                    <Button className="mt-4 bg-[#001f24] hover:bg-[#03363d] text-white">
-                      تصفح المجموعات
-                    </Button>
-                  </Link>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {studentGroups.map((group: any) => {
-                    const isScheduleOpen = showSchedule === group._id;
-                    const holidays = group.schedule?.holidays || [];
-
-                    return (
-                      <Card key={group._id} className="border border-[#c0c8c9] hover:border-[#1a7a8a] transition-all">
-                        <CardHeader className="pb-2">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <CardTitle className="text-base">{group.name}</CardTitle>
-                              <p className="text-xs text-gray-500">{group.subject}</p>
-                            </div>
-                            <Badge className="bg-green-100 text-green-700">
-                              نشط
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2 text-sm">
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <Users className="h-4 w-4 text-[#1a7a8a]" />
-                              <span>{group.students?.length || 0} طالب</span>
-                            </div>
-                            {group.supervisorName && (
-                              <div className="flex items-center gap-2 text-gray-600">
-                                <FaChalkboardTeacher className="h-4 w-4 text-[#1a7a8a]" />
-                                <span>المعلم: {group.supervisorName}</span>
-                              </div>
-                            )}
-                            <div className="text-gray-500 text-xs">
-                              {group.gradeName}
-                            </div>
-
-                            {/* الإجازات */}
-                            {holidays.length > 0 && (
-                              <div className="mt-2 p-2 bg-amber-50 rounded-lg border border-amber-200">
-                                <p className="text-xs font-medium text-amber-700 flex items-center gap-1">
-                                  <Ban className="h-3 w-3" />
-                                  الإجازات القادمة:
-                                </p>
-                                <div className="space-y-1 mt-1">
-                                  {holidays.map((holiday: any, idx: number) => (
-                                    <p key={idx} className="text-xs text-amber-600">
-                                      {new Date(holiday.date).toLocaleDateString('ar-EG')} - {holiday.reason}
-                                    </p>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {group.liveClasses && group.liveClasses.length > 0 && (
-                              <div className="mt-3 pt-3 border-t border-gray-200">
-                                <p className="text-xs font-medium text-[#1a7a8a] flex items-center gap-1 mb-2">
-                                  <PlayCircle className="h-3 w-3" />
-                                  الحصص المباشرة القادمة:
-                                </p>
-                                <div className="space-y-2">
-                                  {group.liveClasses.filter((lc: any) => lc.status === "live" || lc.status === "scheduled").map((lc: any) => (
-                                    <div key={lc._id} className="flex items-center justify-between p-2 bg-blue-50/50 rounded-lg border border-blue-100">
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-medium text-[#001f24] truncate">{lc.title}</p>
-                                        <p className="text-[10px] text-gray-500">
-                                          {new Date(lc.startTime).toLocaleString('ar-EG')}
-                                          {lc.status === "live" && (
-                                            <span className="text-green-600 font-medium mr-2">• مباشر الآن</span>
-                                          )}
-                                        </p>
-                                      </div>
-                                      <a
-                                        href={lc.link}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className={`px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 shrink-0 ${lc.status === "live"
-                                            ? "bg-green-600 hover:bg-green-700 text-white animate-pulse"
-                                            : "bg-[#1a7a8a] hover:bg-[#15707e] text-white"
-                                          }`}
-                                      >
-                                        <PlayCircle className="h-3 w-3" />
-                                        {lc.status === "live" ? "انضم الآن" : "عرض"}
-                                      </a>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* زر عرض الجدول */}
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full mt-2 gap-2"
-                              onClick={() => setShowSchedule(isScheduleOpen ? null : group._id)}
-                            >
-                              <Calendar className="h-4 w-4" />
-                              {isScheduleOpen ? "إخفاء الجدول" : "عرض الجدول"}
-                              {isScheduleOpen ? (
-                                <ChevronUp className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
-                            </Button>
-
-                            {/* عرض الجدول */}
-                            {isScheduleOpen && renderSchedule(group)}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              )}
+        {/* ✅ لو مدفعش أو في انتظار الموافقة → عرض رسالة بدلاً من المحتوى */}
+        {!showContent ? (
+          <Card className="p-12 text-center border-2 border-dashed border-amber-300 bg-amber-50/50">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center">
+                <CreditCard className="h-10 w-10 text-amber-600" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-amber-700">⚠️ يرجى دفع الاشتراك</h2>
+                <p className="text-gray-500 mt-2 max-w-md">
+                  لتتمكن من الوصول إلى جميع خدمات المنصة، يرجى دفع الاشتراك أولاً.
+                </p>
+              </div>
+              <Link href={`/subscription?userId=${currentUser._id}&gradeId=${currentUser.gradeId || ''}&role=student`}>
+                <Button className="mt-4 bg-amber-600 hover:bg-amber-700 text-white px-8 py-3 text-lg">
+                  <CreditCard className="h-5 w-5 ml-2" />
+                  دفع الاشتراك الآن
+                </Button>
+              </Link>
             </div>
-          </div>
+          </Card>
+        ) : (
+          // ✅ المحتوى الكامل (يظهر فقط عند الاشتراك النشط)
+          <>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-4 gap-4 mb-6">
+              <Card>
+                <CardContent className="p-3 text-center">
+                  <p className="text-xl font-bold text-[#1a7a8a]">{stats.groups}</p>
+                  <p className="text-xs text-gray-500">مجموعات</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3 text-center">
+                  <p className="text-xl font-bold text-blue-600">{stats.assignments}</p>
+                  <p className="text-xs text-gray-500">واجبات</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3 text-center">
+                  <p className="text-xl font-bold text-purple-600">{stats.exams}</p>
+                  <p className="text-xs text-gray-500">امتحانات</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3 text-center">
+                  <p className="text-xl font-bold text-green-600">{stats.total}</p>
+                  <p className="text-xs text-gray-500">إجمالي الأحداث</p>
+                </CardContent>
+              </Card>
+            </div>
 
-          {/* Right Column - 1/3 of page */}
-          <div className="space-y-6">
-            {/* Upcoming Events */}
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-[#1a7a8a]" />
-                    الأحداث القادمة
-                  </CardTitle>
-                  <Badge className="bg-[#1a7a8a] text-white">
-                    {stats.total}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {/* Tabs */}
-                <Tabs defaultValue="all" className="w-full" onValueChange={(value) => setActiveEventTab(value as any)}>
-                  <TabsList className="grid grid-cols-3 mb-4">
-                    <TabsTrigger value="all">الكل</TabsTrigger>
-                    <TabsTrigger value="assignments">واجبات</TabsTrigger>
-                    <TabsTrigger value="exams">امتحانات</TabsTrigger>
-                  </TabsList>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column - 2/3 of page */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* My Groups */}
+                <div>
+                  <h2 className="text-lg font-semibold text-[#001f24] mb-4 flex items-center gap-2">
+                    <Users className="h-5 w-5 text-[#1a7a8a]" />
+                    مجموعاتي الدراسية
+                  </h2>
 
-                  <TabsContent value="all" className="mt-0">
-                    <div className="space-y-2 max-h-80 overflow-y-auto">
-                      {filteredEvents.length === 0 ? (
-                        <div className="text-center py-6">
-                          <Calendar className="h-8 w-8 mx-auto text-gray-300 mb-2" />
-                          <p className="text-sm text-gray-500">لا توجد أحداث قادمة</p>
-                        </div>
-                      ) : (
-                        filteredEvents.map((event: any) => {
-                          const Icon = event.icon;
-                          return (
-                            <div
-                              key={event._id}
-                              className={`p-3 rounded-lg border ${event.bgColor} ${event.borderColor}`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <div className={`w-8 h-8 rounded-full ${event.iconBg} flex items-center justify-center shrink-0`}>
-                                  <Icon className={`h-4 w-4 ${event.textColor}`} />
+                  {!studentGroups || studentGroups.length === 0 ? (
+                    <Card className="p-8 text-center">
+                      <Users className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+                      <p className="text-gray-500">لم تسجل في أي مجموعة بعد</p>
+                      <Link href="/student/groups">
+                        <Button className="mt-4 bg-[#001f24] hover:bg-[#03363d] text-white">
+                          تصفح المجموعات
+                        </Button>
+                      </Link>
+                    </Card>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {studentGroups.map((group: any) => {
+                        const isScheduleOpen = showSchedule === group._id;
+                        const holidays = group.schedule?.holidays || [];
+
+                        return (
+                          <Card key={group._id} className="border border-[#c0c8c9] hover:border-[#1a7a8a] transition-all">
+                            <CardHeader className="pb-2">
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <CardTitle className="text-base">{group.name}</CardTitle>
+                                  <p className="text-xs text-gray-500">{group.subject}</p>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <p className="text-sm font-medium text-[#001f24]">
-                                      {event.title}
-                                    </p>
-                                    <Badge className={`text-[10px] ${event.bgColor} ${event.textColor} border-0`}>
-                                      {event.label}
-                                    </Badge>
+                                <Badge className="bg-green-100 text-green-700">
+                                  نشط
+                                </Badge>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex items-center gap-2 text-gray-600">
+                                  <Users className="h-4 w-4 text-[#1a7a8a]" />
+                                  <span>{group.students?.length || 0} طالب</span>
+                                </div>
+                                {group.supervisorName && (
+                                  <div className="flex items-center gap-2 text-gray-600">
+                                    <FaChalkboardTeacher className="h-4 w-4 text-[#1a7a8a]" />
+                                    <span>المعلم: {group.supervisorName}</span>
                                   </div>
-                                  <p className="text-xs text-gray-500">
-                                    {event.dateLabel}: {new Date(event.date).toLocaleDateString('ar-EG')}
-                                  </p>
-                                  {event.subject && (
-                                    <p className="text-xs text-gray-400">
-                                      المادة: {event.subject}
-                                    </p>
-                                  )}
+                                )}
+                                <div className="text-gray-500 text-xs">
+                                  {group.gradeName}
                                 </div>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </TabsContent>
 
-                  <TabsContent value="assignments" className="mt-0">
-                    <div className="space-y-2 max-h-80 overflow-y-auto">
-                      {filteredEvents.length === 0 ? (
-                        <div className="text-center py-6">
-                          <FileCheck className="h-8 w-8 mx-auto text-gray-300 mb-2" />
-                          <p className="text-sm text-gray-500">لا توجد واجبات قادمة</p>
-                        </div>
-                      ) : (
-                        filteredEvents.map((event: any) => {
-                          const Icon = event.icon;
-                          return (
-                            <div
-                              key={event._id}
-                              className={`p-3 rounded-lg border ${event.bgColor} ${event.borderColor}`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <div className={`w-8 h-8 rounded-full ${event.iconBg} flex items-center justify-center shrink-0`}>
-                                  <Icon className={`h-4 w-4 ${event.textColor}`} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-[#001f24]">
-                                    {event.title}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {event.dateLabel}: {new Date(event.date).toLocaleDateString('ar-EG')}
-                                  </p>
-                                  {event.subject && (
-                                    <p className="text-xs text-gray-400">
-                                      المادة: {event.subject}
+                                {/* الإجازات */}
+                                {holidays.length > 0 && (
+                                  <div className="mt-2 p-2 bg-amber-50 rounded-lg border border-amber-200">
+                                    <p className="text-xs font-medium text-amber-700 flex items-center gap-1">
+                                      <Ban className="h-3 w-3" />
+                                      الإجازات القادمة:
                                     </p>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </TabsContent>
+                                    <div className="space-y-1 mt-1">
+                                      {holidays.map((holiday: any, idx: number) => (
+                                        <p key={idx} className="text-xs text-amber-600">
+                                          {new Date(holiday.date).toLocaleDateString('ar-EG')} - {holiday.reason}
+                                        </p>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
 
-                  <TabsContent value="exams" className="mt-0">
-                    <div className="space-y-2 max-h-80 overflow-y-auto">
-                      {filteredEvents.length === 0 ? (
-                        <div className="text-center py-6">
-                          <FileText className="h-8 w-8 mx-auto text-gray-300 mb-2" />
-                          <p className="text-sm text-gray-500">لا توجد امتحانات قادمة</p>
-                        </div>
-                      ) : (
-                        filteredEvents.map((event: any) => {
-                          const Icon = event.icon;
-                          return (
-                            <div
-                              key={event._id}
-                              className={`p-3 rounded-lg border ${event.bgColor} ${event.borderColor}`}
-                            >
-                              <div className="flex items-start gap-3">
-                                <div className={`w-8 h-8 rounded-full ${event.iconBg} flex items-center justify-center shrink-0`}>
-                                  <Icon className={`h-4 w-4 ${event.textColor}`} />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-sm font-medium text-[#001f24]">
-                                    {event.title}
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    {event.dateLabel}: {new Date(event.date).toLocaleDateString('ar-EG')}
-                                  </p>
-                                  {event.subject && (
-                                    <p className="text-xs text-gray-400">
-                                      المادة: {event.subject}
+                                {group.liveClasses && group.liveClasses.length > 0 && (
+                                  <div className="mt-3 pt-3 border-t border-gray-200">
+                                    <p className="text-xs font-medium text-[#1a7a8a] flex items-center gap-1 mb-2">
+                                      <PlayCircle className="h-3 w-3" />
+                                      الحصص المباشرة القادمة:
                                     </p>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
+                                    <div className="space-y-2">
+                                      {group.liveClasses.filter((lc: any) => lc.status === "live" || lc.status === "scheduled").map((lc: any) => (
+                                        <div key={lc._id} className="flex items-center justify-between p-2 bg-blue-50/50 rounded-lg border border-blue-100">
+                                          <div className="flex-1 min-w-0">
+                                            <p className="text-xs font-medium text-[#001f24] truncate">{lc.title}</p>
+                                            <p className="text-[10px] text-gray-500">
+                                              {new Date(lc.startTime).toLocaleString('ar-EG')}
+                                              {lc.status === "live" && (
+                                                <span className="text-green-600 font-medium mr-2">• مباشر الآن</span>
+                                              )}
+                                            </p>
+                                          </div>
+                                          <a
+                                            href={lc.link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={`px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 shrink-0 ${lc.status === "live"
+                                                ? "bg-green-600 hover:bg-green-700 text-white animate-pulse"
+                                                : "bg-[#1a7a8a] hover:bg-[#15707e] text-white"
+                                              }`}
+                                          >
+                                            <PlayCircle className="h-3 w-3" />
+                                            {lc.status === "live" ? "انضم الآن" : "عرض"}
+                                          </a>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
 
-            {/* ✅ Notifications - Dynamic from Database */}
-            <Card>
-              <CardHeader className="pb-2">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Bell className="h-4 w-4 text-[#1a7a8a]" />
-                    الإشعارات
-                    {stats.unread > 0 && (
-                      <Badge className="bg-red-500 text-white text-[10px]">
-                        {stats.unread} جديد
-                      </Badge>
-                    )}
-                  </CardTitle>
-                  <Link href="/student/notifications">
-                    <span className="text-xs text-[#1a7a8a] hover:underline cursor-pointer">
-                      عرض الكل
-                    </span>
-                  </Link>
+                                {/* زر عرض الجدول */}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="w-full mt-2 gap-2"
+                                  onClick={() => setShowSchedule(isScheduleOpen ? null : group._id)}
+                                >
+                                  <Calendar className="h-4 w-4" />
+                                  {isScheduleOpen ? "إخفاء الجدول" : "عرض الجدول"}
+                                  {isScheduleOpen ? (
+                                    <ChevronUp className="h-4 w-4" />
+                                  ) : (
+                                    <ChevronDown className="h-4 w-4" />
+                                  )}
+                                </Button>
+
+                                {/* عرض الجدول */}
+                                {isScheduleOpen && renderSchedule(group)}
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-2 max-h-56 overflow-y-auto">
-                {notificationList.length === 0 ? (
-                  <div className="text-center py-6">
-                    <Bell className="h-8 w-8 mx-auto text-gray-300 mb-2" />
-                    <p className="text-sm text-gray-500">لا توجد إشعارات</p>
-                  </div>
-                ) : (
-                  notificationList.slice(0, 5).map((notification: any) => {
-                    const Icon = getNotificationIcon(notification.type);
-                    const colorClasses = getNotificationColor(notification.type);
+              </div>
 
-                    return (
-                      <div
-                        key={notification._id}
-                        className={`p-2.5 rounded-lg border transition-colors ${notification.status === "read"
-                          ? "bg-white border-gray-200"
-                          : "bg-[#e0f5f7] border-[#1a7a8a]/20 shadow-sm"
-                          }`}
-                      >
-                        <div className="flex items-start gap-2.5">
-                          <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${colorClasses}`}>
-                            <Icon className="h-3.5 w-3.5" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium text-[#001f24] flex items-center gap-1.5">
-                              {notification.title}
-                              {notification.status === "sent" && (
-                                <span className="w-1.5 h-1.5 bg-red-500 rounded-full inline-block animate-pulse"></span>
-                              )}
-                              {notification.priority === "urgent" && (
-                                <Badge className="bg-red-500 text-white text-[8px] px-1 py-0">عاجل</Badge>
-                              )}
-                              {notification.priority === "high" && (
-                                <Badge className="bg-amber-500 text-white text-[8px] px-1 py-0">هام</Badge>
-                              )}
-                            </p>
-                            <p className="text-xs text-gray-500 truncate">
-                              {notification.message}
-                            </p>
-                            <p className="text-[10px] text-gray-400 mt-0.5">
-                              {getTimeAgo(notification.createdAt)}
-                            </p>
-                          </div>
+              {/* Right Column - 1/3 of page */}
+              <div className="space-y-6">
+                {/* Upcoming Events */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-[#1a7a8a]" />
+                        الأحداث القادمة
+                      </CardTitle>
+                      <Badge className="bg-[#1a7a8a] text-white">
+                        {stats.total}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {/* Tabs */}
+                    <Tabs defaultValue="all" className="w-full" onValueChange={(value) => setActiveEventTab(value as any)}>
+                      <TabsList className="grid grid-cols-3 mb-4">
+                        <TabsTrigger value="all">الكل</TabsTrigger>
+                        <TabsTrigger value="assignments">واجبات</TabsTrigger>
+                        <TabsTrigger value="exams">امتحانات</TabsTrigger>
+                      </TabsList>
+
+                      <TabsContent value="all" className="mt-0">
+                        <div className="space-y-2 max-h-80 overflow-y-auto">
+                          {filteredEvents.length === 0 ? (
+                            <div className="text-center py-6">
+                              <Calendar className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                              <p className="text-sm text-gray-500">لا توجد أحداث قادمة</p>
+                            </div>
+                          ) : (
+                            filteredEvents.map((event: any) => {
+                              const Icon = event.icon;
+                              return (
+                                <div
+                                  key={event._id}
+                                  className={`p-3 rounded-lg border ${event.bgColor} ${event.borderColor}`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className={`w-8 h-8 rounded-full ${event.iconBg} flex items-center justify-center shrink-0`}>
+                                      <Icon className={`h-4 w-4 ${event.textColor}`} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-sm font-medium text-[#001f24]">
+                                          {event.title}
+                                        </p>
+                                        <Badge className={`text-[10px] ${event.bgColor} ${event.textColor} border-0`}>
+                                          {event.label}
+                                        </Badge>
+                                      </div>
+                                      <p className="text-xs text-gray-500">
+                                        {event.dateLabel}: {new Date(event.date).toLocaleDateString('ar-EG')}
+                                      </p>
+                                      {event.subject && (
+                                        <p className="text-xs text-gray-400">
+                                          المادة: {event.subject}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
                         </div>
+                      </TabsContent>
+
+                      <TabsContent value="assignments" className="mt-0">
+                        <div className="space-y-2 max-h-80 overflow-y-auto">
+                          {filteredEvents.length === 0 ? (
+                            <div className="text-center py-6">
+                              <FileCheck className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                              <p className="text-sm text-gray-500">لا توجد واجبات قادمة</p>
+                            </div>
+                          ) : (
+                            filteredEvents.map((event: any) => {
+                              const Icon = event.icon;
+                              return (
+                                <div
+                                  key={event._id}
+                                  className={`p-3 rounded-lg border ${event.bgColor} ${event.borderColor}`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className={`w-8 h-8 rounded-full ${event.iconBg} flex items-center justify-center shrink-0`}>
+                                      <Icon className={`h-4 w-4 ${event.textColor}`} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-[#001f24]">
+                                        {event.title}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {event.dateLabel}: {new Date(event.date).toLocaleDateString('ar-EG')}
+                                      </p>
+                                      {event.subject && (
+                                        <p className="text-xs text-gray-400">
+                                          المادة: {event.subject}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </TabsContent>
+
+                      <TabsContent value="exams" className="mt-0">
+                        <div className="space-y-2 max-h-80 overflow-y-auto">
+                          {filteredEvents.length === 0 ? (
+                            <div className="text-center py-6">
+                              <FileText className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                              <p className="text-sm text-gray-500">لا توجد امتحانات قادمة</p>
+                            </div>
+                          ) : (
+                            filteredEvents.map((event: any) => {
+                              const Icon = event.icon;
+                              return (
+                                <div
+                                  key={event._id}
+                                  className={`p-3 rounded-lg border ${event.bgColor} ${event.borderColor}`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className={`w-8 h-8 rounded-full ${event.iconBg} flex items-center justify-center shrink-0`}>
+                                      <Icon className={`h-4 w-4 ${event.textColor}`} />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-[#001f24]">
+                                        {event.title}
+                                      </p>
+                                      <p className="text-xs text-gray-500">
+                                        {event.dateLabel}: {new Date(event.date).toLocaleDateString('ar-EG')}
+                                      </p>
+                                      {event.subject && (
+                                        <p className="text-xs text-gray-400">
+                                          المادة: {event.subject}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                  </CardContent>
+                </Card>
+
+                {/* ✅ Notifications - Dynamic from Database */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Bell className="h-4 w-4 text-[#1a7a8a]" />
+                        الإشعارات
+                        {stats.unread > 0 && (
+                          <Badge className="bg-red-500 text-white text-[10px]">
+                            {stats.unread} جديد
+                          </Badge>
+                        )}
+                      </CardTitle>
+                      <Link href="/student/notifications">
+                        <span className="text-xs text-[#1a7a8a] hover:underline cursor-pointer">
+                          عرض الكل
+                        </span>
+                      </Link>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2 max-h-56 overflow-y-auto">
+                    {notificationList.length === 0 ? (
+                      <div className="text-center py-6">
+                        <Bell className="h-8 w-8 mx-auto text-gray-300 mb-2" />
+                        <p className="text-sm text-gray-500">لا توجد إشعارات</p>
                       </div>
-                    );
-                  })
-                )}
-                {notificationList.length > 5 && (
-                  <Link href="/student/notifications">
-                    <p className="text-center text-xs text-[#1a7a8a] hover:underline py-1">
-                      عرض {notificationList.length - 5} إشعارات أخرى
-                    </p>
-                  </Link>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+                    ) : (
+                      notificationList.slice(0, 5).map((notification: any) => {
+                        const Icon = getNotificationIcon(notification.type);
+                        const colorClasses = getNotificationColor(notification.type);
+
+                        return (
+                          <div
+                            key={notification._id}
+                            className={`p-2.5 rounded-lg border transition-colors ${notification.status === "read"
+                              ? "bg-white border-gray-200"
+                              : "bg-[#e0f5f7] border-[#1a7a8a]/20 shadow-sm"
+                              }`}
+                          >
+                            <div className="flex items-start gap-2.5">
+                              <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${colorClasses}`}>
+                                <Icon className="h-3.5 w-3.5" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium text-[#001f24] flex items-center gap-1.5">
+                                  {notification.title}
+                                  {notification.status === "sent" && (
+                                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full inline-block animate-pulse"></span>
+                                  )}
+                                  {notification.priority === "urgent" && (
+                                    <Badge className="bg-red-500 text-white text-[8px] px-1 py-0">عاجل</Badge>
+                                  )}
+                                  {notification.priority === "high" && (
+                                    <Badge className="bg-amber-500 text-white text-[8px] px-1 py-0">هام</Badge>
+                                  )}
+                                </p>
+                                <p className="text-xs text-gray-500 truncate">
+                                  {notification.message}
+                                </p>
+                                <p className="text-[10px] text-gray-400 mt-0.5">
+                                  {getTimeAgo(notification.createdAt)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                    {notificationList.length > 5 && (
+                      <Link href="/student/notifications">
+                        <p className="text-center text-xs text-[#1a7a8a] hover:underline py-1">
+                          عرض {notificationList.length - 5} إشعارات أخرى
+                        </p>
+                      </Link>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

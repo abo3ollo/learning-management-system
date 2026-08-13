@@ -12,7 +12,6 @@ import {
   Calendar, CreditCard, AlertCircle, CheckCircle,
   Clock, User, Briefcase, FileText, Image,
   ChevronDown, Filter, RefreshCw, Link2, Link2Off,
-  UserPlus,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ar } from "date-fns/locale";
@@ -39,121 +38,50 @@ const roleMap: Record<string, { label: string; color: string }> = {
 export default function AdminApprovalsPage() {
   const [search, setSearch]             = useState("");
   const [roleFilter, setRoleFilter]     = useState("all");
-  const [paymentFilter, setPaymentFilter] = useState("all");
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [approvingId, setApprovingId]   = useState<string | null>(null);
   const [rejectingId, setRejectingId]   = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [showRejectInput, setShowRejectInput] = useState<string | null>(null);
-  const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
   const [expandedParent, setExpandedParent] = useState<string | null>(null);
-  const [receiptUrls, setReceiptUrls] = useState<Record<string, string>>({});
-  const [loadingReceipts, setLoadingReceipts] = useState<Record<string, boolean>>({});
+  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
 
   // ── Queries ───────────────────────────────────────────────────
-  const pendingUsers     = useQuery(api.user.admin.getPendingRegistrations);
-  const approvalRequests = useQuery(api.admin.approvals.listApprovalRequests);
-  const parentLinks      = useQuery(api.relationships.parentStudent.getAllParentStudentLinks);
-
+  // ✅ جلب المستخدمين المنتظرين فقط (status = "pending")
+  const pendingUsers = useQuery(api.user.admin.getPendingRegistrations);
+  
   const approveUser = useMutation(api.user.admin.approveUser);
   const rejectUser  = useMutation(api.user.admin.rejectUser);
-  const getFileUrl = useMutation(api.teacherMaterials.teacherMaterials.getFileUrl);
 
-  // ── Enrich users with approval/payment data ───────────────────
-  const users = (pendingUsers ?? []).map((user: any) => {
-    const request = (approvalRequests ?? []).find(
-      (r: any) => r.studentId === user._id || r.userId === user._id
-    );
-    
-    let linkedStudents: any[] = [];
-    let hasStudents = false;
-    
-    if (user.role === "parent" && parentLinks) {
-      const links = parentLinks.filter((link: any) => link.parentId === user._id);
-      linkedStudents = links.map((link: any) => ({
-        studentId: link.studentId,
-        studentName: link.student?.name || "غير معروف",
-        studentEmail: link.student?.email || "لا يوجد بريد",
-        student: link.student,
-        relationship: link.relationship || "ولي أمر",
-        isPrimary: link.isPrimary || false,
-      }));
-      hasStudents = linkedStudents.length > 0;
-    }
-    
-    // ✅ تحقق إذا كان receiptUrl هو storageId
-    const receiptValue = request?.paymentProof || null;
-    const isStorageId = receiptValue && 
-      !receiptValue.startsWith("http") && 
-      !receiptValue.startsWith("data:image") && 
-      !receiptValue.startsWith("/api/storage/");
-    
-    return {
-      ...user,
-      approvalRequest: request ?? null,
-      hasPaid: !!request?.paymentProof,
-      receiptUrl: receiptValue,
-      receiptStorageId: isStorageId ? receiptValue : null,
-      isStorageId: isStorageId,
-      requestedAt: request?.createdAt ?? null,
-      amount: request?.amount ?? null,
-      currency: request?.currency ?? null,
-      referenceNumber: request?.referenceNumber ?? null,
-      requestStatus: request?.status ?? null,
-      linkedStudents,
-      hasStudents,
-      displayEmail: user.email || "لا يوجد بريد",
-    };
-  });
-
-  // ✅ جلب رابط الإيصال عند اختيار مستخدم
-  useEffect(() => {
-    const fetchReceiptUrl = async () => {
-      if (!selectedUser?.receiptStorageId) return;
-      if (receiptUrls[selectedUser._id]) return;
-      
-      setLoadingReceipts(prev => ({ ...prev, [selectedUser._id]: true }));
-      try {
-        const url = await getFileUrl({ 
-          storageId: selectedUser.receiptStorageId as any 
-        });
-        if (url) {
-          setReceiptUrls(prev => ({ ...prev, [selectedUser._id]: url }));
-        }
-      } catch (error) {
-        console.error("Error fetching receipt URL:", error);
-      } finally {
-        setLoadingReceipts(prev => ({ ...prev, [selectedUser._id]: false }));
-      }
-    };
-
-    fetchReceiptUrl();
-  }, [selectedUser, getFileUrl, receiptUrls]);
-
-  // ── Filters ───────────────────────────────────────────────────
-  const filtered = users.filter((u: any) => {
+  // ── فلترة المستخدمين ──────────────────────────────────────────
+  const filtered = (pendingUsers ?? []).filter((u: any) => {
     const matchSearch =
       !search ||
       u.name?.toLowerCase().includes(search.toLowerCase()) ||
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
-      u.phoneNumber?.includes(search) ||
-      u.displayEmail?.toLowerCase().includes(search.toLowerCase());
+      u.phoneNumber?.includes(search);
     const matchRole = roleFilter === "all" || u.role === roleFilter;
-    const matchPayment =
-      paymentFilter === "all" ||
-      (paymentFilter === "paid"   &&  u.hasPaid) ||
-      (paymentFilter === "unpaid" && !u.hasPaid);
-    return matchSearch && matchRole && matchPayment;
+    return matchSearch && matchRole;
   });
 
-  const paidCount   = users.filter((u: any) =>  u.hasPaid).length;
-  const unpaidCount = users.filter((u: any) => !u.hasPaid).length;
+  // ── إحصائيات ──────────────────────────────────────────────────
+  const stats = {
+    total: pendingUsers?.length || 0,
+    students: pendingUsers?.filter((u: any) => u.role === "student").length || 0,
+    teachers: pendingUsers?.filter((u: any) => u.role === "teacher").length || 0,
+    parents: pendingUsers?.filter((u: any) => u.role === "parent").length || 0,
+  };
 
   // ── Actions ───────────────────────────────────────────────────
   const handleApprove = async (userId: string) => {
     setApprovingId(userId);
+    setActionSuccess(null);
     try {
-      await approveUser({ userId: userId as Id<"users"> });
+      await approveUser({ 
+        userId: userId as Id<"users">,
+        approveSubscription: false, // ✅ لا نفعّل الاشتراك هنا
+      });
+      setActionSuccess("تمت الموافقة على المستخدم بنجاح");
       if (selectedUser?._id === userId) setSelectedUser(null);
     } catch (err: any) {
       alert(err.message || "حدث خطأ");
@@ -164,13 +92,16 @@ export default function AdminApprovalsPage() {
 
   const handleReject = async (userId: string) => {
     setRejectingId(userId);
+    setActionSuccess(null);
     try {
       await rejectUser({
         userId: userId as Id<"users">,
         reason: rejectReason || undefined,
+        rejectSubscription: false, // ✅ لا نرفض الاشتراك هنا
       });
       setShowRejectInput(null);
       setRejectReason("");
+      setActionSuccess("تم رفض المستخدم");
       if (selectedUser?._id === userId) setSelectedUser(null);
     } catch (err: any) {
       alert(err.message || "حدث خطأ");
@@ -192,14 +123,6 @@ export default function AdminApprovalsPage() {
     );
   }
 
-  // ✅ الحصول على رابط الإيصال للعرض
-  const getReceiptDisplayUrl = (user: any) => {
-    if (user.isStorageId) {
-      return receiptUrls[user._id] || null;
-    }
-    return user.receiptUrl || null;
-  };
-
   return (
     <div className="min-h-screen bg-[#f7fafa]" dir="rtl">
       {/* Header */}
@@ -210,12 +133,12 @@ export default function AdminApprovalsPage() {
               <Users className="h-5 w-5" /> طلبات التسجيل
             </h1>
             <p className="text-[#a3ced6] text-sm mt-0.5">
-              مراجعة والموافقة على طلبات التسجيل الجديدة
+              مراجعة والموافقة على طلبات التسجيل الجديدة (بدون اشتراكات)
             </p>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs bg-white/15 text-white px-3 py-1.5 rounded-full border border-white/20">
-              {users.length} طلب معلق
+              {stats.total} طلب معلق
             </span>
           </div>
         </div>
@@ -224,11 +147,12 @@ export default function AdminApprovalsPage() {
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
 
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "إجمالي الطلبات", value: users.length,  icon: Users,        bg: "bg-blue-50",   color: "text-blue-500"   },
-            { label: "دفعوا الإيصال",  value: paidCount,    icon: CheckCircle,  bg: "bg-green-50",  color: "text-green-500"  },
-            { label: "لم يدفعوا بعد", value: unpaidCount,  icon: AlertCircle,  bg: "bg-amber-50",  color: "text-amber-500"  },
+            { label: "إجمالي الطلبات", value: stats.total, icon: Users, bg: "bg-blue-50", color: "text-blue-500" },
+            { label: "طلاب", value: stats.students, icon: GraduationCap, bg: "bg-indigo-50", color: "text-indigo-500" },
+            { label: "معلمين", value: stats.teachers, icon: BookOpen, bg: "bg-purple-50", color: "text-purple-500" },
+            { label: "أولياء أمور", value: stats.parents, icon: Users, bg: "bg-green-50", color: "text-green-500" },
           ].map((s) => {
             const Icon = s.icon;
             return (
@@ -244,6 +168,14 @@ export default function AdminApprovalsPage() {
             );
           })}
         </div>
+
+        {/* Success Message */}
+        {actionSuccess && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+            <CheckCircle className="h-4 w-4" />
+            {actionSuccess}
+          </div>
+        )}
 
         {/* Filters */}
         <div className="bg-white rounded-xl border border-[#c0c8c9] p-4 flex flex-wrap gap-3 items-center">
@@ -266,18 +198,9 @@ export default function AdminApprovalsPage() {
             <option value="teacher">معلم</option>
             <option value="parent">ولي أمر</option>
           </select>
-          <select
-            value={paymentFilter}
-            onChange={(e) => setPaymentFilter(e.target.value)}
-            className="border border-gray-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none"
-          >
-            <option value="all">جميع الطلبات</option>
-            <option value="paid">دفعوا الإيصال</option>
-            <option value="unpaid">لم يدفعوا</option>
-          </select>
-          {(search || roleFilter !== "all" || paymentFilter !== "all") && (
+          {(search || roleFilter !== "all") && (
             <button
-              onClick={() => { setSearch(""); setRoleFilter("all"); setPaymentFilter("all"); }}
+              onClick={() => { setSearch(""); setRoleFilter("all"); }}
               className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 border border-gray-200 px-3 py-2 rounded-lg"
             >
               <RefreshCw className="h-3.5 w-3.5" /> إعادة ضبط
@@ -298,12 +221,12 @@ export default function AdminApprovalsPage() {
                 </div>
               ) : (
                 <div className="divide-y divide-gray-50">
-                  {filtered.map((user: any ,index: number) => {
+                  {filtered.map((user: any, index: number) => {
                     const role = roleMap[user.role];
                     const isSelected = selectedUser?._id === user._id;
                     return (
                       <div
-                        key={`${user._id}-${index}`} 
+                        key={`${user._id}-${index}`}
                         onClick={() => setSelectedUser(isSelected ? null : user)}
                         className={`flex items-center gap-4 px-5 py-4 cursor-pointer transition-colors ${
                           isSelected ? "bg-[#e0f5f7]" : "hover:bg-[#f7fafa]"
@@ -323,34 +246,12 @@ export default function AdminApprovalsPage() {
                             <span className={`text-xs px-2 py-0.5 rounded-full ${role?.color ?? "bg-gray-100 text-gray-600"}`}>
                               {role?.label ?? user.role}
                             </span>
-                            {user.role === "parent" && (
-                              user.hasStudents ? (
-                                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                  <Link2 className="h-3 w-3" />
-                                  متصل بـ {user.linkedStudents.length} طالب
-                                </span>
-                              ) : (
-                                <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                  <Link2Off className="h-3 w-3" />
-                                  غير متصل
-                                </span>
-                              )
-                            )}
                           </div>
                           <p className="text-xs text-gray-400 truncate mt-0.5">
                             <Mail className="h-3 w-3 inline ml-1" />
-                            {user.displayEmail || user.email || "لا يوجد بريد"}
+                            {user.email || "لا يوجد بريد"}
                           </p>
                           <div className="flex items-center gap-3 mt-1">
-                            {user.hasPaid ? (
-                              <span className="flex items-center gap-1 text-xs text-green-600">
-                                <CheckCircle className="h-3 w-3" /> رفع إيصال
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1 text-xs text-amber-600">
-                                <AlertCircle className="h-3 w-3" /> لم يدفع
-                              </span>
-                            )}
                             <span className="text-xs text-gray-400">
                               {formatDate(user.createdAt)}
                             </span>
@@ -389,7 +290,6 @@ export default function AdminApprovalsPage() {
           {/* ── User detail panel ───────────────────────────────── */}
           {selectedUser && (
             <div className="lg:col-span-3 space-y-4">
-
               {/* Header card */}
               <div className="bg-white rounded-xl border border-[#c0c8c9] p-6">
                 <div className="flex items-start justify-between mb-4">
@@ -403,19 +303,10 @@ export default function AdminApprovalsPage() {
                         <span className={`text-xs px-2 py-0.5 rounded-full ${roleMap[selectedUser.role]?.color}`}>
                           {roleMap[selectedUser.role]?.label}
                         </span>
-                        {selectedUser.hasPaid ? (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3" /> دفع الإيصال
-                          </span>
-                        ) : (
-                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full flex items-center gap-1">
-                            <AlertCircle className="h-3 w-3" /> لم يدفع بعد
-                          </span>
-                        )}
                       </div>
                       <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
                         <Mail className="h-3 w-3" />
-                        {selectedUser.displayEmail || selectedUser.email || "لا يوجد بريد"}
+                        {selectedUser.email || "لا يوجد بريد"}
                       </p>
                       <p className="text-xs text-gray-400">
                         تاريخ التسجيل: {formatDateTime(selectedUser.createdAt)}
@@ -430,73 +321,6 @@ export default function AdminApprovalsPage() {
                   </button>
                 </div>
 
-                {/* Parent students */}
-                {selectedUser.role === "parent" && (
-                  <div className="mb-4 p-3 rounded-xl border">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {selectedUser.hasStudents ? (
-                          <>
-                            <Link2 className="h-5 w-5 text-green-500" />
-                            <span className="text-sm font-medium text-green-700">
-                              متصل بـ {selectedUser.linkedStudents.length} طالب
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <Link2Off className="h-5 w-5 text-red-500" />
-                            <span className="text-sm font-medium text-red-700">
-                              غير متصل بأي طالب
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      {selectedUser.hasStudents && (
-                        <button
-                          onClick={() => toggleExpandParent(selectedUser._id)}
-                          className="text-xs text-[#1a7a8a] hover:underline flex items-center gap-1"
-                        >
-                          {expandedParent === selectedUser._id ? "إخفاء" : "عرض الطلاب"}
-                          <ChevronDown className={`h-3 w-3 transition-transform ${expandedParent === selectedUser._id ? "rotate-180" : ""}`} />
-                        </button>
-                      )}
-                    </div>
-                    
-                    {expandedParent === selectedUser._id && selectedUser.hasStudents && (
-                      <div className="mt-3 space-y-2 border-t pt-3">
-                        {selectedUser.linkedStudents.map((student: any, idx: number) => (
-                          <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-blue-100 flex items-center justify-center">
-                                <span className="text-blue-600 font-bold text-xs">
-                                  {student.studentName?.charAt(0) || "ط"}
-                                </span>
-                              </div>
-                              <div>
-                                <p className="text-sm font-medium text-[#001f24]">{student.studentName}</p>
-                                <p className="text-xs text-gray-400 flex items-center gap-1">
-                                  <Mail className="h-3 w-3" />
-                                  {student.studentEmail || student.student?.email || "لا يوجد بريد"}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
-                                {student.relationship}
-                              </span>
-                              {student.isPrimary && (
-                                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
-                                  رئيسي
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
                 {/* Action buttons */}
                 <div className="flex gap-3">
                   <button
@@ -508,13 +332,13 @@ export default function AdminApprovalsPage() {
                       ? <Loader2 className="h-4 w-4 animate-spin" />
                       : <Check className="h-4 w-4" />
                     }
-                    موافقة على الطلب
+                    موافقة على التسجيل
                   </button>
                   <button
                     onClick={() => setShowRejectInput(selectedUser._id)}
                     className="flex-1 flex items-center justify-center gap-2 bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm"
                   >
-                    <X className="h-4 w-4" /> رفض الطلب
+                    <X className="h-4 w-4" /> رفض التسجيل
                   </button>
                 </div>
 
@@ -563,7 +387,7 @@ export default function AdminApprovalsPage() {
                     <div>
                       <p className="text-xs text-gray-400">البريد الإلكتروني</p>
                       <p className="text-sm text-[#001f24] font-medium">
-                        {selectedUser.displayEmail || selectedUser.email || "لا يوجد بريد"}
+                        {selectedUser.email || "لا يوجد بريد"}
                       </p>
                     </div>
                   </div>
@@ -592,7 +416,7 @@ export default function AdminApprovalsPage() {
                 </div>
               </div>
 
-              {/* Role-specific details */}
+              {/* Role-specific details - مختصرة */}
               {selectedUser.role === "student" && (
                 <div className="bg-white rounded-xl border border-[#c0c8c9] p-5">
                   <h3 className="text-sm font-bold text-[#001f24] mb-4 flex items-center gap-2">
@@ -601,10 +425,9 @@ export default function AdminApprovalsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     {[
                       { label: "تاريخ الميلاد", value: formatDate(selectedUser.birthDate), icon: Calendar },
-                      { label: "الجنس",          value: selectedUser.gender === "male" ? "ذكر" : selectedUser.gender === "female" ? "أنثى" : "—", icon: User },
-                      { label: "الصف",           value: selectedUser.grade ?? "غير محدد", icon: GraduationCap },
-                      { label: "رقم الطالب",     value: selectedUser.studentId ?? "سيتم توليده", icon: FileText },
-                      { label: "البريد الإلكتروني", value: selectedUser.displayEmail || selectedUser.email || "لا يوجد بريد", icon: Mail },
+                      { label: "الجنس", value: selectedUser.gender === "male" ? "ذكر" : selectedUser.gender === "female" ? "أنثى" : "—", icon: User },
+                      { label: "الصف", value: selectedUser.grade ?? "غير محدد", icon: GraduationCap },
+                      { label: "رقم الطالب", value: selectedUser.studentId ?? "سيتم توليده", icon: FileText },
                     ].map((item) => {
                       const Icon = item.icon;
                       return (
@@ -630,11 +453,10 @@ export default function AdminApprovalsPage() {
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     {[
-                      { label: "التخصص",       value: selectedUser.specialization ?? "—" },
-                      { label: "المؤهل",        value: selectedUser.qualification  ?? "—" },
+                      { label: "التخصص", value: selectedUser.specialization ?? "—" },
+                      { label: "المؤهل", value: selectedUser.qualification ?? "—" },
                       { label: "سنوات الخبرة", value: selectedUser.experience != null ? `${selectedUser.experience} سنة` : "—" },
-                      { label: "رقم المعلم",   value: selectedUser.teacherId ?? "سيتم توليده" },
-                      { label: "البريد الإلكتروني", value: selectedUser.displayEmail || selectedUser.email || "لا يوجد بريد", icon: Mail },
+                      { label: "رقم المعلم", value: selectedUser.teacherId ?? "سيتم توليده" },
                     ].map((item) => (
                       <div key={item.label}>
                         <p className="text-xs text-gray-400">{item.label}</p>
@@ -642,18 +464,6 @@ export default function AdminApprovalsPage() {
                       </div>
                     ))}
                   </div>
-                  {selectedUser.subjects && selectedUser.subjects.length > 0 && (
-                    <div className="mt-4">
-                      <p className="text-xs text-gray-400 mb-2">المواد التي يدرسها</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedUser.subjects.map((s: string) => (
-                          <span key={s} className="text-xs bg-purple-50 text-purple-700 px-2.5 py-1 rounded-full">
-                            {s}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
@@ -664,11 +474,9 @@ export default function AdminApprovalsPage() {
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
                     {[
-                      { label: "صلة القرابة",    value: selectedUser.relationship ?? "—"  },
-                      { label: "المسمى الوظيفي", value: selectedUser.jobTitle     ?? "—"  },
-                      { label: "هاتف العمل",     value: selectedUser.workPhone    ?? "—"  },
-                      { label: "الرقم القومي",   value: selectedUser.nationalId   ?? "—"  },
-                      { label: "البريد الإلكتروني", value: selectedUser.displayEmail || selectedUser.email || "لا يوجد بريد", icon: Mail },
+                      { label: "صلة القرابة", value: selectedUser.relationship ?? "—" },
+                      { label: "المسمى الوظيفي", value: selectedUser.jobTitle ?? "—" },
+                      { label: "هاتف العمل", value: selectedUser.workPhone ?? "—" },
                     ].map((item) => (
                       <div key={item.label}>
                         <p className="text-xs text-gray-400">{item.label}</p>
@@ -678,128 +486,10 @@ export default function AdminApprovalsPage() {
                   </div>
                 </div>
               )}
-
-              {/* Payment / Receipt section */}
-              <div className="bg-white rounded-xl border border-[#c0c8c9] p-5">
-                <h3 className="text-sm font-bold text-[#001f24] mb-4 flex items-center gap-2">
-                  <CreditCard className="h-4 w-4 text-[#1a7a8a]" /> حالة الدفع
-                </h3>
-
-                {selectedUser.hasPaid ? (
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between p-3 bg-green-50 border border-green-100 rounded-xl">
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
-                        <div>
-                          <p className="text-sm font-semibold text-green-700">تم رفع الإيصال</p>
-                          {selectedUser.requestedAt && (
-                            <p className="text-xs text-green-600 mt-0.5">
-                              {formatDateTime(selectedUser.requestedAt)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      {selectedUser.amount != null && selectedUser.amount > 0 && (
-                        <div className="text-left">
-                          <p className="text-lg font-bold text-green-700">{selectedUser.amount}</p>
-                          <p className="text-xs text-green-600">{selectedUser.currency || "ج.م"}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {selectedUser.referenceNumber && (
-                      <div className="p-3 bg-gray-50 rounded-xl border border-gray-200">
-                        <p className="text-xs text-gray-400">رقم المرجع</p>
-                        <p className="text-sm font-medium text-[#001f24]">{selectedUser.referenceNumber}</p>
-                      </div>
-                    )}
-
-                    {/* ✅ عرض الإيصال مع دعم storageId */}
-                    {selectedUser.receiptUrl && (
-                      <div>
-                        <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
-                          <Image className="h-3.5 w-3.5" /> صورة الإيصال
-                        </p>
-                        {loadingReceipts[selectedUser._id] ? (
-                          <div className="flex items-center justify-center h-48 bg-gray-100 rounded-xl">
-                            <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
-                          </div>
-                        ) : (
-                          <div
-                            className="relative rounded-xl overflow-hidden border border-gray-200 cursor-pointer group"
-                            onClick={() => {
-                              const displayUrl = getReceiptDisplayUrl(selectedUser);
-                              if (displayUrl) setImageModalUrl(displayUrl);
-                            }}
-                          >
-                            <img
-                              src={getReceiptDisplayUrl(selectedUser) || "/images/no-image.png"}
-                              alt="إيصال الدفع"
-                              className="w-full h-48 object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src = "/images/no-image.png";
-                              }}
-                            />
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
-                              <Eye className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </div>
-                          </div>
-                        )}
-                        {getReceiptDisplayUrl(selectedUser) && (
-                          <button
-                            onClick={() => {
-                              const displayUrl = getReceiptDisplayUrl(selectedUser);
-                              if (displayUrl) setImageModalUrl(displayUrl);
-                            }}
-                            className="w-full mt-2 flex items-center justify-center gap-2 text-sm text-[#1a7a8a] hover:text-[#001f24] border border-[#1a7a8a]/20 hover:border-[#1a7a8a] py-2 rounded-xl transition-colors"
-                          >
-                            <Eye className="h-4 w-4" /> عرض بالحجم الكامل
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-100 rounded-xl">
-                    <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
-                    <div>
-                      <p className="text-sm font-semibold text-amber-700">لم يتم رفع إيصال الدفع</p>
-                      <p className="text-xs text-amber-600 mt-0.5">
-                        يمكنك الموافقة على الطلب بدون إيصال إذا أردت
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </div>
       </div>
-
-      {/* ── Image modal ──────────────────────────────────────────── */}
-      {imageModalUrl && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setImageModalUrl(null)}
-        >
-          <div className="relative max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
-            <button
-              onClick={() => setImageModalUrl(null)}
-              className="absolute -top-10 left-0 text-white hover:text-gray-300 flex items-center gap-2 text-sm"
-            >
-              <X className="h-5 w-5" /> إغلاق
-            </button>
-            <img
-              src={imageModalUrl}
-              alt="إيصال الدفع"
-              className="w-full rounded-2xl shadow-2xl"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = "/images/no-image.png";
-              }}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,6 +1,8 @@
+// app/(pages)/(roles)/admin/subscriptions/page.tsx
+
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -86,13 +88,13 @@ const SubscriptionStatusBadge = ({ status }: { status: string }) => {
     case "active":
       return (
         <Badge className="bg-green-100 text-green-700 border-green-200">
-          نشط
+          ✅ نشط
         </Badge>
       );
     case "awaiting_approval":
       return (
         <Badge className="bg-amber-100 text-amber-700 border-amber-200">
-          في انتظار الموافقة
+          ⏳ في انتظار الموافقة
         </Badge>
       );
     case "pending":
@@ -103,7 +105,9 @@ const SubscriptionStatusBadge = ({ status }: { status: string }) => {
       );
     case "rejected":
       return (
-        <Badge className="bg-red-100 text-red-700 border-red-200">مرفوض</Badge>
+        <Badge className="bg-red-100 text-red-700 border-red-200">
+          ❌ مرفوض
+        </Badge>
       );
     default:
       return <Badge variant="outline">غير محدد</Badge>;
@@ -129,18 +133,19 @@ export default function AdminSubscriptionsPage() {
   const [expandedUser, setExpandedUser] = useState<string | null>(null);
 
   // ── Queries ───────────────────────────────────────────────────
+  // ✅ جلب جميع المستخدمين مع بيانات الاشتراك (جميع الحالات)
   const usersWithSubscription = useQuery(
-    api.payments.gradePricing.getUsersWithSubscription,
+    api.payments.gradePricing.getUsersWithSubscription
   );
   const pricing = useQuery(api.payments.gradePricing.getAllPricing);
   const grades = useQuery(api.grades.grades.getActiveGrades);
 
   const setGradePrice = useMutation(api.payments.gradePricing.setGradePrice);
   const toggleGradePrice = useMutation(
-    api.payments.gradePricing.toggleGradePrice,
+    api.payments.gradePricing.toggleGradePrice
   );
 
-  // ✅ معالجة تغيير الـ Select - تقبل string | null
+  // ✅ معالجة تغيير الـ Select
   const handleGradeChange = (value: string | null) => {
     setPriceData({ ...priceData, gradeId: value || "" });
   };
@@ -207,21 +212,21 @@ export default function AdminSubscriptionsPage() {
     setIsPriceDialogOpen(true);
   };
 
-  // ── Filters ───────────────────────────────────────────────────
-  // ✅ عرض الطلاب وأولياء الأمور فقط (مع جميع حالات الدفع)
+  // ── عرض المستخدمين (الطلاب وأولياء الأمور فقط) ──────────────
   const filteredUsers = usersWithSubscription?.filter((u: any) => {
-    // ✅ فقط الطلاب وأولياء الأمور (نستثني المعلمين والمشرفين)
     const isStudentOrParent = u.role === "student" || u.role === "parent";
     
-    // ✅ البحث
     const matchSearch =
       !searchQuery ||
       u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       u.email?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchRole = selectedRole === "all" || u.role === selectedRole;
+    
+    // ✅ حالة الدفع من الداتا
+    const paymentStatus = u.paymentStatus || "unpaid";
     const matchStatus =
-      selectedStatus === "all" || u.paymentStatus === selectedStatus;
+      selectedStatus === "all" || paymentStatus === selectedStatus;
     
     return isStudentOrParent && matchSearch && matchRole && matchStatus;
   });
@@ -434,7 +439,7 @@ export default function AdminSubscriptionsPage() {
             <TabsTrigger value="pricing">أسعار الصفوف</TabsTrigger>
           </TabsList>
 
-          {/* Tab: Users - عرض الطلاب وأولياء الأمور فقط */}
+          {/* Tab: Users */}
           <TabsContent value="users" className="mt-4">
             <div className="bg-white rounded-xl border border-[#c0c8c9] overflow-hidden">
               {filteredUsers?.length === 0 ? (
@@ -465,9 +470,9 @@ export default function AdminSubscriptionsPage() {
                         <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">
                           المبلغ
                         </th>
-                        <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">
+                        {/* <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 whitespace-nowrap">
                           الإجراءات
-                        </th>
+                        </th> */}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
@@ -476,7 +481,6 @@ export default function AdminSubscriptionsPage() {
                           key={u._id}
                           className="hover:bg-[#f7fafa] transition-colors"
                         >
-                          {/* المستخدم */}
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <div className="w-8 h-8 rounded-full bg-[#e0f5f7] flex items-center justify-center text-[#1a7a8a] font-bold text-sm shrink-0">
@@ -501,27 +505,22 @@ export default function AdminSubscriptionsPage() {
                               </div>
                             </div>
                           </td>
-                          {/* الدور */}
                           <td className="px-4 py-3">
                             <span className="text-sm capitalize">
                               {u.role === "student" ? "طالب" : "ولي أمر"}
                             </span>
                           </td>
-                          {/* الصف */}
                           <td className="px-4 py-3">
                             <span className="text-sm">{u.gradeName}</span>
                           </td>
-                          {/* حالة الدفع */}
                           <td className="px-4 py-3">
                             <PaymentStatusBadge status={u.paymentStatus} />
                           </td>
-                          {/* الاشتراك */}
                           <td className="px-4 py-3">
                             <SubscriptionStatusBadge
                               status={u.subscriptionStatus}
                             />
                           </td>
-                          {/* المبلغ */}
                           <td className="px-4 py-3">
                             {u.gradePrice ? (
                               <span className="text-sm font-medium text-[#1a7a8a]">
@@ -531,12 +530,11 @@ export default function AdminSubscriptionsPage() {
                               <span className="text-sm text-gray-400">—</span>
                             )}
                           </td>
-                          {/* الإجراءات */}
-                          <td className="px-4 py-3">
+                          {/* <td className="px-4 py-3">
                             <button
                               onClick={() =>
                                 setExpandedUser(
-                                  expandedUser === u._id ? null : u._id,
+                                  expandedUser === u._id ? null : u._id
                                 )
                               }
                               className="p-1.5 hover:bg-gray-100 rounded-lg"
@@ -552,14 +550,13 @@ export default function AdminSubscriptionsPage() {
                                 <ChevronDown className="h-4 w-4 text-gray-400" />
                               )}
                             </button>
-                          </td>
+                          </td> */}
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               )}
-              {/* Footer */}
               <div className="px-5 py-3 border-t border-gray-50 bg-[#f7fafa]">
                 <p className="text-xs text-gray-400">
                   عرض {filteredUsers?.length || 0} مستخدم
@@ -611,7 +608,11 @@ export default function AdminSubscriptionsPage() {
                           {p.price} {p.currency}
                         </span>
                         <span
-                          className={`text-xs px-2 py-0.5 rounded-full ${p.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}
+                          className={`text-xs px-2 py-0.5 rounded-full ${
+                            p.isActive
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-500"
+                          }`}
                         >
                           {p.isActive ? "نشط" : "غير نشط"}
                         </span>

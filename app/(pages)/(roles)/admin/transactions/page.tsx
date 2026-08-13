@@ -124,10 +124,10 @@ export default function AdminTransactionsPage() {
             className="px-4 py-2 border rounded-lg text-sm bg-white"
           >
             <option value="all">جميع الحالات</option>
-            <option value="pending">قيد المراجعة</option>
-            <option value="completed">مكتمل</option>
-            <option value="refunded">مرتجع</option>
-            <option value="failed">فاشل</option>
+            <option value="pending">⏳ قيد المراجعة</option>
+            <option value="completed">✅ مكتمل</option>
+            <option value="refunded">↩️ مرتجع</option>
+            <option value="failed">❌ فاشل</option>
           </select>
         </div>
 

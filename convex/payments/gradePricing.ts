@@ -154,19 +154,19 @@ export const toggleGradePrice = mutation({
   },
 });
 
-// ✅ جلب جميع المستخدمين مع حالة الاشتراك
+// ✅ جلب جميع المستخدمين مع حالة الاشتراك (معدل)
 export const getUsersWithSubscription = query({
   args: {},
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    const user = await ctx.db
+    const admin = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .first();
 
-    if (!user || user.role !== "admin") {
+    if (!admin || admin.role !== "admin") {
       throw new Error("مطلوب صلاحيات مشرف");
     }
 
@@ -205,24 +205,38 @@ export const getUsersWithSubscription = query({
           gradePrice = pricing.find((p) => p.gradeId === u.gradeId);
         }
 
-        // ✅ تحديد حالة الاشتراك
+        // ✅ تحديد حالة الاشتراك بناءً على subscriptionStatus الفعلي
         let subscriptionStatus = u.subscriptionStatus || "pending";
         let paymentStatus = "unpaid";
 
-        // ✅ التحقق من وجود دفعة مكتملة
-        const hasCompletedPayment = userPayments.some(
-          (p) => p.status === "completed"
-        );
-        const hasPendingPayment = userPayments.some(
-          (p) => p.status === "pending"
-        );
-
-        if (hasCompletedPayment) {
+        // ✅ إذا كان الاشتراك نشط → مدفوع
+        if (subscriptionStatus === "active") {
           paymentStatus = "paid";
-          subscriptionStatus = "active";
-        } else if (hasPendingPayment) {
+        }
+        // ✅ إذا كان في انتظار الموافقة → قيد المراجعة
+        else if (subscriptionStatus === "awaiting_approval") {
           paymentStatus = "pending";
-          subscriptionStatus = "awaiting_approval";
+        }
+        // ✅ إذا كان مرفوض → غير مدفوع
+        else if (subscriptionStatus === "rejected") {
+          paymentStatus = "unpaid";
+        }
+        // ✅ إذا كان pending → نتحقق من المدفوعات
+        else if (subscriptionStatus === "pending") {
+          const hasCompletedPayment = userPayments.some(
+            (p) => p.status === "completed"
+          );
+          const hasPendingPayment = userPayments.some(
+            (p) => p.status === "pending"
+          );
+
+          if (hasCompletedPayment) {
+            paymentStatus = "paid";
+            subscriptionStatus = "active";
+          } else if (hasPendingPayment) {
+            paymentStatus = "pending";
+            subscriptionStatus = "awaiting_approval";
+          }
         }
 
         // ✅ جلب اسم الصف
@@ -240,7 +254,7 @@ export const getUsersWithSubscription = query({
           subscriptionStatus,
           paymentStatus,
           gradePrice: gradePrice?.price || null,
-          gradePriceCurrency: gradePrice?.currency || "SAR",
+          gradePriceCurrency: gradePrice?.currency || "EGP",
           approvalRequest,
           hasPayment: userPayments.length > 0,
           payments: userPayments,

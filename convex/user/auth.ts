@@ -346,6 +346,61 @@ export const getPendingUsers = query({
   },
 });
 
+
+// ✅ التحقق من حالة الاشتراك للطالب
+export const getStudentSubscriptionStatus = query({
+  args: {
+    studentId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!user) throw new Error("المستخدم غير موجود");
+
+    // ✅ التحقق من أن المستخدم هو الطالب نفسه أو أدمن
+    if (user._id !== args.studentId && user.role !== "admin") {
+      throw new Error("غير مصرح");
+    }
+
+    const student = await ctx.db.get(args.studentId);
+    if (!student) throw new Error("الطالب غير موجود");
+
+    // ✅ التحقق من حالة الاشتراك
+    // القيم المسموحة: pending | awaiting_approval | active | rejected | expired
+    const hasActiveSubscription = student.subscriptionStatus === "active";
+    
+    // ✅ التحقق من وجود طلب موافقة معلق (awaiting_approval)
+    const hasPendingApproval = 
+      student.subscriptionStatus === "awaiting_approval" || 
+      student.subscriptionStatus === "pending";
+
+    // ✅ التحقق من وجود طلب موافقة في جدول approvalRequests
+    const approvalRequest = await ctx.db
+      .query("approvalRequests")
+      .withIndex("by_student", (q) => q.eq("studentId", student._id))
+      .first();
+
+    const hasRequestPending = approvalRequest?.status === "pending";
+
+    return {
+      hasActiveSubscription,
+      hasPendingApproval: hasPendingApproval || hasRequestPending,
+      subscriptionStatus: student.subscriptionStatus || null,
+      // ✅ إضافة معلومات إضافية مفيدة
+      isRejected: student.subscriptionStatus === "rejected",
+      isExpired: student.subscriptionStatus === "expired",
+    };
+  },
+});
+
+
+
 export const auth = {
   createUser,
   getCurrentUser,
@@ -354,4 +409,5 @@ export const auth = {
   updateUserStatus,
   updateSubscriptionStatus,
   getPendingUsers,
+  getStudentSubscriptionStatus, // ✅ تأكد من إضافتها هنا
 };

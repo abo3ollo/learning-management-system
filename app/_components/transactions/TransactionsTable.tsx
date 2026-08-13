@@ -167,7 +167,7 @@ export function TransactionsTable({
                       <Eye className="h-4 w-4" />
                     </button>
                     
-                    {showActions && transaction.status === "pending" && onStatusChange && (
+                    {/* {showActions && transaction.status === "pending" && onStatusChange && (
                       <>
                         <button
                           onClick={() => onStatusChange(transaction._id, "completed")}
@@ -184,7 +184,7 @@ export function TransactionsTable({
                           <XCircle className="h-4 w-4" />
                         </button>
                       </>
-                    )}
+                    )} */}
                   </div>
                 </td>
               </tr>

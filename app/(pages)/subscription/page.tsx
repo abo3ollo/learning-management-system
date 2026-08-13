@@ -1,6 +1,9 @@
 // app/subscription/page.tsx
 "use client";
 
+export const dynamic = 'force-dynamic';
+
+import { Suspense } from "react";
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
@@ -14,7 +17,8 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 
-export default function SubscriptionPage() {
+// ── المكون الداخلي الذي يستخدم useSearchParams ──────────────
+function SubscriptionContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoaded } = useUser();
@@ -113,7 +117,6 @@ export default function SubscriptionPage() {
 
       const result = await response.json();
       
-      // ✅ نرجع storageId فقط
       return result.storageId;
     } catch (error) {
       console.error("Upload error:", error);
@@ -138,20 +141,17 @@ export default function SubscriptionPage() {
     setError(null);
 
     try {
-      // ✅ 1. رفع الملف → نرجع storageId
       const storageId = await uploadFileToStorage(receiptFile);
 
-      // ✅ 2. إنشاء طلب الموافقة مع storageId
       const approvalResult = await createApprovalRequest({
         studentId: (childId || userId) as Id<"users">,
         gradeId: gradeId as Id<"grades">,
-        paymentProof: storageId, // ✅ نخزن storageId مش الرابط
+        paymentProof: storageId,
         amount: gradePrice?.price ?? 0,
         currency: gradePrice?.currency ?? "EGP",
         referenceNumber: referenceNumber || undefined,
       });
 
-      // ✅ 3. استخراج referenceId
       let referenceId: string;
       if (typeof approvalResult === 'string') {
         referenceId = approvalResult;
@@ -161,7 +161,6 @@ export default function SubscriptionPage() {
         referenceId = String(approvalResult);
       }
 
-      // ✅ 4. إنشاء معاملة مالية
       const studentId = (childId || userId) as Id<"users">;
       
       const transactionData: any = {
@@ -175,7 +174,7 @@ export default function SubscriptionPage() {
         referenceType: "subscription",
         description: `Subscription to platform - Grade ${gradeInfo?.name || ''}`,
         descriptionAr: `اشتراك في المنصة - ${gradeInfo?.name || ''}`,
-        paymentProof: storageId, // ✅ نخزن storageId
+        paymentProof: storageId,
       };
 
       if (childId) {
@@ -255,7 +254,6 @@ export default function SubscriptionPage() {
             </div>
 
             <div className="p-6 space-y-5">
-              {/* Child Info */}
               {childId && childName && (
                 <div className="bg-blue-50 border border-blue-200 rounded-2xl px-5 py-3 flex items-center gap-3">
                   <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
@@ -270,7 +268,6 @@ export default function SubscriptionPage() {
                 </div>
               )}
 
-              {/* Price */}
               <div className="bg-[#e0f5f7] border border-[#b0dde4] rounded-2xl px-5 py-4 flex items-center justify-between">
                 <div className="text-right">
                   <p className="text-xs text-[#1a7a8a] font-medium">سعر الاشتراك</p>
@@ -285,7 +282,6 @@ export default function SubscriptionPage() {
                 </div>
               </div>
 
-              {/* Instructions */}
               <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-4 text-right">
                 <p className="text-sm font-semibold text-amber-800 mb-1">تعليمات الدفع</p>
                 <p className="text-xs text-amber-700 leading-relaxed">
@@ -293,7 +289,6 @@ export default function SubscriptionPage() {
                 </p>
               </div>
 
-              {/* Reference Number */}
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 block text-right">
                   رقم المرجع <span className="text-gray-400 text-xs">(اختياري)</span>
@@ -307,7 +302,6 @@ export default function SubscriptionPage() {
                 />
               </div>
 
-              {/* Upload Receipt */}
               <div>
                 <label className="text-sm font-semibold text-gray-700 block mb-2 text-right">
                   صورة الإيصال <span className="text-red-500">*</span>
@@ -357,7 +351,6 @@ export default function SubscriptionPage() {
                 )}
               </div>
 
-              {/* Error */}
               {error && (
                 <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-100 px-4 py-3 rounded-xl text-sm">
                   <AlertCircle className="h-4 w-4 shrink-0" />
@@ -365,7 +358,6 @@ export default function SubscriptionPage() {
                 </div>
               )}
 
-              {/* Info Message */}
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                 <p className="text-sm text-amber-700 flex items-start gap-2">
                   <span className="text-lg">⏳</span>
@@ -375,7 +367,6 @@ export default function SubscriptionPage() {
                 </p>
               </div>
 
-              {/* Actions */}
               <div className="flex gap-3 pt-1">
                 <button
                   type="button"
@@ -409,5 +400,19 @@ export default function SubscriptionPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// ── الصفحة الرئيسية مع Suspense ──────────────────────────────
+export default function SubscriptionPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#f7fafa]">
+        <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
+        <span className="mr-3 text-gray-500">جاري التحميل...</span>
+      </div>
+    }>
+      <SubscriptionContent />
+    </Suspense>
   );
 }

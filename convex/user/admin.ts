@@ -19,23 +19,15 @@ export const getPendingRegistrations = query({
       throw new Error("مطلوب صلاحيات مشرف");
     }
 
-    // ✅ جلب المستخدمين المنتظرين (pending أو awaiting_approval)
+    // ✅ جلب المستخدمين المنتظرين (pending فقط - بدون اشتراكات)
     const pendingUsers = await ctx.db
       .query("users")
       .withIndex("by_status", (q) => q.eq("status", "pending"))
       .collect();
 
-    const awaitingUsers = await ctx.db
-      .query("users")
-      .filter((q) => q.eq(q.field("subscriptionStatus"), "awaiting_approval"))
-      .collect();
-
-    // دمج القائمتين
-    const allPending = [...pendingUsers, ...awaitingUsers];
-
     // ✅ جلب طلبات الموافقة لكل مستخدم ومعلومات إضافية
     const usersWithRequests = await Promise.all(
-      allPending.map(async (user) => {
+      pendingUsers.map(async (user) => {
         // جلب طلب الموافقة إذا وجد
         const approvalRequest = await ctx.db
           .query("approvalRequests")
@@ -67,7 +59,7 @@ export const getPendingRegistrations = query({
                   ...student,
                   relationship: link.relationship,
                   isPrimary: link.isPrimary,
-                  email: student.email || "لا يوجد بريد", // ✅ التأكد من وجود البريد
+                  email: student.email || "لا يوجد بريد",
                 };
               }
               return null;
@@ -85,8 +77,8 @@ export const getPendingRegistrations = query({
           amount: approvalRequest?.amount || null,
           currency: approvalRequest?.currency || null,
           referenceNumber: approvalRequest?.referenceNumber || null,
-          children, // ✅ إضافة الأطفال
-          email: user.email || "لا يوجد بريد", // ✅ التأكد من وجود البريد
+          children,
+          email: user.email || "لا يوجد بريد",
           childrenCount: children.length,
         };
       })
@@ -97,7 +89,53 @@ export const getPendingRegistrations = query({
   },
 });
 
-// ✅ الموافقة على مستخدم
+// ✅ جلب جميع طلبات الاشتراكات مع بيانات المستخدمين (جميع الحالات)
+export const getAllSubscriptionRequests = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("غير مصرح");
+
+    const admin = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
+      .first();
+
+    if (!admin || admin.role !== "admin") {
+      throw new Error("مطلوب صلاحيات مشرف");
+    }
+
+    // ✅ جلب جميع طلبات الموافقة
+    const approvalRequests = await ctx.db
+      .query("approvalRequests")
+      .order("desc")
+      .collect();
+
+    // ✅ جلب المستخدمين المرتبطين
+    const usersWithDetails = await Promise.all(
+      approvalRequests.map(async (request) => {
+        const user = await ctx.db.get(request.studentId);
+        return {
+          ...request,
+          user: user || null,
+          studentName: user?.name || "غير معروف",
+          studentEmail: user?.email || "لا يوجد بريد",
+          studentPhone: user?.phoneNumber || "",
+          gradeName: user?.grade || "غير محدد",
+          subscriptionStatus: user?.subscriptionStatus || null,
+          // ✅ تحديد الحالة
+          displayStatus: request.status || 
+                         (user?.subscriptionStatus === "active" ? "approved" : 
+                          user?.subscriptionStatus === "rejected" ? "rejected" : "pending"),
+        };
+      })
+    );
+
+    return usersWithDetails;
+  },
+});
+
+// ✅ الموافقة على مستخدم (معدل)
 export const approveUser = mutation({
   args: { 
     userId: v.id("users"),
@@ -134,8 +172,8 @@ export const approveUser = mutation({
       ...(args.role && { role: args.role }),
     };
 
-    // ✅ إذا كانت الموافقة تشمل الاشتراك أو كان المستخدم طالب
-    if (args.approveSubscription || user.role === "student") {
+    // ✅ فقط لو approveSubscription = true يتم تفعيل الاشتراك
+    if (args.approveSubscription) {
       updateData.subscriptionStatus = "active";
     }
 
@@ -153,7 +191,7 @@ export const approveUser = mutation({
           status: "approved",
           reviewedBy: admin._id,
           reviewedAt: Date.now(),
-          adminNotes: "تم الموافقة على الاشتراك",
+          adminNotes: args.approveSubscription ? "تم الموافقة على الاشتراك" : "تم الموافقة على المستخدم بدون اشتراك",
           updatedAt: Date.now(),
         });
       }
@@ -162,7 +200,9 @@ export const approveUser = mutation({
     // ✅ إرسال إشعار للمستخدم
     await ctx.db.insert("notifications", {
       title: "تم قبول طلبك",
-      message: `تم قبول تسجيلك في المنصة. يمكنك الآن الدخول والمشاركة.`,
+      message: args.approveSubscription 
+        ? `تم قبول تسجيلك في المنصة وتفعيل اشتراكك. يمكنك الآن الدخول والمشاركة.`
+        : `تم قبول تسجيلك في المنصة. يرجى تفعيل الاشتراك للوصول إلى جميع الخدمات.`,
       type: "system_announcement",
       priority: "normal",
       recipientType: "student",
@@ -183,7 +223,7 @@ export const approveUser = mutation({
         previousRole: user.role,
         newRole: args.role || user.role,
         approvedBy: admin.email,
-        name: args.approveSubscription ? "تمت الموافقة على الاشتراك" : "تمت الموافقة على المستخدم",
+        name: args.approveSubscription ? "تمت الموافقة على الاشتراك" : "تمت الموافقة على المستخدم بدون اشتراك",
       },
       createdAt: Date.now(),
     });
@@ -192,7 +232,7 @@ export const approveUser = mutation({
   },
 });
 
-// ✅ رفض مستخدم
+// ✅ رفض مستخدم (معدل)
 export const rejectUser = mutation({
   args: {
     userId: v.id("users"),
@@ -222,7 +262,8 @@ export const rejectUser = mutation({
       updatedAt: Date.now(),
     };
 
-    if (args.rejectSubscription || user.role === "student") {
+    // ✅ فقط لو rejectSubscription = true يتم رفض الاشتراك
+    if (args.rejectSubscription) {
       updateData.subscriptionStatus = "rejected";
     }
 
@@ -362,6 +403,7 @@ export const getRegistrationStats = query({
 // ✅ تصدير الدوال
 export const admin = {
   getPendingRegistrations,
+  getAllSubscriptionRequests,
   approveUser,
   rejectUser,
   updateUserRole,

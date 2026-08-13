@@ -317,12 +317,12 @@ export default function OnboardingPage() {
       // ✅ التوجيه حسب المسار
       if (formData.tracks.includes("platform")) {
         if (role === "student") {
-          console.log("🟢 [Onboarding] Redirecting to subscription page");
-          const subscriptionUrl = `/subscription?userId=${newUserId}&gradeId=${formData.gradeId}&role=student`;
-          console.log("🟢 [Onboarding] URL:", subscriptionUrl);
+          // console.log("🟢 [Onboarding] Redirecting to subscription page");
+          // const subscriptionUrl = `/subscription?userId=${newUserId}&gradeId=${formData.gradeId}&role=student`;
+          // console.log("🟢 [Onboarding] URL:", subscriptionUrl);
 
-          // ✅ استخدام window.location.href لتغيير الصفحة فوراً
-          window.location.href = subscriptionUrl;
+          // // ✅ استخدام window.location.href لتغيير الصفحة فوراً
+          // window.location.href = subscriptionUrl;
         } else if (role === "parent") {
           setShowChildModal(true);
         } else {
