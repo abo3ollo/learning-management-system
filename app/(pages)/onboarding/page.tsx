@@ -332,8 +332,8 @@ export default function OnboardingPage() {
       if (formData.tracks.includes("platform")) {
         if (role === "student") {
           // ✅ طالب → يروح صفحة الاشتراك
-          const subscriptionUrl = `/subscription?userId=${newUserId}&gradeId=${formData.gradeId}&role=student`;
-          window.location.href = subscriptionUrl;
+          // const subscriptionUrl = `/subscription?userId=${newUserId}&gradeId=${formData.gradeId}&role=student`;
+          // window.location.href = subscriptionUrl;
         } else if (role === "parent") {
           setShowChildModal(true);
         } else if (role === "admin") {
