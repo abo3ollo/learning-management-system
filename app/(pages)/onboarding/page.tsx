@@ -32,6 +32,14 @@ import { ChildRegistrationModal } from "@/app/_components/ChildRegistrationModal
 type Track = "platform" | "aptitude" | "academic";
 type Role = "student" | "teacher" | "parent" | "admin";
 
+// ✅ قائمة الأدمن المسموح لهم (مطابقة للـ Whitelist في Convex)
+const ADMIN_WHITELIST = [
+  "admin123@gmail.com",
+  "admin@marineacademy.com",
+  "your-email@gmail.com",
+  // أضف أي ايميلات تانية هنا
+];
+
 interface FormData {
   // Common
   name: string;
@@ -285,6 +293,11 @@ export default function OnboardingPage() {
         role = "student";
       }
 
+      // ✅ التحقق من أن الأدمن في الـ Whitelist
+      const isWhitelistedAdmin = role === "admin" && ADMIN_WHITELIST.includes(
+        user.emailAddresses[0]?.emailAddress?.toLowerCase() || ""
+      );
+
       const result = await createUser({
         clerkId: user.id,
         email: user.emailAddresses[0]?.emailAddress ?? "",
@@ -292,7 +305,8 @@ export default function OnboardingPage() {
         phoneNumber: formData.phoneNumber,
         tracks: formData.tracks,
         role: role,
-        status: "pending",
+        // ✅ لو أدمن في الـ Whitelist يبقى active، غير كده pending
+        status: isWhitelistedAdmin ? "active" : "pending",
 
         ...(formData.tracks.includes("platform") && {
           birthDate: formData.birthDate ? new Date(formData.birthDate).getTime() : undefined,
@@ -314,17 +328,22 @@ export default function OnboardingPage() {
 
       const newUserId = result as unknown as string;
 
-      // ✅ التوجيه حسب المسار
+      // ✅ التوجيه حسب المسار والدور
       if (formData.tracks.includes("platform")) {
         if (role === "student") {
-          // console.log("🟢 [Onboarding] Redirecting to subscription page");
-          // const subscriptionUrl = `/subscription?userId=${newUserId}&gradeId=${formData.gradeId}&role=student`;
-          // console.log("🟢 [Onboarding] URL:", subscriptionUrl);
-
-          // // ✅ استخدام window.location.href لتغيير الصفحة فوراً
-          // window.location.href = subscriptionUrl;
+          // ✅ طالب → يروح صفحة الاشتراك
+          const subscriptionUrl = `/subscription?userId=${newUserId}&gradeId=${formData.gradeId}&role=student`;
+          window.location.href = subscriptionUrl;
         } else if (role === "parent") {
           setShowChildModal(true);
+        } else if (role === "admin") {
+          // ✅ أدمن في الـ Whitelist → يروح admin مباشرة
+          if (isWhitelistedAdmin) {
+            router.replace("/admin");
+          } else {
+            // ❌ أدمن مش في الـ Whitelist → pending-approval
+            router.replace("/pending-approval");
+          }
         } else {
           router.replace("/pending-approval");
         }
@@ -388,8 +407,9 @@ export default function OnboardingPage() {
             {[1, 2, 3].slice(0, totalSteps).map((s) => (
               <div key={s} className="flex items-center gap-2">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${currentStep >= s ? "bg-[#001f24] text-white" : "bg-gray-200 text-gray-500"
-                    }`}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+                    currentStep >= s ? "bg-[#001f24] text-white" : "bg-gray-200 text-gray-500"
+                  }`}
                 >
                   {currentStep > s ? <Check className="h-4 w-4" /> : s}
                 </div>
@@ -425,14 +445,16 @@ export default function OnboardingPage() {
                         key={opt.value}
                         type="button"
                         onClick={() => toggleTrack(opt.value)}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 text-center transition-all ${isSelected
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 text-center transition-all ${
+                          isSelected
                             ? "border-[#1a7a8a] bg-[#e0f5f7] shadow-md"
                             : "border-gray-100 hover:border-gray-300 bg-gray-50"
-                          }`}
+                        }`}
                       >
                         <div
-                          className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isSelected ? "bg-[#1a7a8a] text-white" : "bg-gray-200 text-gray-500"
-                            }`}
+                          className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
+                            isSelected ? "bg-[#1a7a8a] text-white" : "bg-gray-200 text-gray-500"
+                          }`}
                         >
                           <Icon className="h-7 w-7" />
                         </div>
@@ -534,14 +556,16 @@ export default function OnboardingPage() {
                         key={opt.value}
                         type="button"
                         onClick={() => update("role", opt.value)}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 text-center transition-all ${formData.role === opt.value
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 text-center transition-all ${
+                          formData.role === opt.value
                             ? "border-[#1a7a8a] bg-[#e0f5f7]"
                             : "border-gray-100 hover:border-gray-200 bg-gray-50"
-                          }`}
+                        }`}
                       >
                         <div
-                          className={`w-12 h-12 rounded-xl flex items-center justify-center ${formData.role === opt.value ? "bg-[#1a7a8a]" : "bg-gray-200"
-                            }`}
+                          className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                            formData.role === opt.value ? "bg-[#1a7a8a]" : "bg-gray-200"
+                          }`}
                         >
                           <Icon className={`h-6 w-6 ${formData.role === opt.value ? "text-white" : "text-gray-500"}`} />
                         </div>

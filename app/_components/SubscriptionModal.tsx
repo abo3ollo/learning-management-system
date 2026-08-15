@@ -116,7 +116,7 @@ export default function SubscriptionModal({
         paymentProof: fileData,
         amount: gradePrice?.price ?? 0,
         currency: gradePrice?.currency ?? "SAR",
-        referenceNumber: referenceNumber || undefined,
+        referenceNumber: referenceNumber ,
       });
 
       // ✅ 2. استخراج requestId من النتيجة

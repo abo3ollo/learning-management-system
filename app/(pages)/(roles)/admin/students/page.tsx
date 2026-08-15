@@ -125,12 +125,12 @@ export default function AdminStudentsPage() {
   return (
     <div className="min-h-screen bg-[#f7fafa]" dir="rtl">
       {/* الشريط العلوي */}
-      <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+      <header className="bg-white border-b border-gray-300 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
         <h1 className="text-xl font-semibold text-[#001f24]">الطلاب</h1>
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
-            className="gap-2 border-gray-200 text-gray-600 hover:bg-gray-50"
+            className="gap-2 border-gray-300 text-gray-600 hover:bg-gray-50"
           >
             <Download className="h-4 w-4" />
             تصدير
@@ -161,7 +161,7 @@ export default function AdminStudentsPage() {
             return (
               <div
                 key={stat.label}
-                className="bg-white rounded-xl p-5 border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all"
+                className="bg-white rounded-xl p-5 border border-gray-300 hover:border-gray-400 hover:shadow-sm transition-all"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className={`w-11 h-11 rounded-xl ${stat.iconBg} flex items-center justify-center`}>
@@ -180,7 +180,7 @@ export default function AdminStudentsPage() {
         </div>
 
         {/* البحث والفلاتر */}
-        <div className="bg-white rounded-xl border border-gray-100 p-4 flex flex-col sm:flex-row gap-3">
+        <div className="bg-white rounded-xl border border-gray-300 p-4 flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
@@ -250,11 +250,11 @@ export default function AdminStudentsPage() {
         </div>
 
         {/* الجدول */}
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-300 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 bg-[#f7fafa]">
+                <tr className="border-b border-gray-300 bg-[#f7fafa]">
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الطالب</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">جهة الاتصال</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">الصف</th>

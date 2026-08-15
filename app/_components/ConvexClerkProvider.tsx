@@ -23,6 +23,16 @@ function UserSync() {
     isSignedIn && userId ? {} : "skip"
   );
 
+  // ✅ قائمة الأدمن المسموح لهم
+  const ADMIN_WHITELIST = [
+    "admin123@gmail.com",
+    "admin@marineacademy.com",
+    "your-email@gmail.com",
+    "digitallandsystems2025@gmail.com",
+    "abdalrahmanyehia333@gmail.com",
+    // أضف أي ايميلات تانية هنا
+  ];
+
   useEffect(() => {
     if (userLoaded && isSignedIn !== undefined) {
       setIsReady(true);
@@ -63,6 +73,15 @@ function UserSync() {
     const role = (currentUser as any).role;
     const status = currentUser.status;
     const tracks = (currentUser as any).tracks || [];
+    const email = currentUser.email;
+
+    // ✅ لو أدمن في الـ Whitelist → يروح admin مباشرة (حتى لو status pending)
+    if (role === "admin" && ADMIN_WHITELIST.includes(email?.toLowerCase())) {
+      if (pathname !== "/admin" && !pathname?.startsWith("/admin")) {
+        router.replace("/admin");
+      }
+      return;
+    }
 
     // ✅ لو في الصفحة الرئيسية، منعملش توجيه تلقائي
     if (pathname === "/") {

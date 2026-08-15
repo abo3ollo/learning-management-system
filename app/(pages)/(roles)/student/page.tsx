@@ -302,7 +302,7 @@ export default function StudentDashboard() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            <Link href="/student/notifications">
+            
               <button className="relative p-2 bg-white rounded-xl border border-[#c0c8c9] hover:border-[#1a7a8a] transition-colors">
                 <Bell className="h-5 w-5 text-gray-600" />
                 {stats.unread > 0 && (
@@ -311,14 +311,14 @@ export default function StudentDashboard() {
                   </span>
                 )}
               </button>
-            </Link>
-            <Link href="/student/profile">
+           
+            
               <div className="w-10 h-10 rounded-xl bg-[#e0f5f7] flex items-center justify-center cursor-pointer">
                 <span className="font-bold text-[#1a7a8a]">
                   {currentUser.name?.charAt(0)?.toUpperCase() || "S"}
                 </span>
               </div>
-            </Link>
+            
           </div>
         </div>
 

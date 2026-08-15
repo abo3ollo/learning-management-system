@@ -162,12 +162,12 @@ export default function AdminParentsPage() {
   return (
     <div className="min-h-screen bg-[#f7fafa]" dir="rtl">
       {/* الشريط العلوي */}
-      <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+      <header className="bg-white border-b border-gray-300 px-8 py-4 flex items-center justify-between sticky top-0 z-10">
         <h1 className="text-xl font-semibold text-[#001f24]">أولياء الأمور</h1>
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
-            className="gap-2 border-gray-200 text-gray-600 hover:bg-gray-50"
+            className="gap-2 border-gray-300 text-gray-600 hover:bg-gray-50"
             onClick={handleExportCSV}
             disabled={isExporting || parents.length === 0}
           >
@@ -204,7 +204,7 @@ export default function AdminParentsPage() {
             return (
               <div
                 key={stat.label}
-                className="bg-white rounded-xl p-5 border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all"
+                className="bg-white rounded-xl p-5 border border-gray-300 hover:border-gray-400 hover:shadow-sm transition-all"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className={`w-11 h-11 rounded-xl ${stat.iconBg} flex items-center justify-center`}>
@@ -224,21 +224,21 @@ export default function AdminParentsPage() {
         </div>
 
         {/* البحث والفلاتر */}
-        <div className="bg-white rounded-xl border border-gray-100 p-4 flex flex-col sm:flex-row gap-3">
+        <div className="bg-white rounded-xl border border-gray-300 p-4 flex flex-col sm:flex-row gap-3">
           <div className="flex-1 relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="بحث بالاسم أو البريد الإلكتروني أو رقم الهاتف..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pr-9 border-gray-200 focus-visible:ring-[#03363d]/20"
+              className="pr-9 border-gray-300 focus-visible:ring-[#03363d]/20"
             />
           </div>
           <div className="flex gap-2">
             <select
               value={selectedFilter}
               onChange={(e) => setSelectedFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#03363d]/20 bg-white"
+              className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#03363d]/20 bg-white"
             >
               <option value="all">جميع أولياء الأمور</option>
               <option value="active">نشط</option>
@@ -256,11 +256,11 @@ export default function AdminParentsPage() {
         </div>
 
         {/* الجدول */}
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-300 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 bg-[#f7fafa]">
+                <tr className="border-b border-gray-300 bg-[#f7fafa]">
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">ولي الأمر</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">معلومات الاتصال</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">المسمى الوظيفي</th>

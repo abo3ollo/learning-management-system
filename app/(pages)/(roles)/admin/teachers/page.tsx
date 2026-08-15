@@ -206,7 +206,7 @@ export default function AdminTeachersPage() {
             return (
               <div
                 key={stat.label}
-                className="bg-white rounded-xl p-5 border border-gray-100 hover:border-gray-200 hover:shadow-sm transition-all"
+                className="bg-white rounded-xl p-5 border border-gray-300 hover:border-gray-400 hover:shadow-sm transition-all"
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className={`w-11 h-11 rounded-xl ${stat.iconBg} flex items-center justify-center`}>
@@ -226,7 +226,7 @@ export default function AdminTeachersPage() {
         </div>
 
         {/* Search + filter */}
-        <div className="bg-white rounded-xl border border-gray-100 p-4 flex flex-col sm:flex-row gap-3">
+        <div className="bg-white rounded-xl border border-gray-300 p-4 flex flex-col sm:flex-row gap-3 ">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
@@ -259,11 +259,11 @@ export default function AdminTeachersPage() {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-300 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-100 bg-[#f7fafa]">
+                <tr className="border-b border-gray-300 bg-[#f7fafa]">
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">المعلم</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">معلومات الاتصال</th>
                   <th className="text-right px-6 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">التخصص</th>

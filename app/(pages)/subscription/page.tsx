@@ -13,6 +13,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import {
   X, Upload, CheckCircle, Loader2,
   CreditCard, AlertCircle, ImageIcon,
+  Copy, Check,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,8 @@ function SubscriptionContent() {
   const [error, setError] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [referenceNumber, setReferenceNumber] = useState("");
+  const [referenceError, setReferenceError] = useState<string | null>(null);
+
 
   // ── Queries ───────────────────────────────────────────────────
   const currentUser = useQuery(api.user.auth.getCurrentUser);
@@ -126,6 +129,13 @@ function SubscriptionContent() {
 
   // ── Submit ────────────────────────────────────────────────────
   const handleSubmit = async () => {
+    // ✅ التحقق من رقم المرجع (إجباري)
+    if (!referenceNumber || referenceNumber.trim() === "") {
+      setReferenceError("رقم المرجع مطلوب *");
+      return;
+    }
+    setReferenceError(null);
+
     if (!receiptFile) {
       setError("يرجى اختيار صورة الإيصال أولاً");
       return;
@@ -149,7 +159,7 @@ function SubscriptionContent() {
         paymentProof: storageId,
         amount: gradePrice?.price ?? 0,
         currency: gradePrice?.currency ?? "EGP",
-        referenceNumber: referenceNumber || undefined,
+        referenceNumber: referenceNumber.trim(),
       });
 
       let referenceId: string;
@@ -268,6 +278,7 @@ function SubscriptionContent() {
                 </div>
               )}
 
+              {/* Price */}
               <div className="bg-[#e0f5f7] border border-[#b0dde4] rounded-2xl px-5 py-4 flex items-center justify-between">
                 <div className="text-right">
                   <p className="text-xs text-[#1a7a8a] font-medium">سعر الاشتراك</p>
@@ -282,26 +293,97 @@ function SubscriptionContent() {
                 </div>
               </div>
 
-              <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-4 text-right">
-                <p className="text-sm font-semibold text-amber-800 mb-1">تعليمات الدفع</p>
-                <p className="text-xs text-amber-700 leading-relaxed">
-                  يرجى تحويل المبلغ على الرقم المحدد ثم رفع صورة الإيصال للتحقق منه وتفعيل حسابك.
+              {/* ✅ معلومات الدفع */}
+              {/* <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4">
+                <p className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                  <span className="text-lg">🏦</span>
+                  معلومات الدفع
                 </p>
-              </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">البنك:</span>
+                    <span className="font-medium text-gray-900">{paymentInfo.bankName}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">اسم الحساب:</span>
+                    <span className="font-medium text-gray-900">{paymentInfo.accountName}</span>
+                  </div>
+                  <div className="flex justify-between items-center group">
+                    <span className="text-gray-600">رقم الحساب:</span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-medium text-gray-900 text-sm">
+                        {paymentInfo.accountNumber}
+                      </span>
+                      <button
+                        onClick={() => copyToClipboard(paymentInfo.accountNumber)}
+                        className="p-1 hover:bg-blue-200 rounded transition-colors"
+                        title="نسخ رقم الحساب"
+                      >
+                        {copied ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4 text-blue-600" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">رقم IBAN:</span>
+                    <span className="font-mono font-medium text-gray-900 text-xs">
+                      {paymentInfo.iban}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-600">SWIFT:</span>
+                    <span className="font-mono font-medium text-gray-900">
+                      {paymentInfo.swift}
+                    </span>
+                  </div>
+                  <div className="border-t border-blue-200 pt-2 mt-1">
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-600">📧 البريد الإلكتروني:</span>
+                      <a href={`mailto:${paymentInfo.email}`} className="font-medium text-blue-700 hover:underline">
+                        {paymentInfo.email}
+                      </a>
+                    </div>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-gray-600">📱 الهاتف:</span>
+                      <a href={`tel:${paymentInfo.phone}`} className="font-medium text-blue-700 hover:underline">
+                        {paymentInfo.phone}
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div> */}
 
+              {/* ✅ Reference Number - إجباري */}
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-gray-700 block text-right">
-                  رقم المرجع <span className="text-gray-400 text-xs">(اختياري)</span>
+                  رقم المرجع <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   value={referenceNumber}
-                  onChange={(e) => setReferenceNumber(e.target.value)}
-                  placeholder="رقم تحويل البنك أو المرجع"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a7a8a]/20"
+                  onChange={(e) => {
+                    setReferenceNumber(e.target.value);
+                    if (e.target.value.trim() !== "") {
+                      setReferenceError(null);
+                    }
+                  }}
+                  placeholder="أدخل رقم تحويل البنك أو المرجع"
+                  className={`w-full border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#1a7a8a]/20 ${
+                    referenceError ? "border-red-500 ring-2 ring-red-200" : "border-gray-200"
+                  }`}
                 />
+                {referenceError && (
+                  <p className="text-xs text-red-500">{referenceError}</p>
+                )}
+                <p className="text-xs text-gray-400">
+                  ⚠️ رقم المرجع مطلوب لتأكيد عملية الدفع
+                </p>
               </div>
 
+              {/* Upload Receipt */}
               <div>
                 <label className="text-sm font-semibold text-gray-700 block mb-2 text-right">
                   صورة الإيصال <span className="text-red-500">*</span>
@@ -351,6 +433,7 @@ function SubscriptionContent() {
                 )}
               </div>
 
+              {/* Error */}
               {error && (
                 <div className="flex items-center gap-2 text-red-600 bg-red-50 border border-red-100 px-4 py-3 rounded-xl text-sm">
                   <AlertCircle className="h-4 w-4 shrink-0" />
@@ -358,6 +441,7 @@ function SubscriptionContent() {
                 </div>
               )}
 
+              {/* Info Message */}
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                 <p className="text-sm text-amber-700 flex items-start gap-2">
                   <span className="text-lg">⏳</span>
@@ -367,6 +451,7 @@ function SubscriptionContent() {
                 </p>
               </div>
 
+              {/* Actions */}
               <div className="flex gap-3 pt-1">
                 <button
                   type="button"
@@ -379,7 +464,7 @@ function SubscriptionContent() {
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={isSubmitting || !receiptFile || !gradeId}
+                  disabled={isSubmitting || !receiptFile || !gradeId || !referenceNumber.trim()}
                   className="flex-2 flex items-center justify-center gap-2 bg-[#001f24] hover:bg-[#03363d] disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
                 >
                   {isSubmitting || isUploading ? (

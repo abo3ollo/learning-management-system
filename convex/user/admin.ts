@@ -3,6 +3,15 @@
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
 
+// ✅ قائمة الأدمن المسموح لهم
+const ADMIN_WHITELIST = [
+  "admin123@gmail.com",
+  "admin@marineacademy.com",
+  "your-email@gmail.com",
+  "digitallandsystems2025@gmail.com",
+  "abdalrahmanyehia333@gmail.com",
+];
+
 // جلب جميع التسجيلات المنتظرة (مع معلومات إضافية)
 export const getPendingRegistrations = query({
   args: {},
@@ -400,6 +409,16 @@ export const getRegistrationStats = query({
   },
 });
 
+// ✅ التحقق من أن المستخدم في الـ Whitelist
+export const isWhitelistedAdmin = query({
+  args: {
+    email: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return ADMIN_WHITELIST.includes(args.email.toLowerCase());
+  },
+});
+
 // ✅ تصدير الدوال
 export const admin = {
   getPendingRegistrations,
@@ -408,4 +427,5 @@ export const admin = {
   rejectUser,
   updateUserRole,
   getRegistrationStats,
+  isWhitelistedAdmin,
 };

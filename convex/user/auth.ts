@@ -1,5 +1,17 @@
+// convex/user/auth.ts
+
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
+
+// ✅ قائمة الأدمن المسموح لهم
+const ADMIN_WHITELIST = [
+  "admin123@gmail.com",
+  "admin@marineacademy.com",
+  "your-email@gmail.com",
+  "digitallandsystems2025@gmail.com",
+    "abdalrahmanyehia333@gmail.com",
+  // أضف أي ايميلات تانية هنا
+];
 
 // دالة مساعدة لتوليد رقم معلم فريد
 async function generateTeacherId(ctx: any): Promise<string> {
@@ -122,6 +134,19 @@ export const createUser = mutation({
       parentId = `PAR-${String(nextNumber).padStart(5, '0')}`;
     }
 
+    // ✅ تحديد الحالة: لو الأدمن في الـ Whitelist يبقى active
+    const isWhitelistedAdmin = args.role === "admin" && ADMIN_WHITELIST.includes(args.email.toLowerCase());
+    
+    let status = args.status || "pending";
+    if (isWhitelistedAdmin) {
+      status = "active";
+    }
+
+    let subscriptionStatus: "pending" | "awaiting_approval" | "active" | "rejected" | "expired" | undefined = undefined;
+    if (isWhitelistedAdmin) {
+      subscriptionStatus = "active";
+    }
+
     return await ctx.db.insert("users", {
       clerkId: args.clerkId,
       email: args.email,
@@ -129,7 +154,8 @@ export const createUser = mutation({
       phoneNumber: args.phoneNumber,
       tracks: args.tracks || [],
       role: args.role,
-      status: args.status || "pending",
+      status: status,
+      subscriptionStatus: subscriptionStatus,
       createdAt: now,
       updatedAt: now,
 
@@ -346,7 +372,6 @@ export const getPendingUsers = query({
   },
 });
 
-
 // ✅ التحقق من حالة الاشتراك للطالب
 export const getStudentSubscriptionStatus = query({
   args: {
@@ -372,10 +397,9 @@ export const getStudentSubscriptionStatus = query({
     if (!student) throw new Error("الطالب غير موجود");
 
     // ✅ التحقق من حالة الاشتراك
-    // القيم المسموحة: pending | awaiting_approval | active | rejected | expired
     const hasActiveSubscription = student.subscriptionStatus === "active";
     
-    // ✅ التحقق من وجود طلب موافقة معلق (awaiting_approval)
+    // ✅ التحقق من وجود طلب موافقة معلق
     const hasPendingApproval = 
       student.subscriptionStatus === "awaiting_approval" || 
       student.subscriptionStatus === "pending";
@@ -392,15 +416,13 @@ export const getStudentSubscriptionStatus = query({
       hasActiveSubscription,
       hasPendingApproval: hasPendingApproval || hasRequestPending,
       subscriptionStatus: student.subscriptionStatus || null,
-      // ✅ إضافة معلومات إضافية مفيدة
       isRejected: student.subscriptionStatus === "rejected",
       isExpired: student.subscriptionStatus === "expired",
     };
   },
 });
 
-
-
+// ✅ تصدير الدوال
 export const auth = {
   createUser,
   getCurrentUser,
@@ -409,5 +431,5 @@ export const auth = {
   updateUserStatus,
   updateSubscriptionStatus,
   getPendingUsers,
-  getStudentSubscriptionStatus, // ✅ تأكد من إضافتها هنا
+  getStudentSubscriptionStatus,
 };

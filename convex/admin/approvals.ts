@@ -11,7 +11,7 @@ export const createApprovalRequest = mutation({
     amount: v.number(),
     currency: v.string(),
     paymentProof: v.string(),
-    referenceNumber: v.optional(v.string()),
+    referenceNumber: v.string(),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
