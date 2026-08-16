@@ -37,6 +37,8 @@ const ADMIN_WHITELIST = [
   "admin123@gmail.com",
   "admin@marineacademy.com",
   "your-email@gmail.com",
+  "digitallandsystems2025@gmail.com",
+  "abdalrahmanyehia333@gmail.com",
   // أضف أي ايميلات تانية هنا
 ];
 
@@ -126,6 +128,16 @@ export default function OnboardingPage() {
       }));
     }
   }, [user]);
+
+  useEffect(() => {
+  // ✅ تحديد جميع المسارات بشكل افتراضي
+  if (formData.tracks.length === 0) {
+    setFormData((prev) => ({
+      ...prev,
+      tracks: ["platform", "aptitude", "academic"],
+    }));
+  }
+}, []);
 
   // ✅ Redirect logic
   useEffect(() => {
@@ -374,9 +386,9 @@ export default function OnboardingPage() {
 
   // ── Render ────────────────────────────────────────────────────
   const trackOptions = [
-    { value: "platform" as Track, label: "منصة", icon: GraduationCap, desc: "دروس ومواد تعليمية مع معلمين" },
-    { value: "aptitude" as Track, label: "قدرات", icon: Users, desc: "اختبارات ومهارات قدرات" },
-    { value: "academic" as Track, label: "تحصيلي", icon: BookOpen, desc: "تحصيل دراسي ومراجعة" },
+    { value: "platform" as Track, label: "منصة", icon: GraduationCap, desc: "دروس ومواد تعليمية مع معلمين الاونلاين" , desc2: ""  },
+    { value: "aptitude" as Track, label: "قدرات", icon: Users, desc: "اختبارات ومهارات قدرات " , desc2: "الاشتراك من داخل المنصه" },
+    { value: "academic" as Track, label: "تحصيلي", icon: BookOpen, desc: "تحصيل دراسي ومراجعة ", desc2: "الاشتراك من داخل المنصه" },
   ];
 
   const roleOptions = [
@@ -407,9 +419,8 @@ export default function OnboardingPage() {
             {[1, 2, 3].slice(0, totalSteps).map((s) => (
               <div key={s} className="flex items-center gap-2">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                    currentStep >= s ? "bg-[#001f24] text-white" : "bg-gray-200 text-gray-500"
-                  }`}
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${currentStep >= s ? "bg-[#001f24] text-white" : "bg-gray-200 text-gray-500"
+                    }`}
                 >
                   {currentStep > s ? <Check className="h-4 w-4" /> : s}
                 </div>
@@ -433,35 +444,32 @@ export default function OnboardingPage() {
             {/* ── STEP 1: اختيار المسارات ────────────────────── */}
             {currentStep === 1 && (
               <div className="space-y-5">
-                <h2 className="text-lg font-bold text-[#001f24]">اختر مساراتك</h2>
-                <p className="text-sm text-gray-500">يمكنك اختيار أكثر من مسار</p>
+                <h2 className="text-xl font-bold text-[#001f24]"> مساراتك</h2>
+                <p className="text-sm text-gray-500">جميع المسارات مفعلة بشكل افتراضي ولا يمكن تغييرها</p>
 
                 <div className="grid grid-cols-3 gap-3">
                   {trackOptions.map((opt) => {
                     const Icon = opt.icon;
                     const isSelected = formData.tracks.includes(opt.value);
                     return (
-                      <button
+                      <div
                         key={opt.value}
-                        type="button"
-                        onClick={() => toggleTrack(opt.value)}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 text-center transition-all ${
-                          isSelected
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 text-center transition-all cursor-not-allowed ${isSelected
                             ? "border-[#1a7a8a] bg-[#e0f5f7] shadow-md"
-                            : "border-gray-100 hover:border-gray-300 bg-gray-50"
-                        }`}
+                            : "border-gray-100 bg-gray-50"
+                          }`}
                       >
                         <div
-                          className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
-                            isSelected ? "bg-[#1a7a8a] text-white" : "bg-gray-200 text-gray-500"
-                          }`}
+                          className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isSelected ? "bg-[#1a7a8a] text-white" : "bg-gray-200 text-gray-500"
+                            }`}
                         >
                           <Icon className="h-7 w-7" />
                         </div>
-                        <p className="font-bold text-[#001f24]">{opt.label}</p>
-                        <p className="text-xs text-gray-400 text-center">{opt.desc}</p>
+                        <p className="font-extrabold text-[#001f24]">{opt.label}</p>
+                        <p className="text-sm  text-gray-800 text-center">{opt.desc}</p>
+                        <p className="text-xs text-gray-500 text-center">{opt.desc2}</p>
                         {isSelected && <Check className="h-4 w-4 text-[#1a7a8a]" />}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -517,10 +525,11 @@ export default function OnboardingPage() {
                   </div>
                 </div>
 
+                {/* ✅ زر التالي مع التحقق من جميع المسارات */}
                 <button
                   type="button"
                   onClick={handleNext}
-                  disabled={formData.tracks.length === 0 || !formData.name || !formData.phoneNumber || isSubmitting}
+                  disabled={formData.tracks.length !== 3 || !formData.name || !formData.phoneNumber || isSubmitting}
                   className="w-full flex items-center justify-center gap-2 bg-[#001f24] hover:bg-[#03363d] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors"
                 >
                   {isSubmitting ? (
@@ -556,16 +565,14 @@ export default function OnboardingPage() {
                         key={opt.value}
                         type="button"
                         onClick={() => update("role", opt.value)}
-                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 text-center transition-all ${
-                          formData.role === opt.value
+                        className={`flex flex-col items-center gap-2 p-4 rounded-2xl border-2 text-center transition-all ${formData.role === opt.value
                             ? "border-[#1a7a8a] bg-[#e0f5f7]"
                             : "border-gray-100 hover:border-gray-200 bg-gray-50"
-                        }`}
+                          }`}
                       >
                         <div
-                          className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                            formData.role === opt.value ? "bg-[#1a7a8a]" : "bg-gray-200"
-                          }`}
+                          className={`w-12 h-12 rounded-xl flex items-center justify-center ${formData.role === opt.value ? "bg-[#1a7a8a]" : "bg-gray-200"
+                            }`}
                         >
                           <Icon className={`h-6 w-6 ${formData.role === opt.value ? "text-white" : "text-gray-500"}`} />
                         </div>

@@ -85,10 +85,10 @@ export default function AdminLayout({
     { href: "/admin/landing", label: "البرتوفوليو", icon: MdOutlineHomeMax },
     { href: "/admin/chatbox", label: "Chat Box", icon: IoChatbubbleOutline },
     { href: "/admin/notifications", label: "الإشعارات", icon: Bell },
-    { href: "/admin/subscriptions", label: "الاشتراكات", icon: CircleDollarSign },
+    { href: "/admin/subscriptions", label: "الاشتراكات الاونلاين", icon: CircleDollarSign },
     { href: "/admin/inventory", label: "المستودعات", icon: Package  },
-    { href: "/admin/transactions", label: "كشف الحساب", icon: AiOutlineTransaction },
-    { href: "/admin/purchases", label: "تفاصيل المشتريات", icon: FaStore },
+    { href: "/admin/transactions", label: "الايرادات", icon: AiOutlineTransaction },
+    { href: "/admin/purchases", label: "مبيعات المنصه من المستودع ", icon: FaStore },
     { href: "/admin/approvals", label: "الموافقة علي التسجيلات", icon: ClipboardCheck },
     { href: "/admin/subscription-approvals", label: "الموافقة على الاشتراكات", icon: ClipboardCheck },
     { href: "/admin/aptitude-approvals", label: "الموافقة على القدرات", icon: IoIosCheckmarkCircleOutline },
@@ -158,7 +158,7 @@ export default function AdminLayout({
           )}
           
           {/* ✅ زر Home - يروح للصفحة الرئيسية مع الحفاظ على Session */}
-          <button
+          {/* <button
             onClick={() => {
               router.push("/");
               router.refresh();
@@ -167,7 +167,7 @@ export default function AdminLayout({
           >
             <Home size={17} />
             {sidebarOpen && <span>الرئيسية</span>}
-          </button>
+          </button> */}
           
           {/* ✅ زر Logout - يمسح Session */}
           <button

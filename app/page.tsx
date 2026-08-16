@@ -7,6 +7,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   FaStar,
   FaFacebook,
@@ -19,7 +20,7 @@ import {
 } from "react-icons/fa";
 import { IoBookOutline } from "react-icons/io5";
 import { MdOutlineEmail, MdOutlineRadio } from "react-icons/md";
-import { ArrowRight, CheckCircle, ChevronLeft, ChevronRight, Loader2, Megaphone, ShieldCheck } from "lucide-react";
+import { ArrowRight, CheckCircle, ChevronLeft, ChevronRight, Loader2, Megaphone, Play, ShieldCheck, X } from "lucide-react";
 import * as Icons from "react-icons/fa";
 import { PiStudentBold } from "react-icons/pi";
 import { RiParentFill } from "react-icons/ri";
@@ -49,6 +50,7 @@ function getIcon(iconName: string) {
 // ─── Component ───────────────────────────────────────────────────
 
 export default function LandingPage() {
+  const router = useRouter();
   const { isSignedIn } = useAuth();
   const [lang, setLang] = useState<"en" | "ar">("ar");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -57,9 +59,9 @@ export default function LandingPage() {
   const [selectedEmbedType, setSelectedEmbedType] = useState<string>("youtube");
   const [currentAnnouncementIndex, setCurrentAnnouncementIndex] = useState(0);
   const [selectedGrade, setSelectedGrade] = useState<"all" | "primary" | "middle" | "high">("all");
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
-
-  // ✅ جلب البيانات من Convex - مع تمرير args فارغ
+  // ✅ جلب البيانات من Convex
   const settings = useQuery(api.landing.landing.getPublicSettings, {});
   const sections = useQuery(api.landing.landing.getPublicSections, {});
   const courses = useQuery(api.landing.landing.getPublicCourses, {});
@@ -68,6 +70,101 @@ export default function LandingPage() {
   const announcements = useQuery(api.landing.landing.getPublicAnnouncements, {});
   const subscriptions = useQuery(api.landing.landing.getPublicSubscriptions, {});
 
+
+  const currentUser = useQuery(
+    api.user.auth.getCurrentUser,
+    isSignedIn ? {} : "skip"
+  );
+
+  useEffect(() => {
+    // لو مش مسجل دخول
+    if (!isSignedIn) {
+      setIsRedirecting(false);
+      return;
+    }
+
+    // لو currentUser لسه بتحمّل
+    if (currentUser === undefined) {
+      return;
+    }
+
+    // لو currentUser = null
+    if (currentUser === null) {
+      setIsRedirecting(true);
+      router.replace("/onboarding");
+      return;
+    }
+
+    // ✅ لو مسجل دخول و currentUser موجود → توجيه فوري
+    const role = currentUser.role;
+    const status = currentUser.status;
+    const tracks = (currentUser as any).tracks || [];
+    const email = currentUser.email;
+
+    const ADMIN_WHITELIST = [
+      "admin123@gmail.com",
+      "admin@marineacademy.com",
+      "your-email@gmail.com",
+      "digitallandsystems2025@gmail.com",
+      "abdalrahmanyehia333@gmail.com",
+    ];
+
+    // ✅ لو أدمن
+    if (role === "admin" && ADMIN_WHITELIST.includes(email?.toLowerCase())) {
+      setIsRedirecting(true);
+      window.location.href = "/admin"; // ✅ أسرع من router
+      return;
+    }
+
+    // ✅ لو pending
+    if (status === "pending") {
+      setIsRedirecting(true);
+      window.location.href = "/pending-approval";
+      return;
+    }
+
+    // ✅ لو rejected
+    if (status === "rejected") {
+      setIsRedirecting(true);
+      window.location.href = "/account-rejected";
+      return;
+    }
+
+    // ✅ لو active أو approved
+    if (status === "active" || status === "approved") {
+      setIsRedirecting(true);
+
+      if (tracks.includes("platform")) {
+        const routes: Record<string, string> = {
+          student: "/student",
+          teacher: "/teacher",
+          parent: "/parent",
+          admin: "/admin",
+        };
+        const dashboardPath = routes[role];
+        if (dashboardPath) {
+          window.location.href = dashboardPath;
+          return;
+        }
+      }
+
+      if (tracks.includes("aptitude")) {
+        window.location.href = "/aptitude";
+        return;
+      }
+
+      if (tracks.includes("academic")) {
+        window.location.href = "/academic";
+        return;
+      }
+
+      if (tracks.length === 0) {
+        window.location.href = "/onboarding";
+        return;
+      }
+    }
+
+  }, [isSignedIn, currentUser]);
 
   // قائمة المواد
   const subjects = {
@@ -93,11 +190,21 @@ export default function LandingPage() {
     return () => clearInterval(interval);
   }, [announcements]);
 
-  // حالة التحميل
+  // ✅ حالة التحميل
   if (settings === undefined || sections === undefined || courses === undefined || testimonials === undefined || videoTestimonials === undefined || announcements === undefined || subscriptions === undefined) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
         <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
+      </div>
+    );
+  }
+
+  // ✅ لو مسجل دخول وبينتظر التوجيه
+  if (isSignedIn && isRedirecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
+        <span className="mr-3 text-gray-500">جاري التوجيه...</span>
       </div>
     );
   }
@@ -190,6 +297,8 @@ export default function LandingPage() {
       copy: lang === "ar" ? "© 2024 أكاديمية مارين. جميع الحقوق محفوظة." : "© 2024 Marine Academy. All rights reserved.",
     },
   };
+
+
 
   const toggleLang = () => setLang((l) => (l === "en" ? "ar" : "en"));
 
@@ -462,16 +571,12 @@ export default function LandingPage() {
               const isYouTube = video.embedType === "youtube";
               const videoId = getYouTubeId(video.videoUrl);
 
-              // ✅ عدة مصادر لغلاف اليوتيوب
               const getYouTubeThumbnail = (id: string) => {
-                const sources = [
+                return [
                   `https://img.youtube.com/vi/${id}/maxresdefault.jpg`,
                   `https://img.youtube.com/vi/${id}/hqdefault.jpg`,
                   `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
-                  `https://i.ytimg.com/vi/${id}/maxresdefault.jpg`,
-                  `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
                 ];
-                return sources;
               };
 
               const thumbnailSources = isYouTube && videoId
@@ -491,7 +596,6 @@ export default function LandingPage() {
                   style={{ aspectRatio: '4/5' }}
                   onClick={() => openVideo(embedUrl, video.embedType)}
                 >
-                  {/* Thumbnail with fallback */}
                   <img
                     src={thumbnailUrl}
                     alt=""
@@ -504,13 +608,12 @@ export default function LandingPage() {
                       if (currentIndex < thumbnailSources.length - 1) {
                         img.src = thumbnailSources[currentIndex + 1];
                       } else {
-                        img.src = '/images/video-placeholder.jpg';
+                        img.src = 'https://via.placeholder.com/400x500/0a2540/ffffff?text=فيديو';
                       }
                     }}
                     loading="lazy"
                   />
 
-                  {/* YouTube watermark indicator */}
                   {isYouTube && (
                     <div className="absolute top-3 right-3 bg-red-600 text-white text-xs px-2 py-1 rounded flex items-center gap-1 shadow-lg">
                       <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
@@ -520,20 +623,12 @@ export default function LandingPage() {
                     </div>
                   )}
 
-                  {/* Overlay with Play Button */}
                   <div className="absolute inset-0 bg-black/40 group-hover:bg-black/30 transition-colors duration-300 flex items-center justify-center">
                     <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/90 hover:bg-white shadow-lg flex items-center justify-center transition-all duration-300 group-hover:scale-110">
-                      <svg
-                        className="w-8 h-8 md:w-10 md:h-10 text-[#0a2540] ml-1"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
+                      <Play className="w-8 h-8 md:w-10 md:h-10 text-[#0a2540] ml-1" fill="currentColor" />
                     </div>
                   </div>
 
-                  {/* Title overlay at bottom */}
                   <div className="absolute bottom-0 left-0 right-0 p-4 bg-linear-to-t from-black/80 to-transparent">
                     <p className="text-white text-sm font-medium line-clamp-2">
                       {lang === "ar" ? video.titleAr || video.title : video.title}
@@ -621,11 +716,11 @@ export default function LandingPage() {
                         </li>
                       ))}
                     </ul>
-                    <Link href={isSignedIn ? "/subscriptions" : "/sign-in"}>
+                    {/* <Link href={isSignedIn ? "/subscriptions" : "/sign-in"}>
                       <Button className="w-full mt-6 bg-[#0a2540] hover:bg-[#1a3a5c] text-white">
                         {lang === "ar" ? "اشترك الآن" : "Subscribe Now"}
                       </Button>
-                    </Link>
+                    </Link> */}
                   </CardContent>
                 </Card>
               );
@@ -691,11 +786,11 @@ export default function LandingPage() {
                       <span className="text-sm font-medium">{course.rating}</span>
                     </div>
                   </div>
-                  <Link href={course.ctaUrl || "#"}>
+                  {/* <Link href={course.ctaUrl || "#"}>
                     <button className="w-full mt-4 bg-[#001f24] hover:bg-[#03363d] text-white font-semibold py-2 rounded-lg transition-colors">
                       {lang === "ar" ? course.ctaTextAr || "سجل الآن" : course.ctaText || "Enroll Now"}
                     </button>
-                  </Link>
+                  </Link> */}
                 </div>
               </div>
             ))}
@@ -775,12 +870,6 @@ export default function LandingPage() {
           <Link href="/" className="text-3xl  font-semibold text-[#0a2540] shrink-0">
             {lang === "ar" ? data.schoolNameAr || "أكاديمية تجريبي" : data.schoolName || "Test Academy"}
           </Link>
-
-          {/* <div className="hidden lg:flex items-center gap-6 text-sm text-gray-600">
-            {[t.nav.students, t.nav.teachers, t.nav.parents, t.nav.liveClasses].map((item) => (
-              <a key={item} href="#" className="hover:text-[#0a2540] transition-colors">{item}</a>
-            ))}
-          </div> */}
 
           <div className="hidden lg:flex items-center gap-3">
             <button
@@ -1015,23 +1104,6 @@ export default function LandingPage() {
                     </div>
                   </div>
                 </div>
-
-                {/* Floating Badge - Live Class */}
-                {/* <div className="absolute -bottom-4 -left-4 bg-white rounded-2xl shadow-xl px-5 py-3 border border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#e0f5f7] rounded-xl flex items-center justify-center">
-                      <svg className="w-5 h-5 text-[#1a7a8a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-[#0a2540]">
-                        {lang === "ar" ? "فصول مباشرة" : "Live Classes"}
-                      </p>
-                      <p className="text-xs text-red-500 font-medium">● {lang === "ar" ? "مباشر الآن" : "Live Now"}</p>
-                    </div>
-                  </div>
-                </div> */}
               </div>
 
               {/* Stats floating on image */}
@@ -1042,6 +1114,145 @@ export default function LandingPage() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── STATIC SECTION: تحصيلي & القدرات ───────────────────────── */}
+      <section className="py-16 bg-white">
+        <div className="max-w-7xl mx-auto px-6">
+          {/* Section Header */}
+          <div className="text-center mb-12">
+            <h2 className="text-3xl font-bold text-[#0a2540]">
+              {lang === "ar" ? "اختر مسارك التعليمي" : "Choose Your Educational Path"}
+            </h2>
+            <p className="text-gray-500 mt-2">
+              {lang === "ar"
+                ? "برامج متخصصة تناسب احتياجاتك الدراسية"
+                : "Specialized programs that suit your academic needs"}
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8">
+
+            {/* ── التحصيلي ─────────────────────────────────────────── */}
+            <div className="group bg-[#f7fafa] rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 border border-gray-100">
+              <div className="p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[#1a7a8a]/10 flex items-center justify-center group-hover:bg-[#1a7a8a]/20 transition-colors">
+                    <svg className="w-6 h-6 text-[#1a7a8a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-[#0a2540]">
+                      {lang === "ar" ? "التحصيلي" : "Academic Achievement"}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {lang === "ar"
+                        ? "برامج متخصصة لتحسين مستواك الأكاديمي"
+                        : "Specialized programs to improve your academic level"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* فيديو التحصيلي */}
+                <div className="relative rounded-2xl overflow-hidden aspect-video bg-[#0a2540] group/video">
+                  <img
+                    src="/images/academic-thumbnail.jpg"
+                    alt="التحصيلي"
+                    className="w-full h-full object-cover group-hover/video:scale-105 transition-transform duration-500"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/images/video-placeholder.jfif";
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover/video:bg-black/20 transition-colors">
+                    <button
+                      onClick={() => window.open("https://youtu.be/tOFm-zoI6-w", "_blank")}
+                      className="w-16 h-16 bg-white/90 hover:bg-white rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg"
+                    >
+                      <svg className="w-8 h-8 text-[#0a2540] ml-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between">
+                  <p className="text-sm text-gray-500">
+                    {lang === "ar"
+                      ? "🎓 دروس تفاعلية مع أفضل المعلمين"
+                      : "🎓 Interactive lessons with the best teachers"}
+                  </p>
+                  {/* <Link href="/academic">
+                    <button className="text-sm font-semibold text-[#1a7a8a] hover:text-[#0a2540] transition-colors flex items-center gap-1">
+                      {lang === "ar" ? "اعرف أكثر" : "Learn More"}
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </Link> */}
+                </div>
+              </div>
+            </div>
+
+            {/* ── القدرات ──────────────────────────────────────────── */}
+            <div className="group bg-[#f7fafa] rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 border border-gray-100">
+              <div className="p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-purple-100 flex items-center justify-center group-hover:bg-purple-200 transition-colors">
+                    <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-[#0a2540]">
+                      {lang === "ar" ? "القدرات" : "Aptitude Programs"}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {lang === "ar"
+                        ? "استعد لاختبارات القدرات بثقة"
+                        : "Prepare for aptitude tests with confidence"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* فيديو القدرات */}
+                <div className="relative rounded-2xl overflow-hidden aspect-video bg-[#0a2540] group/video">
+                  <img
+                    src="/images/aptitude.png"
+                    alt="القدرات"
+                    className="w-full h-full object-cover group-hover/video:scale-105 transition-transform duration-500"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = "/images/video-placeholder.jfif";
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/30 flex items-center justify-center group-hover/video:bg-black/20 transition-colors">
+                    <button
+                      onClick={() => window.open("https://youtu.be/AFh1-fqdaf4", "_blank")}
+                      className="w-16 h-16 bg-white/90 hover:bg-white rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 shadow-lg"
+                    >
+                      <svg className="w-8 h-8 text-[#0a2540] ml-1" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex items-center justify-between">
+                  <p className="text-sm text-gray-500">
+                    {lang === "ar"
+                      ? "🎯 تدريبات واختبارات محاكاة واقعية"
+                      : "🎯 Realistic simulation exercises and tests"}
+                  </p>
+                  {/* <Link href="/aptitude">
+                    <button className="text-sm font-semibold text-purple-600 hover:text-purple-800 transition-colors flex items-center gap-1">
+                      {lang === "ar" ? "اعرف أكثر" : "Learn More"}
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </Link> */}
+                </div>
+              </div>
+            </div>
+
           </div>
         </div>
       </section>
@@ -1081,20 +1292,20 @@ export default function LandingPage() {
                   : "Create your account on the platform and benefit from all educational services"}
               </p>
               {isSignedIn ? (
-              <Link href="/onboarding">
-                <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
-                  {lang === "ar" ? "سجل الآن" : "Register Now"}
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </Link>
-            ) : (
-              <SignInButton mode="modal">
-                <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
-                  {lang === "ar" ? "سجل الآن" : "Register Now"}
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </SignInButton>
-            )}
+                <Link href="/onboarding">
+                  <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
+                    {lang === "ar" ? "سجل الآن" : "Register Now"}
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
+              ) : (
+                <SignInButton mode="modal">
+                  <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
+                    {lang === "ar" ? "سجل الآن" : "Register Now"}
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </SignInButton>
+              )}
             </div>
 
             {/* Card 2 - التسجيل في التحصيل الدراسي */}
@@ -1112,12 +1323,21 @@ export default function LandingPage() {
                   ? "سجل في برامج التحصيل الدراسي لتحسين مستواك الأكاديمي"
                   : "Register for academic achievement programs to improve your academic level"}
               </p>
-              <Link href="/academic">
-                <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
-                  {lang === "ar" ? "سجل الآن" : "Register Now"}
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </Link>
+              {isSignedIn ? (
+                <Link href="/onboarding">
+                  <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
+                    {lang === "ar" ? "سجل الآن" : "Register Now"}
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
+              ) : (
+                <SignInButton mode="modal">
+                  <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
+                    {lang === "ar" ? "سجل الآن" : "Register Now"}
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </SignInButton>
+              )}
             </div>
 
             {/* Card 3 - التسجيل في القدرات */}
@@ -1135,12 +1355,21 @@ export default function LandingPage() {
                   ? "استعد لاختبارات القدرات مع أفضل المدربين والمواد التدريبية"
                   : "Prepare for aptitude tests with the best trainers and training materials"}
               </p>
-              <Link href="/aptitude">
-                <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
-                  {lang === "ar" ? "سجل الآن" : "Register Now"}
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </Link>
+              {isSignedIn ? (
+                <Link href="/onboarding">
+                  <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
+                    {lang === "ar" ? "سجل الآن" : "Register Now"}
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </Link>
+              ) : (
+                <SignInButton mode="modal">
+                  <Button className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white transition-all duration-300 group-hover:scale-105">
+                    {lang === "ar" ? "سجل الآن" : "Register Now"}
+                    <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                </SignInButton>
+              )}
             </div>
 
             {/* Card 4 - التسجيل في الرحلات */}
@@ -1166,16 +1395,6 @@ export default function LandingPage() {
               </Link>
             </div>
           </div>
-
-          {/* ✅ زر عرض جميع الباقات */}
-          {/* <div className="text-center mt-10">
-            <Link href="/subscriptions">
-              <Button className="bg-white text-[#0a2540] hover:bg-gray-100 px-8 py-6 text-lg rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
-                {lang === "ar" ? "عرض جميع الباقات" : "View All Packages"}
-                <ArrowRight className="h-5 w-5 ml-2" />
-              </Button>
-            </Link>
-          </div> */}
         </div>
       </section>
 
@@ -1268,6 +1487,40 @@ export default function LandingPage() {
 
       {/* ── VIDEO TESTIMONIALS ─────────────────────────────────── */}
       {renderVideoTestimonials()}
+
+      {selectedVideo && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4"
+          onClick={closeVideo}
+        >
+          <div className="relative w-full max-w-4xl" onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={closeVideo}
+              className="absolute -top-12 left-0 text-white hover:text-gray-300 transition-colors flex items-center gap-2 text-sm"
+            >
+              <X className="h-5 w-5" /> إغلاق
+            </button>
+
+            <div className="relative aspect-video bg-black rounded-2xl overflow-hidden">
+              {selectedEmbedType === "youtube" ? (
+                <iframe
+                  src={selectedVideo}
+                  className="w-full h-full"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : (
+                <video
+                  src={selectedVideo}
+                  controls
+                  className="w-full h-full"
+                  autoPlay
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Courses from Convex ─────────────────────────────────── */}
       {renderCourses()}

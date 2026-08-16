@@ -35,6 +35,7 @@ import { FaStore } from "react-icons/fa";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
 import { AiOutlineTransaction } from "react-icons/ai";
 import { FaClipboardQuestion } from "react-icons/fa6";
+import { HiAcademicCap } from "react-icons/hi";
 
 export default function StudentLayout({
   children,
@@ -78,7 +79,7 @@ export default function StudentLayout({
     { label: "واجبائي", icon: FileText, href: "/student/my-assignments" },
     { label: "امتحاناتي", icon: PiExam, href: "/student/my-exams" },
     { label: "وسائطي", icon: FaClipboardQuestion, href: "/student/my-media" },
-    { label: "حضوري", icon: Circle, href: "/student/attendance" },
+    // { label: "حضوري", icon: Circle, href: "/student/attendance" },
     { label: "Chatbox", icon: IoChatbubbleOutline, href: "/student/chatbox" },
     { label: "المشتريات", icon: FaStore, href: "/student/purchases" },
     { label: "القدرات", icon: IoIosCheckmarkCircleOutline, href: "/student/aptitude" },
@@ -87,11 +88,23 @@ export default function StudentLayout({
 
   // ✅ أيقونة الاشتراك - مع تمرير userId و gradeId من currentUser
   const subscriptionNavItem = [
-    { 
-      label: "الاشتراك", 
-      icon: CreditCard, 
-      href: `/subscription?userId=${currentUser._id}&gradeId=${currentUser.gradeId || ''}&role=student`, 
-      highlight: true 
+    {
+      label: "الاشتراك",
+      icon: CreditCard,
+      href: `/subscription?userId=${currentUser._id}&gradeId=${currentUser.gradeId || ''}&role=student`,
+      highlight: true
+    },
+    {
+      label: "التحصيلي",
+      icon: HiAcademicCap,
+      href: `/academic`,
+      highlight: false
+    },
+    {
+      label: "القدرات",
+      icon: IoIosCheckmarkCircleOutline,
+      href: `/aptitude`,
+      highlight: false
     },
   ];
 
@@ -103,9 +116,8 @@ export default function StudentLayout({
     <div className="flex h-screen bg-[#f7fafa] font-sans" dir="rtl">
       {/* Sidebar */}
       <div
-        className={`${
-          sidebarOpen ? "w-64" : "w-20"
-        } bg-[#001f24] text-white transition-all duration-300 flex flex-col shrink-0`}
+        className={`${sidebarOpen ? "w-64" : "w-20"
+          } bg-[#001f24] text-white transition-all duration-300 flex flex-col shrink-0`}
       >
         {/* Logo */}
         <div className="p-5 flex items-center justify-between border-b border-[#03363d]">
@@ -132,18 +144,17 @@ export default function StudentLayout({
             const Icon = item.icon;
             const isActive = pathname === item.href;
             const isHighlight = (item as any).highlight || false;
-            
+
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${
-                  isActive
-                    ? "bg-[#03363d] text-white"
-                    : isHighlight
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${isActive
+                  ? "bg-[#03363d] text-white"
+                  : isHighlight
                     ? "bg-amber-600 hover:bg-amber-700 text-white animate-pulse"
                     : "text-[#a3ced6] hover:bg-[#03363d] hover:text-white"
-                }`}
+                  }`}
               >
                 <Icon size={19} className="shrink-0" />
                 {sidebarOpen && (
@@ -170,19 +181,15 @@ export default function StudentLayout({
               )}
             </div>
           )}
+
           
-          {/* ✅ زر Home */}
-          <button
-            onClick={() => {
-              router.push("/");
-              router.refresh();
-            }}
-            className="flex items-center gap-3 w-full bg-[#03363d] hover:bg-[#032a30] text-white py-2.5 px-3 rounded-lg transition-colors text-sm font-medium mb-2"
-          >
-            <Home size={17} />
-            {sidebarOpen && <span>الرئيسية</span>}
-          </button>
-          
+          {/* <Link href="/">
+            <button className="flex items-center gap-3 w-full bg-[#03363d] hover:bg-[#032a30] text-white py-2.5 px-3 rounded-lg transition-colors text-sm font-medium mb-2">
+              <Home size={17} />
+              {sidebarOpen && <span>الرئيسية</span>}
+            </button>
+          </Link> */}
+
           {/* ✅ زر Logout */}
           <button
             onClick={async () => {

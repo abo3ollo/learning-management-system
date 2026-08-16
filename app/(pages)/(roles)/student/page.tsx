@@ -302,23 +302,23 @@ export default function StudentDashboard() {
             )}
           </div>
           <div className="flex items-center gap-3">
-            
-              <button className="relative p-2 bg-white rounded-xl border border-[#c0c8c9] hover:border-[#1a7a8a] transition-colors">
-                <Bell className="h-5 w-5 text-gray-600" />
-                {stats.unread > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
-                    {stats.unread}
-                  </span>
-                )}
-              </button>
-           
-            
-              <div className="w-10 h-10 rounded-xl bg-[#e0f5f7] flex items-center justify-center cursor-pointer">
-                <span className="font-bold text-[#1a7a8a]">
-                  {currentUser.name?.charAt(0)?.toUpperCase() || "S"}
+
+            <button className="relative p-2 bg-white rounded-xl border border-[#c0c8c9] hover:border-[#1a7a8a] transition-colors">
+              <Bell className="h-5 w-5 text-gray-600" />
+              {stats.unread > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                  {stats.unread}
                 </span>
-              </div>
-            
+              )}
+            </button>
+
+
+            <div className="w-10 h-10 rounded-xl bg-[#e0f5f7] flex items-center justify-center cursor-pointer">
+              <span className="font-bold text-[#1a7a8a]">
+                {currentUser.name?.charAt(0)?.toUpperCase() || "S"}
+              </span>
+            </div>
+
           </div>
         </div>
 
@@ -334,6 +334,25 @@ export default function StudentDashboard() {
                 <p className="text-gray-500 mt-2 max-w-md">
                   لتتمكن من الوصول إلى جميع خدمات المنصة، يرجى دفع الاشتراك أولاً.
                 </p>
+              </div>
+              <div className="w-full max-w-md bg-blue-50 border border-blue-200 rounded-xl p-4 mt-2">
+                <p className="text-sm font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                  <span className="text-lg">💳</span>
+                 معلومات الدفع
+                </p>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between items-center border-b border-blue-100 pb-2">
+                    <span className="text-gray-600">📱 رقم الهاتف:</span>
+                    <span className="font-mono font-bold text-blue-700 text-lg">01555743737</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-1">
+                    <span className="text-gray-600">💳 رقم المحفظة:</span>
+                    <span className="font-mono font-bold text-blue-700 text-lg">01170557555</span>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-400 text-center border-t border-blue-100 pt-2">
+                    ⚠️ يرجى إرسال المبلغ على أحد الأرقام أعلاه ثم رفع إيصال الدفع
+                  </div>
+                </div>
               </div>
               <Link href={`/subscription?userId=${currentUser._id}&gradeId=${currentUser.gradeId || ''}&role=student`}>
                 <Button className="mt-4 bg-amber-600 hover:bg-amber-700 text-white px-8 py-3 text-lg">
@@ -469,8 +488,8 @@ export default function StudentDashboard() {
                                             target="_blank"
                                             rel="noopener noreferrer"
                                             className={`px-3 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-1 shrink-0 ${lc.status === "live"
-                                                ? "bg-green-600 hover:bg-green-700 text-white animate-pulse"
-                                                : "bg-[#1a7a8a] hover:bg-[#15707e] text-white"
+                                              ? "bg-green-600 hover:bg-green-700 text-white animate-pulse"
+                                              : "bg-[#1a7a8a] hover:bg-[#15707e] text-white"
                                               }`}
                                           >
                                             <PlayCircle className="h-3 w-3" />

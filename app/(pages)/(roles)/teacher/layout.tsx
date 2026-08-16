@@ -171,7 +171,7 @@ export default function TeacherLayout({
         {/* ✅ Home + Logout Buttons - في أسفل الـ Sidebar */}
         <div className="absolute bottom-0 right-0 left-0 p-4 border-t border-[#c0c8c9] bg-white space-y-2">
           {/* زر Home */}
-          <button
+          {/* <button
             onClick={handleGoHome}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 w-full text-[#001f24] hover:bg-[#f0f4f4] ${
               !isSidebarOpen && "justify-center"
@@ -181,7 +181,7 @@ export default function TeacherLayout({
             {isSidebarOpen && (
               <span className="text-sm font-medium">الرئيسية</span>
             )}
-          </button>
+          </button> */}
           
           {/* زر Logout */}
           <button
@@ -240,18 +240,18 @@ export default function TeacherLayout({
               </div>
 
               {/* Search */}
-              <div className="hidden lg:flex items-center relative">
+              {/* <div className="hidden lg:flex items-center relative">
                 <Search className="absolute right-3 h-4 w-4 text-gray-400" />
                 <Input
                   placeholder="بحث..."
                   className="w-64 pr-10 py-1.5 text-sm border-[#c0c8c9] focus:ring-[#1a7a8a]"
                 />
-              </div>
+              </div> */}
             </div>
 
             <div className="flex items-center gap-3">
               {/* Notifications */}
-              <DropdownMenu>
+              {/* <DropdownMenu>
                 <DropdownMenuTrigger>
                   <div className="relative p-2 hover:bg-[#f0f4f4] rounded-lg transition-colors">
                     <Bell className="h-5 w-5 text-gray-600" />
@@ -279,10 +279,10 @@ export default function TeacherLayout({
                     <span className="text-xs text-gray-400">منذ 3 ساعات</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
+              </DropdownMenu> */}
 
               {/* User Menu */}
-              <DropdownMenu>
+              {/* <DropdownMenu>
                 <DropdownMenuTrigger>
                   <div className="flex items-center gap-2 hover:bg-[#f0f4f4] rounded-lg px-2 py-1.5 transition-colors">
                     <Avatar className="h-8 w-8">
@@ -316,7 +316,7 @@ export default function TeacherLayout({
                     تسجيل الخروج
                   </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
+              </DropdownMenu> */}
             </div>
           </div>
         </header>
