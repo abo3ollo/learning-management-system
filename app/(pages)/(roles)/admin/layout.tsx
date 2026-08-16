@@ -33,7 +33,7 @@ import { SiGoogleclassroom } from "react-icons/si";
 import { AiOutlineSchedule, AiOutlineTransaction } from "react-icons/ai";
 import { MdOutlineHomeMax, MdOutlinePermMedia } from "react-icons/md";
 import { FaClipboardQuestion } from "react-icons/fa6";
-import { PiExam } from "react-icons/pi";
+import { PiExam, PiTreasureChestFill } from "react-icons/pi";
 import { IoChatbubbleOutline } from "react-icons/io5";
 import { BiPurchaseTag } from "react-icons/bi";
 import { IoIosCheckmarkCircleOutline } from "react-icons/io";
@@ -80,20 +80,24 @@ export default function AdminLayout({
     { href: "/admin/questions", label: "بنك الأسئلة", icon: FaClipboardQuestion },
     { href: "/admin/assignments", label: "الواجبات", icon: FileText },
     { href: "/admin/exams", label: "الامتحانات", icon: PiExam },
-
-
+    
     { href: "/admin/landing", label: "البرتوفوليو", icon: MdOutlineHomeMax },
     { href: "/admin/chatbox", label: "Chat Box", icon: IoChatbubbleOutline },
     { href: "/admin/notifications", label: "الإشعارات", icon: Bell },
-    { href: "/admin/subscriptions", label: "الاشتراكات الاونلاين", icon: CircleDollarSign },
+
     { href: "/admin/inventory", label: "المستودعات", icon: Package  },
+    { href: "/admin/treasury", label: "الخزينة", icon: PiTreasureChestFill },
+
+    { href: "/admin/subscriptions", label: "الاشتراكات الاونلاين", icon: CircleDollarSign },
     { href: "/admin/transactions", label: "الايرادات", icon: AiOutlineTransaction },
     { href: "/admin/purchases", label: "مبيعات المنصه من المستودع ", icon: FaStore },
+
     { href: "/admin/approvals", label: "الموافقة علي التسجيلات", icon: ClipboardCheck },
     { href: "/admin/subscription-approvals", label: "الموافقة على الاشتراكات", icon: ClipboardCheck },
     { href: "/admin/aptitude-approvals", label: "الموافقة على القدرات", icon: IoIosCheckmarkCircleOutline },
     { href: "/admin/academic-approvals", label: "الموافقة على التحصيلات", icon: HiAcademicCap  },
-    { href: "/admin/settings", label: "الإعدادات", icon: Settings },
+    
+    // { href: "/admin/settings", label: "الإعدادات", icon: Settings },
   ];
 
   return (

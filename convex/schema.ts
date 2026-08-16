@@ -1372,4 +1372,41 @@ export default defineSchema({
     .index("by_type", ["type"])
     .index("by_status", ["status"])
     .index("by_created", ["createdAt"]),
+
+
+// ── سندات القبض (Receipt Vouchers) ────────────────────────────
+receiptVouchers: defineTable({
+  voucherNumber: v.string(), // رقم السند (auto-generated)
+  recipientId: v.id("users"), // المستلم (الطالب أو ولي الأمر)
+  recipientName: v.string(), // اسم المستلم (للعرض السريع)
+  amount: v.number(), // المبلغ
+  currency: v.string(), // العملة
+  notes: v.optional(v.string()), // البيان / الملاحظات
+  date: v.number(), // تاريخ السند
+  createdBy: v.id("users"), // من قام بالإضافة
+  createdAt: v.number(),
+  updatedAt: v.optional(v.number()),
+})
+  .index("by_voucherNumber", ["voucherNumber"])
+  .index("by_recipient", ["recipientId"])
+  .index("by_date", ["date"])
+  .index("by_createdBy", ["createdBy"]),
+
+// ── سندات الصرف (Payment Vouchers) ────────────────────────────
+paymentVouchers: defineTable({
+  voucherNumber: v.string(), // رقم السند (auto-generated)
+  payeeId: v.id("users"), // المدفوع له
+  payeeName: v.string(), // اسم المدفوع له (للعرض السريع)
+  amount: v.number(), // المبلغ
+  currency: v.string(), // العملة
+  notes: v.optional(v.string()), // البيان / الملاحظات
+  date: v.number(), // تاريخ السند
+  createdBy: v.id("users"), // من قام بالإضافة
+  createdAt: v.number(),
+  updatedAt: v.optional(v.number()),
+})
+  .index("by_voucherNumber", ["voucherNumber"])
+  .index("by_payee", ["payeeId"])
+  .index("by_date", ["date"])
+  .index("by_createdBy", ["createdBy"]),
 });

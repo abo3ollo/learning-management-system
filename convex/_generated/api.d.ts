@@ -39,6 +39,7 @@ import type * as schedules_schedules from "../schedules/schedules.js";
 import type * as submissions_submissions from "../submissions/submissions.js";
 import type * as teacherMaterials_teacherMaterials from "../teacherMaterials/teacherMaterials.js";
 import type * as transactions_transactions from "../transactions/transactions.js";
+import type * as treasury_treasury from "../treasury/treasury.js";
 import type * as units from "../units.js";
 import type * as user_admin from "../user/admin.js";
 import type * as user_auth from "../user/auth.js";
@@ -86,6 +87,7 @@ declare const fullApi: ApiFromModules<{
   "submissions/submissions": typeof submissions_submissions;
   "teacherMaterials/teacherMaterials": typeof teacherMaterials_teacherMaterials;
   "transactions/transactions": typeof transactions_transactions;
+  "treasury/treasury": typeof treasury_treasury;
   units: typeof units;
   "user/admin": typeof user_admin;
   "user/auth": typeof user_auth;
