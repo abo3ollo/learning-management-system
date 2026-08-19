@@ -35,7 +35,7 @@ export default function StudentTransactionsPage() {
   // ── Queries ───────────────────────────────────────────────────
   const currentUser = useQuery(api.user.auth.getCurrentUser, isSignedIn ? {} : "skip");
   
-  // ✅ جلب معاملات الطالب (منصة + قدرات + مشتريات)
+  // ✅ جلب جميع المعاملات (منصة + قدرات + تحصيلي + مشتريات)
   const transactions = useQuery(
     api.transactions.transactions.getStudentTransactionsWithDetails,
     currentUser?._id ? { 
@@ -47,12 +47,6 @@ export default function StudentTransactionsPage() {
   const stats = useQuery(
     api.transactions.transactions.getStudentStats,
     currentUser?._id ? { studentId: currentUser._id as Id<"users"> } : "skip"
-  );
-
-  // ✅ جلب طلبات القدرات للطالب
-  const aptitudePurchases = useQuery(
-    api.aptitude.aptitude.getMyAptitudePurchasesWithStatus,
-    currentUser?._id ? {} : "skip"
   );
 
   // ── Effects ───────────────────────────────────────────────────
@@ -70,40 +64,19 @@ export default function StudentTransactionsPage() {
     }
   }, [isLoaded, isSignedIn, currentUser, router]);
 
-  // ── دمج المعاملات مع طلبات القدرات ──────────────────────────
+  // ── المعاملات ──────────────────────────────────────────────────
   const allTransactions = React.useMemo(() => {
     const txs = transactions || [];
-    const apt = aptitudePurchases || [];
-
-    // تحويل طلبات القدرات إلى معاملات
-    const aptitudeTxs = apt.map((p: any) => ({
-      _id: p._id,
-      studentId: p.studentId,
-      studentName: currentUser?.name || "غير معروف",
-      studentEmail: currentUser?.email || "",
-      type: "aptitude",
-      category: "القدرات",
-      description: `شراء مواد قدرات - ${p.teacherName || "معلم"}`,
-      descriptionAr: `شراء مواد قدرات - ${p.teacherName || "معلم"}`,
-      amount: p.amount || 0,
-      currency: "EGP",
-      status: p.status || "pending",
-      referenceId: p._id,
-      referenceType: "aptitude_purchase",
-      paymentProof: p.paymentProof || null,
-      createdAt: p.createdAt || Date.now(),
-      updatedAt: p.updatedAt || null,
-      // بيانات إضافية
-      teacherName: p.teacherName || "غير معروف",
-      isAptitude: true,
+    
+    // إضافة uniqueKey لكل معاملة
+    const allWithKeys = txs.map((t: any) => ({
+      ...t,
+      uniqueKey: t.uniqueKey || `transaction_${t._id}`,
     }));
 
-    // دمج المعاملات
-    const all = [...txs, ...aptitudeTxs];
-    
     // ترتيب من الأحدث للأقدم
-    return all.sort((a, b) => b.createdAt - a.createdAt);
-  }, [transactions, aptitudePurchases, currentUser]);
+    return allWithKeys.sort((a, b) => b.createdAt - a.createdAt);
+  }, [transactions]);
 
   // ── فلترة المعاملات ──────────────────────────────────────────
   const filteredTransactions = allTransactions.filter((t: any) => {
@@ -150,6 +123,7 @@ export default function StudentTransactionsPage() {
     const map: Record<string, string> = {
       platform: "منصة",
       aptitude: "قدرات",
+      academic: "تحصيلي",
       purchase: "مشتريات",
     };
     return map[type] || type;
@@ -159,6 +133,7 @@ export default function StudentTransactionsPage() {
     const map: Record<string, string> = {
       platform: "💻",
       aptitude: "🎯",
+      academic: "📚",
       purchase: "🛒",
     };
     return map[type] || "📄";
@@ -184,7 +159,7 @@ export default function StudentTransactionsPage() {
             </Link>
             <div>
               <h1 className="text-xl font-bold text-gray-900">كشف الحساب</h1>
-              <p className="text-sm text-gray-500">جميع معاملاتك المالية (منصة، قدرات، مشتريات)</p>
+              <p className="text-sm text-gray-500">جميع معاملاتك المالية (منصة، قدرات، تحصيلي، مشتريات)</p>
             </div>
           </div>
           <Button
@@ -291,6 +266,7 @@ export default function StudentTransactionsPage() {
             <option value="all">جميع الأنواع</option>
             <option value="platform">💻 منصة</option>
             <option value="aptitude">🎯 قدرات</option>
+            <option value="academic">📚 تحصيلي</option>
             <option value="purchase">🛒 مشتريات</option>
           </select>
           <select
@@ -334,14 +310,14 @@ export default function StudentTransactionsPage() {
                     const status = getStatusBadge(transaction.status);
                     
                     return (
-                      <tr key={transaction._id} className="hover:bg-gray-50 transition-colors">
+                      <tr key={transaction.uniqueKey} className="hover:bg-gray-50 transition-colors">
                         <td className="px-6 py-4 text-sm text-gray-500">{index + 1}</td>
                         <td className="px-6 py-4">
                           <span className="flex items-center gap-2 text-sm">
                             <span>{getTypeIcon(transaction.type)}</span>
                             <span className="font-medium">{getTypeLabel(transaction.type)}</span>
                           </span>
-                          {transaction.isAptitude && (
+                          {(transaction.isAptitude || transaction.isAcademic) && (
                             <p className="text-xs text-gray-400">معلم: {transaction.teacherName}</p>
                           )}
                         </td>

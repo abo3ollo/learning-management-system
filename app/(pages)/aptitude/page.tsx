@@ -71,8 +71,14 @@ export default function AptitudePage() {
     isUserReady ? {} : "skip"
   );
   
-  const teachersData = useQuery(api.user.teachers.getPublicTeachers, {});
-  const materials = useQuery(api.teacherMaterials.teacherMaterials.getPublicTeacherMaterials, {});
+  const teachersData = useQuery(api.aptitude.aptitude.getAvailableTeachers, {});
+  
+  // ✅ استخدم "skip" كقيمة وحيدة عندما لا يوجد teacherId
+  const materials = useQuery(
+    api.aptitude.aptitude.getTeacherMaterials,
+    selectedTeacher?._id ? { teacherId: selectedTeacher._id as any } : "skip"
+  );
+  
   const generateUploadUrl = useMutation(api.teacherMaterials.teacherMaterials.generateUploadUrl);
   
   // ✅ جلب حالة الشراء لكل معلم
@@ -194,7 +200,7 @@ export default function AptitudePage() {
     reader.readAsDataURL(file);
   };
 
-  // ✅ معالج الدفع
+  // ✅ معالج الدفع - استخدم aptitudeCoursePrice
   const handlePaymentSubmit = async () => {
     if (!selectedTeacher) return;
     if (!currentUser) {
@@ -210,7 +216,7 @@ export default function AptitudePage() {
     try {
       const result = await createPurchase({
         teacherId: selectedTeacher._id as Id<"users">,
-        amount: selectedTeacher.coursePrice || 150,
+        amount: selectedTeacher.aptitudeCoursePrice || 150,
         paymentProof: paymentProof,
       });
 
@@ -224,8 +230,6 @@ export default function AptitudePage() {
         title: "تم إرسال الطلب",
         description: "تم إرسال طلب الدفع للمراجعة، سيتم إعلامك عند الموافقة",
       });
-
-      // ✅ لا نفتح المواد مباشرة - ننتظر الموافقة
     } catch (error: any) {
       setError(error.message || "حدث خطأ أثناء الدفع");
     } finally {
@@ -264,7 +268,8 @@ export default function AptitudePage() {
   );
 
   // ── حالة التحميل ──────────────────────────────────────────────
-  if (!authLoaded || !userLoaded || teachersData === undefined || materials === undefined) {
+  // ✅ تحقق من teachersData فقط، materials يمكن أن تكون undefined طبيعياً
+  if (!authLoaded || !userLoaded || teachersData === undefined) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
@@ -353,7 +358,8 @@ export default function AptitudePage() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredTeachers.map((teacher: any) => {
               const purchaseStatus = getTeacherPurchaseStatus(teacher._id);
-              const isFree = (teacher.coursePrice || 0) === 0;
+              // ✅ استخدم aptitudeCoursePrice
+              const isFree = (teacher.aptitudeCoursePrice || 0) === 0;
               const isPending = purchaseStatus?.status === "pending";
               const isApproved = purchaseStatus?.status === "approved";
               const isRejected = purchaseStatus?.status === "rejected";
@@ -403,10 +409,13 @@ export default function AptitudePage() {
                           <span className="line-clamp-1">{teacher.qualification}</span>
                         </div>
                       )}
+                      {/* ✅ عرض السعر باستخدام aptitudeCoursePrice */}
                       <div className="flex items-center gap-1 text-[#1a7a8a] font-bold">
                         <DollarSign className="h-4 w-4" />
                         <span>
-                          {isFree ? (lang === "ar" ? "مجاني" : "Free") : `${teacher.coursePrice || 150} ${teacher.courseCurrency || "EGP"}`}
+                          {isFree 
+                            ? (lang === "ar" ? "مجاني" : "Free") 
+                            : `${teacher.aptitudeCoursePrice || 0} ${teacher.aptitudeCourseCurrency || "EGP"}`}
                         </span>
                       </div>
 
@@ -519,14 +528,16 @@ export default function AptitudePage() {
                 <div className="bg-gray-50 rounded-xl p-3 space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-500">{lang === "ar" ? "سعر الكورس" : "Course Price"}</span>
+                    {/* ✅ استخدم aptitudeCoursePrice */}
                     <span className="font-semibold">
-                      {selectedTeacher.coursePrice || 150} {selectedTeacher.courseCurrency || "EGP"}
+                      {selectedTeacher.aptitudeCoursePrice || 150} {selectedTeacher.aptitudeCourseCurrency || "EGP"}
                     </span>
                   </div>
                   <div className="border-t border-gray-200 pt-2 flex justify-between text-sm font-bold">
                     <span>{lang === "ar" ? "الإجمالي" : "Total"}</span>
+                    {/* ✅ استخدم aptitudeCoursePrice */}
                     <span className="text-[#1a7a8a]">
-                      {selectedTeacher.coursePrice || 150} {selectedTeacher.courseCurrency || "EGP"}
+                      {selectedTeacher.aptitudeCoursePrice || 150} {selectedTeacher.aptitudeCourseCurrency || "EGP"}
                     </span>
                   </div>
                 </div>

@@ -82,7 +82,8 @@ export default function StudentLayout({
     // { label: "حضوري", icon: Circle, href: "/student/attendance" },
     { label: "Chatbox", icon: IoChatbubbleOutline, href: "/student/chatbox" },
     { label: "المشتريات", icon: FaStore, href: "/student/purchases" },
-    { label: "القدرات", icon: IoIosCheckmarkCircleOutline, href: "/student/aptitude" },
+    { label: "القدرات", icon: IoIosCheckmarkCircleOutline, href: "/aptitude" },
+    { label: "التحصيلي", icon: HiAcademicCap, href: "/academic" },
     { label: "كشف الحساب", icon: AiOutlineTransaction, href: "/student/transactions" },
   ];
 

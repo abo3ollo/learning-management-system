@@ -80,6 +80,8 @@ export default function TeacherLayout({
     { label: "الامتحانات", icon: ClipboardList, href: "/teacher/exams" },
     { label: "الواجبات", icon: FileText, href: "/teacher/assignments" },
     { label: "القدرات", icon: School, href: "/teacher/aptitude" },
+    { label: "التحصيلي", icon: School, href: "/teacher/academic" },
+
     { label: "المحاضرات المباشرة", icon: GraduationCap, href: "/teacher/live-classes" },
     { label: " Chatbox", icon: IoChatbubbleOutline, href: "/teacher/chatbox" },
   ];

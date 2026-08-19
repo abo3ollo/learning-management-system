@@ -1,3 +1,5 @@
+// app/(pages)/(roles)/admin/transactions/page.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";
@@ -81,7 +83,7 @@ export default function AdminTransactionsPage() {
             </Link>
             <div>
               <h1 className="text-xl font-bold text-gray-900">كشف الحساب</h1>
-              <p className="text-sm text-gray-500">جميع المعاملات المالية للطلاب</p>
+              <p className="text-sm text-gray-500">جميع المعاملات المالية للطلاب (منصة، قدرات، تحصيلي، مشتريات)</p>
             </div>
           </div>
           <Button
@@ -114,9 +116,10 @@ export default function AdminTransactionsPage() {
             className="px-4 py-2 border rounded-lg text-sm bg-white"
           >
             <option value="all">جميع الأنواع</option>
-            <option value="platform">منصة أونلاين</option>
-            <option value="aptitude">تحصيلات</option>
-            <option value="purchase">مشتريات</option>
+            <option value="platform">💻 منصة</option>
+            <option value="aptitude">🎯 قدرات</option>
+            <option value="academic">📚 تحصيلي</option>
+            <option value="purchase">🛒 مشتريات</option>
           </select>
           <select
             value={statusFilter}
@@ -125,7 +128,9 @@ export default function AdminTransactionsPage() {
           >
             <option value="all">جميع الحالات</option>
             <option value="pending">⏳ قيد المراجعة</option>
+            <option value="approved">✅ تمت الموافقة</option>
             <option value="completed">✅ مكتمل</option>
+            <option value="rejected">❌ مرفوض</option>
             <option value="refunded">↩️ مرتجع</option>
             <option value="failed">❌ فاشل</option>
           </select>

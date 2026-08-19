@@ -11,6 +11,7 @@ export const createTransaction = mutation({
     type: v.union(
       v.literal("platform"),
       v.literal("aptitude"),
+      v.literal("academic"),
       v.literal("purchase")
     ),
     category: v.string(),
@@ -19,6 +20,8 @@ export const createTransaction = mutation({
     status: v.union(
       v.literal("pending"),
       v.literal("completed"),
+      v.literal("approved"),
+      v.literal("rejected"),
       v.literal("refunded"),
       v.literal("failed")
     ),
@@ -51,11 +54,14 @@ export const getStudentTransactions = query({
     type: v.optional(v.union(
       v.literal("platform"),
       v.literal("aptitude"),
+      v.literal("academic"),
       v.literal("purchase")
     )),
     status: v.optional(v.union(
       v.literal("pending"),
       v.literal("completed"),
+      v.literal("approved"),
+      v.literal("rejected"),
       v.literal("refunded"),
       v.literal("failed")
     )),
@@ -120,7 +126,7 @@ export const getTransactionsByTrack = query({
     return transactions.filter((t) => {
       if (args.track === "platform") return t.type === "platform";
       if (args.track === "aptitude") return t.type === "aptitude";
-      if (args.track === "academic") return t.category === "academic";
+      if (args.track === "academic") return t.type === "academic" || t.category === "academic";
       return false;
     });
   },
@@ -132,11 +138,14 @@ export const getAllTransactions = query({
     type: v.optional(v.union(
       v.literal("platform"),
       v.literal("aptitude"),
+      v.literal("academic"),
       v.literal("purchase")
     )),
     status: v.optional(v.union(
       v.literal("pending"),
       v.literal("completed"),
+      v.literal("approved"),
+      v.literal("rejected"),
       v.literal("refunded"),
       v.literal("failed")
     )),
@@ -158,55 +167,139 @@ export const getAllTransactions = query({
       throw new Error("غير مصرح: فقط الأدمن يمكنه الوصول");
     }
 
-    let transactions = await ctx.db
-      .query("transactions")
-      .order("desc")
-      .collect();
+    // ✅ جلب جميع المعاملات من جميع المصادر
+    const platformTransactions = await ctx.db.query("transactions").collect();
+    const aptitudePurchases = await ctx.db.query("aptitudePurchases").collect();
+    const academicPurchases = await ctx.db.query("academicPurchases").collect();
 
-    if (args.type) {
-      transactions = transactions.filter((t) => t.type === args.type);
-    }
-
-    if (args.status) {
-      transactions = transactions.filter((t) => t.status === args.status);
-    }
-
-    if (args.searchQuery) {
-      const search = args.searchQuery.toLowerCase();
-      transactions = transactions.filter((t) => {
-        return t.description?.toLowerCase().includes(search) ||
-               t.descriptionAr?.toLowerCase().includes(search) ||
-               t.studentId?.toString().toLowerCase().includes(search) ||
-               t.referenceId?.toLowerCase().includes(search);
-      });
-    }
-
-    if (args.startDate) {
-      transactions = transactions.filter((t) => t.createdAt >= args.startDate!);
-    }
-
-    if (args.endDate) {
-      transactions = transactions.filter((t) => t.createdAt <= args.endDate!);
-    }
-
-    if (args.limit) {
-      transactions = transactions.slice(0, args.limit);
-    }
-
-    const transactionsWithDetails = await Promise.all(
-      transactions.map(async (t) => {
-        const student = await ctx.db.get(t.studentId);
-        const parent = t.parentId ? await ctx.db.get(t.parentId) : null;
+    // ✅ تحويل طلبات القدرات إلى معاملات
+    const aptitudeTxs = await Promise.all(
+      aptitudePurchases.map(async (p) => {
+        const teacher = await ctx.db.get(p.teacherId);
+        const student = await ctx.db.get(p.studentId);
         return {
-          ...t,
+          _id: p._id,
+          studentId: p.studentId,
           studentName: student?.name || "غير معروف",
           studentEmail: student?.email || "",
-          parentName: parent?.name || null,
+          type: "aptitude",
+          category: "القدرات",
+          description: `شراء مواد قدرات - ${teacher?.name || "معلم"}`,
+          descriptionAr: `شراء مواد قدرات - ${teacher?.name || "معلم"}`,
+          amount: p.amount || 0,
+          currency: "EGP",
+          status: p.status || "pending",
+          referenceId: p._id,
+          referenceType: "aptitude_purchase",
+          paymentProof: p.paymentProof || null,
+          createdAt: p.createdAt || Date.now(),
+          updatedAt: p.updatedAt || null,
+          teacherName: teacher?.name || "غير معروف",
+          isAptitude: true,
+          isAcademic: false,
+          typeIcon: "🎯",
         };
       })
     );
 
-    return transactionsWithDetails;
+    // ✅ تحويل طلبات التحصيلي إلى معاملات
+    const academicTxs = await Promise.all(
+      academicPurchases.map(async (p) => {
+        const teacher = await ctx.db.get(p.teacherId);
+        const student = await ctx.db.get(p.studentId);
+        return {
+          _id: p._id,
+          studentId: p.studentId,
+          studentName: student?.name || "غير معروف",
+          studentEmail: student?.email || "",
+          type: "academic",
+          category: "التحصيلي",
+          description: `شراء مواد تحصيلي - ${teacher?.name || "معلم"}`,
+          descriptionAr: `شراء مواد تحصيلي - ${teacher?.name || "معلم"}`,
+          amount: p.amount || 0,
+          currency: p.currency || "EGP",
+          status: p.status || "pending",
+          referenceId: p._id,
+          referenceType: "academic_purchase",
+          paymentProof: p.paymentProof || null,
+          createdAt: p.createdAt || Date.now(),
+          updatedAt: p.updatedAt || null,
+          teacherName: teacher?.name || "غير معروف",
+          isAptitude: false,
+          isAcademic: true,
+          typeIcon: "📚",
+        };
+      })
+    );
+
+    // ✅ دمج جميع المعاملات
+    let allTransactions = [
+      ...platformTransactions.map((t) => ({
+        ...t,
+        typeIcon: t.type === "platform" ? "💻" : "🛒",
+        isAptitude: false,
+        isAcademic: false,
+        studentName: "",
+        studentEmail: "",
+        teacherName: "",
+      })),
+      ...aptitudeTxs,
+      ...academicTxs,
+    ];
+
+    // ✅ إضافة أسماء الطلاب للمعاملات من المنصة
+    allTransactions = await Promise.all(
+      allTransactions.map(async (t) => {
+        if (!t.studentName && t.studentId) {
+          const student = await ctx.db.get(t.studentId);
+          return {
+            ...t,
+            studentName: student?.name || "غير معروف",
+            studentEmail: student?.email || "",
+          };
+        }
+        return t;
+      })
+    );
+
+    // ✅ فلترة حسب النوع
+    if (args.type) {
+      allTransactions = allTransactions.filter((t) => t.type === args.type);
+    }
+
+    // ✅ فلترة حسب الحالة
+    if (args.status) {
+      allTransactions = allTransactions.filter((t) => t.status === args.status);
+    }
+
+    // ✅ فلترة حسب البحث
+    if (args.searchQuery) {
+      const search = args.searchQuery.toLowerCase();
+      allTransactions = allTransactions.filter((t) => {
+        const studentName = t.studentName?.toLowerCase() || "";
+        const description = t.description?.toLowerCase() || "";
+        const descriptionAr = t.descriptionAr?.toLowerCase() || "";
+        return studentName.includes(search) || description.includes(search) || descriptionAr.includes(search);
+      });
+    }
+
+    // ✅ فلترة حسب التاريخ
+    if (args.startDate) {
+      allTransactions = allTransactions.filter((t) => t.createdAt >= args.startDate!);
+    }
+    if (args.endDate) {
+      allTransactions = allTransactions.filter((t) => t.createdAt <= args.endDate!);
+    }
+
+    // ✅ ترتيب من الأحدث للأقدم
+    allTransactions.sort((a, b) => b.createdAt - a.createdAt);
+
+    // ✅ تطبيق الحد الأقصى
+    if (args.limit) {
+      allTransactions = allTransactions.slice(0, args.limit);
+    }
+
+    return allTransactions;
   },
 });
 
@@ -217,6 +310,8 @@ export const updateTransactionStatus = mutation({
     status: v.union(
       v.literal("pending"),
       v.literal("completed"),
+      v.literal("approved"),
+      v.literal("rejected"),
       v.literal("refunded"),
       v.literal("failed")
     ),
@@ -244,6 +339,8 @@ export const updateTransactionStatusByReference = mutation({
     status: v.union(
       v.literal("pending"),
       v.literal("completed"),
+      v.literal("approved"),
+      v.literal("rejected"),
       v.literal("refunded"),
       v.literal("failed")
     ),
@@ -261,10 +358,9 @@ export const updateTransactionStatusByReference = mutation({
       throw new Error("غير مصرح: فقط الأدمن يمكنه الوصول");
     }
 
-    // ✅ جلب المعاملات المرتبطة بهذا referenceId
     const transactions = await ctx.db
       .query("transactions")
-      .filter((q) => q.eq(q.field("referenceId"), args.referenceId))
+      .withIndex("by_reference", (q) => q.eq("referenceId", args.referenceId))
       .collect();
 
     if (transactions.length === 0) {
@@ -278,7 +374,6 @@ export const updateTransactionStatusByReference = mutation({
       });
     }
 
-    // ✅ تسجيل في سجل التدقيق
     await ctx.db.insert("auditLogs", {
       userId: admin._id,
       action: "UPDATE_TRANSACTION_STATUS_BY_REFERENCE",
@@ -304,35 +399,42 @@ export const getTransactionStats = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    let transactions: any[] = [];
+    // ✅ جلب جميع المعاملات من جميع المصادر
+    const platformTransactions = await ctx.db.query("transactions").collect();
+    const aptitudePurchases = await ctx.db.query("aptitudePurchases").collect();
+    const academicPurchases = await ctx.db.query("academicPurchases").collect();
 
+    // ✅ دمج الكل
+    let allTransactions: any[] = [
+      ...platformTransactions,
+      ...aptitudePurchases.map((p) => ({ ...p, type: "aptitude" })),
+      ...academicPurchases.map((p) => ({ ...p, type: "academic" })),
+    ];
+
+    // ✅ فلترة حسب الطالب إذا كان موجوداً
     if (args.studentId) {
-      transactions = await ctx.db
-        .query("transactions")
-        .withIndex("by_student", (q) => q.eq("studentId", args.studentId!))
-        .collect();
-    } else if (args.parentId) {
-      transactions = await ctx.db
-        .query("transactions")
-        .withIndex("by_parent", (q) => q.eq("parentId", args.parentId!))
-        .collect();
-    } else {
-      transactions = await ctx.db.query("transactions").collect();
+      allTransactions = allTransactions.filter((t) => t.studentId === args.studentId);
+    }
+    if (args.parentId) {
+      allTransactions = allTransactions.filter((t) => t.parentId === args.parentId);
     }
 
     const stats = {
       totalAmount: 0,
-      totalCount: transactions.length,
+      totalCount: allTransactions.length,
       completedCount: 0,
       pendingCount: 0,
+      approvedCount: 0,
+      rejectedCount: 0,
       refundedCount: 0,
       failedCount: 0,
       platformTotal: 0,
       aptitudeTotal: 0,
+      academicTotal: 0,
       purchaseTotal: 0,
     };
 
-    for (const t of transactions) {
+    for (const t of allTransactions) {
       stats.totalAmount += t.amount || 0;
 
       switch (t.status) {
@@ -341,6 +443,12 @@ export const getTransactionStats = query({
           break;
         case "pending":
           stats.pendingCount++;
+          break;
+        case "approved":
+          stats.approvedCount++;
+          break;
+        case "rejected":
+          stats.rejectedCount++;
           break;
         case "refunded":
           stats.refundedCount++;
@@ -356,6 +464,9 @@ export const getTransactionStats = query({
           break;
         case "aptitude":
           stats.aptitudeTotal += t.amount || 0;
+          break;
+        case "academic":
+          stats.academicTotal += t.amount || 0;
           break;
         case "purchase":
           stats.purchaseTotal += t.amount || 0;
@@ -375,11 +486,14 @@ export const getChildrenTransactions = query({
     type: v.optional(v.union(
       v.literal("platform"),
       v.literal("aptitude"),
+      v.literal("academic"),
       v.literal("purchase")
     )),
     status: v.optional(v.union(
       v.literal("pending"),
       v.literal("completed"),
+      v.literal("approved"),
+      v.literal("rejected"),
       v.literal("refunded"),
       v.literal("failed")
     )),
@@ -405,34 +519,72 @@ export const getChildrenTransactions = query({
       throw new Error("غير مصرح: يمكنك فقط رؤية معاملات أبنائك");
     }
 
-    let transactions = await ctx.db
+    // ✅ جلب جميع المعاملات من جميع المصادر
+    const platformTransactions = await ctx.db
       .query("transactions")
       .withIndex("by_parent", (q) => q.eq("parentId", args.parentId))
       .order("desc")
       .collect();
 
+    // ✅ جلب طلبات القدرات والتحصيلي (بدون فلترة parentId لأن الجدولين لا يحتويان على parentId)
+    const aptitudePurchases = await ctx.db
+      .query("aptitudePurchases")
+      .withIndex("by_studentId")
+      .collect();
+    
+    const academicPurchases = await ctx.db
+      .query("academicPurchases")
+      .withIndex("by_studentId")
+      .collect();
+
+    // ✅ فلترة حسب ولي الأمر - نأخذ الطلاب المرتبطين بولي الأمر
+    // ملاحظة: بما أن aptitudePurchases و academicPurchases لا يحتويان على parentId،
+    // نفترض أن ولي الأمر يرى معاملات أبنائه عبر studentId
+    // لذلك نأخذ جميع الطلاب الذين هم أبناء ولي الأمر
+    const children = await ctx.db
+      .query("users")
+      .withIndex("by_parentId", (q) => q.eq("parentId", args.parentId))
+      .collect();
+
+    const childIds = children.map(c => c._id);
+
+    // ✅ فلترة طلبات القدرات والتحصيلي حسب أبناء ولي الأمر
+    const aptitudeFiltered = aptitudePurchases.filter((p) => childIds.includes(p.studentId));
+    const academicFiltered = academicPurchases.filter((p) => childIds.includes(p.studentId));
+
+    // ✅ تحويل إلى معاملات
+    let allTransactions = [
+      ...platformTransactions,
+      ...aptitudeFiltered.map((p) => ({ ...p, type: "aptitude" })),
+      ...academicFiltered.map((p) => ({ ...p, type: "academic" })),
+    ];
+
+    // ✅ فلترة حسب الطفل
     if (args.childId) {
-      transactions = transactions.filter((t) => t.studentId === args.childId);
+      allTransactions = allTransactions.filter((t) => t.studentId === args.childId);
     }
 
+    // ✅ فلترة حسب النوع
     if (args.type) {
-      transactions = transactions.filter((t) => t.type === args.type);
+      allTransactions = allTransactions.filter((t) => t.type === args.type);
     }
 
+    // ✅ فلترة حسب الحالة
     if (args.status) {
-      transactions = transactions.filter((t) => t.status === args.status);
+      allTransactions = allTransactions.filter((t) => t.status === args.status);
     }
 
+    // ✅ فلترة حسب التاريخ
     if (args.startDate) {
-      transactions = transactions.filter((t) => t.createdAt >= args.startDate!);
+      allTransactions = allTransactions.filter((t) => t.createdAt >= args.startDate!);
     }
-
     if (args.endDate) {
-      transactions = transactions.filter((t) => t.createdAt <= args.endDate!);
+      allTransactions = allTransactions.filter((t) => t.createdAt <= args.endDate!);
     }
 
+    // ✅ إضافة أسماء الطلاب
     const transactionsWithStudents = await Promise.all(
-      transactions.map(async (t) => {
+      allTransactions.map(async (t) => {
         const student = await ctx.db.get(t.studentId);
         return {
           ...t,
@@ -443,11 +595,11 @@ export const getChildrenTransactions = query({
       })
     );
 
-    return transactionsWithStudents;
+    return transactionsWithStudents.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
 
-// ✅ جلب معاملات الطالب مع إحصائيات مفصلة
+// ✅ جلب معاملات الطالب مع تفاصيل (Academic + Aptitude + Platform)
 export const getStudentTransactionsWithDetails = query({
   args: {
     studentId: v.id("users"),
@@ -456,28 +608,124 @@ export const getStudentTransactionsWithDetails = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    const transactions = await ctx.db
+    // ✅ جلب معاملات المنصة
+    const platformTransactions = await ctx.db
       .query("transactions")
       .withIndex("by_student", (q) => q.eq("studentId", args.studentId))
       .order("desc")
       .collect();
 
-    const transactionsWithDetails = await Promise.all(
-      transactions.map(async (t) => {
-        const student = await ctx.db.get(t.studentId);
+    // ✅ جلب طلبات القدرات مع أسماء المعلمين
+    const aptitudePurchases = await ctx.db
+      .query("aptitudePurchases")
+      .withIndex("by_studentId", (q) => q.eq("studentId", args.studentId))
+      .order("desc")
+      .collect();
+
+    const aptitudeWithTeachers = await Promise.all(
+      aptitudePurchases.map(async (p) => {
+        const teacher = await ctx.db.get(p.teacherId);
         return {
-          ...t,
-          studentName: student?.name || "غير معروف",
-          studentEmail: student?.email || "",
+          ...p,
+          teacherName: teacher?.name || "غير معروف",
         };
       })
     );
 
-    return transactionsWithDetails;
+    // ✅ جلب طلبات التحصيلي مع أسماء المعلمين
+    const academicPurchases = await ctx.db
+      .query("academicPurchases")
+      .withIndex("by_studentId", (q) => q.eq("studentId", args.studentId))
+      .order("desc")
+      .collect();
+
+    const academicWithTeachers = await Promise.all(
+      academicPurchases.map(async (p) => {
+        const teacher = await ctx.db.get(p.teacherId);
+        return {
+          ...p,
+          teacherName: teacher?.name || "غير معروف",
+        };
+      })
+    );
+
+    const student = await ctx.db.get(args.studentId);
+
+    // ✅ تحويل طلبات القدرات إلى معاملات
+    const aptitudeTxs = aptitudeWithTeachers.map((p: any) => ({
+      _id: p._id,
+      studentId: p.studentId,
+      studentName: student?.name || "غير معروف",
+      studentEmail: student?.email || "",
+      type: "aptitude" as const,
+      category: "القدرات",
+      description: `شراء مواد قدرات - ${p.teacherName || "معلم"}`,
+      descriptionAr: `شراء مواد قدرات - ${p.teacherName || "معلم"}`,
+      amount: p.amount || 0,
+      currency: "EGP",
+      status: p.status || "pending",
+      referenceId: p._id,
+      referenceType: "aptitude_purchase",
+      paymentProof: p.paymentProof || null,
+      createdAt: p.createdAt || Date.now(),
+      updatedAt: p.updatedAt || null,
+      teacherName: p.teacherName || "غير معروف",
+      isAptitude: true,
+      isAcademic: false,
+      typeIcon: "🎯",
+    }));
+
+    // ✅ تحويل طلبات التحصيلي إلى معاملات
+    const academicTxs = academicWithTeachers.map((p: any) => ({
+      _id: p._id,
+      studentId: p.studentId,
+      studentName: student?.name || "غير معروف",
+      studentEmail: student?.email || "",
+      type: "academic" as const,
+      category: "التحصيلي",
+      description: `شراء مواد تحصيلي - ${p.teacherName || "معلم"}`,
+      descriptionAr: `شراء مواد تحصيلي - ${p.teacherName || "معلم"}`,
+      amount: p.amount || 0,
+      currency: p.currency || "EGP",
+      status: p.status || "pending",
+      referenceId: p._id,
+      referenceType: "academic_purchase",
+      paymentProof: p.paymentProof || null,
+      createdAt: p.createdAt || Date.now(),
+      updatedAt: p.updatedAt || null,
+      teacherName: p.teacherName || "غير معروف",
+      isAptitude: false,
+      isAcademic: true,
+      typeIcon: "📚",
+    }));
+
+    // ✅ دمج جميع المعاملات
+    const all = [
+      ...platformTransactions.map((t) => ({
+        ...t,
+        typeIcon: t.type === "platform" ? "💻" : "🛒",
+        isAptitude: false,
+        isAcademic: false,
+        teacherName: "",
+      })),
+      ...aptitudeTxs,
+      ...academicTxs,
+    ];
+
+    // ✅ إضافة أسماء الطلاب
+    const allWithDetails = all.map((t) => ({
+      ...t,
+      studentName: student?.name || "غير معروف",
+      studentEmail: student?.email || "",
+      uniqueKey: `${t.type}_${t._id}`,
+    }));
+
+    // ✅ ترتيب من الأحدث للأقدم
+    return allWithDetails.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
 
-// ✅ جلب إحصائيات الطالب
+// ✅ جلب إحصائيات الطالب (مع Academic)
 export const getStudentStats = query({
   args: {
     studentId: v.id("users"),
@@ -486,25 +734,41 @@ export const getStudentStats = query({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    const transactions = await ctx.db
+    // ✅ جلب جميع المعاملات من جميع المصادر
+    const platformTransactions = await ctx.db
       .query("transactions")
       .withIndex("by_student", (q) => q.eq("studentId", args.studentId))
       .collect();
 
+    const aptitudePurchases = await ctx.db
+      .query("aptitudePurchases")
+      .withIndex("by_studentId", (q) => q.eq("studentId", args.studentId))
+      .collect();
+
+    const academicPurchases = await ctx.db
+      .query("academicPurchases")
+      .withIndex("by_studentId", (q) => q.eq("studentId", args.studentId))
+      .collect();
+
     const stats = {
       totalAmount: 0,
-      totalCount: transactions.length,
+      totalCount: 0,
       completedCount: 0,
       pendingCount: 0,
+      approvedCount: 0,
+      rejectedCount: 0,
       refundedCount: 0,
       failedCount: 0,
       platformTotal: 0,
       aptitudeTotal: 0,
+      academicTotal: 0,
       purchaseTotal: 0,
     };
 
-    for (const t of transactions) {
+    // ✅ حساب إحصائيات معاملات المنصة
+    for (const t of platformTransactions) {
       stats.totalAmount += t.amount || 0;
+      stats.totalCount++;
 
       switch (t.status) {
         case "completed":
@@ -512,6 +776,12 @@ export const getStudentStats = query({
           break;
         case "pending":
           stats.pendingCount++;
+          break;
+        case "approved":
+          stats.approvedCount++;
+          break;
+        case "rejected":
+          stats.rejectedCount++;
           break;
         case "refunded":
           stats.refundedCount++;
@@ -525,11 +795,46 @@ export const getStudentStats = query({
         case "platform":
           stats.platformTotal += t.amount || 0;
           break;
-        case "aptitude":
-          stats.aptitudeTotal += t.amount || 0;
-          break;
         case "purchase":
           stats.purchaseTotal += t.amount || 0;
+          break;
+      }
+    }
+
+    // ✅ حساب إحصائيات طلبات القدرات
+    for (const p of aptitudePurchases) {
+      stats.totalAmount += p.amount || 0;
+      stats.totalCount++;
+      stats.aptitudeTotal += p.amount || 0;
+
+      switch (p.status) {
+        case "approved":
+          stats.approvedCount++;
+          break;
+        case "pending":
+          stats.pendingCount++;
+          break;
+        case "rejected":
+          stats.rejectedCount++;
+          break;
+      }
+    }
+
+    // ✅ حساب إحصائيات طلبات التحصيلي (Academic)
+    for (const p of academicPurchases) {
+      stats.totalAmount += p.amount || 0;
+      stats.totalCount++;
+      stats.academicTotal += p.amount || 0;
+
+      switch (p.status) {
+        case "approved":
+          stats.approvedCount++;
+          break;
+        case "pending":
+          stats.pendingCount++;
+          break;
+        case "rejected":
+          stats.rejectedCount++;
           break;
       }
     }

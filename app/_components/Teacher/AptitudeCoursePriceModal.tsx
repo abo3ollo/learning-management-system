@@ -1,14 +1,16 @@
+// app/_components/Teacher/AptitudeCoursePriceModal.tsx
+
 "use client";
 
 import { useState, useEffect } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { X, Loader2, DollarSign, Save, AlertCircle } from "lucide-react";
+import { X, Loader2, DollarSign, Save, AlertCircle, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-interface CoursePriceModalProps {
+interface AptitudeCoursePriceModalProps {
   isOpen: boolean;
   onClose: () => void;
   teacherId: string;
@@ -27,20 +29,21 @@ const CURRENCIES = [
   { value: "QAR", label: "ريال قطري", symbol: "ر.ق" },
 ];
 
-export function CoursePriceModal({
+export function AptitudeCoursePriceModal({
   isOpen,
   onClose,
   teacherId,
   initialPrice = 0,
   initialCurrency = "EGP",
   teacherName = "",
-}: CoursePriceModalProps) {
+}: AptitudeCoursePriceModalProps) {
   const [price, setPrice] = useState<string>("");
   const [currency, setCurrency] = useState<string>("EGP");
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const updateCoursePrice = useMutation(api.coursePrice.coursePrice.updateCoursePrice);
+  // ✅ المسار الصحيح: api.teacher.coursePrice.updateAptitudeCoursePrice
+  const updateCoursePrice = useMutation(api.coursePrice.coursePrice.updateAptitudeCoursePrice);
 
   useEffect(() => {
     if (isOpen) {
@@ -94,11 +97,11 @@ export function CoursePriceModal({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-              <DollarSign className="h-5 w-5 text-green-600" />
+            <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
+              <Target className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">سعر الكورس</h2>
+              <h2 className="text-xl font-bold text-gray-900">سعر كورس القدرات</h2>
               {teacherName && (
                 <p className="text-sm text-gray-500">{teacherName}</p>
               )}
@@ -114,13 +117,13 @@ export function CoursePriceModal({
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
           {/* Info Box */}
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-3">
-            <div className="flex items-start gap-2 text-sm text-blue-700">
-              <span className="text-lg">ℹ️</span>
+          <div className="bg-purple-50 border border-purple-100 rounded-xl p-3">
+            <div className="flex items-start gap-2 text-sm text-purple-700">
+              <span className="text-lg">🎯</span>
               <div>
-                <p className="font-medium">سعر الكورس الكامل</p>
+                <p className="font-medium">سعر كورس القدرات</p>
                 <p className="text-xs mt-1">
-                  هذا السعر يشمل <strong>جميع المواد</strong> التي يقدمها هذا المعلم
+                  هذا السعر يشمل <strong>جميع مواد القدرات</strong> التي يقدمها هذا المعلم
                 </p>
               </div>
             </div>
@@ -139,8 +142,8 @@ export function CoursePriceModal({
                 min="0"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
-                placeholder="أدخل سعر الكورس"
-                className="pr-12 text-lg font-medium border-gray-200 focus:border-green-500 focus:ring-green-500"
+                placeholder="أدخل سعر كورس القدرات"
+                className="pr-12 text-lg font-medium border-gray-200 focus:border-purple-500 focus:ring-purple-500"
                 required
                 autoFocus
               />
@@ -149,7 +152,7 @@ export function CoursePriceModal({
               </span>
             </div>
             <p className="text-xs text-gray-400 mt-2">
-              💡 هذا السعر سيظهر للطلاب عند شراء الكورس كامل
+              💡 هذا السعر سيظهر للطلاب عند شراء كورس القدرات
             </p>
           </div>
 
@@ -161,7 +164,7 @@ export function CoursePriceModal({
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 bg-white"
+              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 bg-white"
             >
               {CURRENCIES.map((curr) => (
                 <option key={curr.value} value={curr.value}>
@@ -182,8 +185,8 @@ export function CoursePriceModal({
                   onClick={() => setPrice(suggestedPrice.toString())}
                   className={`px-3 py-1.5 rounded-lg text-sm border transition-all ${
                     parseFloat(price) === suggestedPrice
-                      ? "border-green-500 bg-green-50 text-green-700"
-                      : "border-gray-200 hover:border-green-300 hover:bg-green-50/50"
+                      ? "border-purple-500 bg-purple-50 text-purple-700"
+                      : "border-gray-200 hover:border-purple-300 hover:bg-purple-50/50"
                   }`}
                 >
                   {suggestedPrice} {getCurrencySymbol(currency)}
@@ -205,7 +208,7 @@ export function CoursePriceModal({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+              className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <Loader2 className="h-5 w-5 animate-spin" />

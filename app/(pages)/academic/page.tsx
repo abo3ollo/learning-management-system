@@ -1,7 +1,9 @@
+// app/(pages)/academic/page.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
+import { useUser, useAuth, SignInButton } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import Link from "next/link";
@@ -18,69 +20,22 @@ import {
   Loader2,
   Globe,
   Eye,
-  Download,
-  Play,
   Users,
   DollarSign,
   Upload,
-  X,
   AlertCircle,
-  Check,
-  Calendar,
+  X,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/app/hooks/use-toast";
-
+import { MaterialsDisplay } from "@/app/_components/academic/MaterialsDisplay";
 
 // ── Types ──────────────────────────────────────────────────────────
 type MaterialType = "pdf" | "video" | "exam" | "assignment" | "revision";
 
-interface Material {
-  _id: string;
-  _creationTime: number;
-  title: string;
-  titleAr: string;
-  description?: string;
-  descriptionAr?: string;
-  type: MaterialType;
-  fileUrl?: string;
-  fileSize?: string;
-  duration?: string;
-  subject: string;
-  grade: string;
-  questions?: Array<{
-    id: string;
-    text: string;
-    options?: string[];
-    correctAnswer?: string;
-    marks: number;
-  }>;
-  deadline?: number;
-  isPublished: boolean;
-  displayOrder: number;
-  teacherId: string;
-  teacherName: string;
-  teacherEmail: string;
-  teacherSpecialization?: string;
-  teacherCoursePrice?: number;
-  teacherCourseCurrency?: string;
-  createdAt: number;
-  updatedAt: number;
-}
-
-// ── Constants ─────────────────────────────────────────────────────
 const materialTypeLabels: Record<MaterialType, { ar: string; en: string; icon: any }> = {
   pdf: { ar: "ملف PDF", en: "PDF", icon: FileText },
   video: { ar: "فيديو", en: "Video", icon: Video },
@@ -92,156 +47,91 @@ const materialTypeLabels: Record<MaterialType, { ar: string; en: string; icon: a
 // ═══════════════════════════════════════════════════════════════════
 export default function AcademicPage() {
   const { toast } = useToast();
+  const { user: clerkUser, isLoaded: userLoaded } = useUser();
+  const { userId, isSignedIn, isLoaded: authLoaded } = useAuth();
+
   const [lang, setLang] = useState<"en" | "ar">("ar");
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedType, setSelectedType] = useState<string>("all");
-  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null);
+  const [selectedTeacher, setSelectedTeacher] = useState<any>(null);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-  const [isPaid, setIsPaid] = useState(false);
+  const [isMaterialsOpen, setIsMaterialsOpen] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentProof, setPaymentProof] = useState<string>("");
-  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isReady, setIsReady] = useState(false);
   const [purchaseStatus, setPurchaseStatus] = useState<"idle" | "pending" | "approved" | "rejected">("idle");
   const [purchaseId, setPurchaseId] = useState<string | null>(null);
   const [imageModalUrl, setImageModalUrl] = useState<string | null>(null);
 
   // ── Queries ───────────────────────────────────────────────────
-  const currentUser = useQuery(api.user.auth.getCurrentUser);
+  const isUserReady = authLoaded && userLoaded && isSignedIn && userId;
+
+  const currentUser = useQuery(
+    api.user.auth.getCurrentUser,
+    isUserReady ? {} : "skip"
+  );
+
+  const teachersData = useQuery(api.academic.academic.getAvailableTeachers, {});
+
+  // ✅ استخدم "skip" كقيمة وحيدة عندما لا يوجد teacherId
   const materials = useQuery(
-  api.teacherMaterials.teacherMaterials.getPublicTeacherMaterials,
-  {}
-);
-  const generateUploadUrl = useMutation(api.teacherMaterials.teacherMaterials.generateUploadUrl);
-  
+    api.academic.academic.getTeacherMaterials,
+    selectedTeacher?._id ? { teacherId: selectedTeacher._id as any } : "skip"
+  );
+
+  // ✅ جلب حالة الشراء لكل معلم
+  const purchaseStatuses = useQuery(
+    api.academic.academic.getMyAcademicPurchasesWithStatus,
+    isUserReady ? {} : "skip"
+  );
 
   // ── Mutations ────────────────────────────────────────────────
   const createPurchase = useMutation(api.academic.academic.createAcademicPurchase);
+  const createUser = useMutation(api.user.auth.createUser);
+
+  // ✅ تحديد متى تكون البيانات جاهزة
+  useEffect(() => {
+    if (authLoaded && userLoaded && isSignedIn !== undefined) {
+      setIsReady(true);
+    }
+  }, [authLoaded, userLoaded, isSignedIn]);
+
+  // ✅ إنشاء المستخدم في Convex إذا مش موجود
+  useEffect(() => {
+    if (isUserReady && clerkUser && !currentUser) {
+      console.log("🔄 [Academic] Creating user in Convex...");
+      createUser({
+        clerkId: clerkUser.id,
+        email: clerkUser.emailAddresses?.[0]?.emailAddress || "",
+        name: clerkUser.fullName || clerkUser.username || "مستخدم",
+        phoneNumber: clerkUser.phoneNumbers?.[0]?.phoneNumber || "",
+        role: "student",
+        status: "pending",
+        tracks: ["academic"],
+      }).then((userId) => {
+        console.log("✅ [Academic] User created in Convex:", userId);
+        window.location.reload();
+      }).catch((error) => {
+        console.error("❌ [Academic] Error creating user:", error);
+      });
+    }
+  }, [isUserReady, clerkUser, currentUser, createUser]);
 
   // ── Handlers ──────────────────────────────────────────────────
   const toggleLang = () => setLang((l) => (l === "en" ? "ar" : "en"));
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  // ✅ التحقق من نوع الملف
-  if (!file.type.startsWith("image/")) {
-    toast({
-      title: "خطأ",
-      description: "الرجاء رفع صورة فقط (jpg, png, jpeg)",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  // ✅ التحقق من الحجم
-  if (file.size > 5 * 1024 * 1024) {
-    toast({
-      title: "خطأ",
-      description: "حجم الصورة يجب أن يكون أقل من 5 ميجابايت",
-      variant: "destructive",
-    });
-    return;
-  }
-
-  setPaymentProofFile(file);
-  setIsUploading(true);
-
-  try {
-    // ✅ 1. الحصول على رابط التحميل من Convex
-    const uploadUrl = await generateUploadUrl();
-    
-    // ✅ 2. رفع الملف إلى Convex Storage
-    const response = await fetch(uploadUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": file.type,
-      },
-      body: file,
-    });
-
-    if (!response.ok) {
-      throw new Error("فشل رفع الملف");
-    }
-
-    // ✅ 3. الحصول على storageId من الـ response
-    const result = await response.json();
-    const storageId = result.storageId;
-
-    // ✅ 4. بناء رابط الملف
-    // Convex storage URLs are available at /api/storage/{storageId}
-    // or you can use the storage URL directly from the response
-    const fileUrl = result.url || `/api/storage/${storageId}`;
-    
-    setPaymentProof(fileUrl);
-    
-    toast({
-      title: "تم الرفع",
-      description: "تم رفع إيصال الدفع بنجاح",
-    });
-  } catch (error) {
-    console.error("Upload error:", error);
-    toast({
-      title: "خطأ",
-      description: "حدث خطأ أثناء رفع الإيصال",
-      variant: "destructive",
-    });
-  } finally {
-    setIsUploading(false);
-  }
-};
-
-  const handlePayment = async () => {
-    if (!selectedMaterial) return;
-    if (!paymentProof) {
+  // ✅ اختيار معلم للدفع
+  const selectTeacher = useCallback((teacher: any) => {
+    if (!isReady) {
       toast({
-        title: "خطأ",
-        description: "الرجاء رفع إيصال الدفع",
-        variant: "destructive",
+        title: "جاري التحميل",
+        description: "يتم تحميل بيانات المستخدم...",
       });
       return;
     }
 
-    setIsProcessingPayment(true);
-    try {
-      const result = await createPurchase({
-        materialId: selectedMaterial._id as Id<"teacherMaterials">,
-        teacherId: selectedMaterial.teacherId as Id<"users">,
-        amount: selectedMaterial.teacherCoursePrice || 150,
-        currency: selectedMaterial.teacherCourseCurrency || "EGP",
-        paymentProof: paymentProof,
-      });
-
-      setPurchaseId(result as string);
-      setPurchaseStatus("pending");
-      setIsPaid(true);
-      setIsCheckoutOpen(false);
-
-      toast({
-        title: "تم إرسال الطلب",
-        description: "تم إرسال طلب الدفع للمراجعة، سيتم إعلامك عند الموافقة",
-      });
-
-      setTimeout(() => {
-        setIsPaid(false);
-        setSelectedMaterial(null);
-        setPaymentProof("");
-        setPaymentProofFile(null);
-      }, 3000);
-    } catch (error: any) {
-      toast({
-        title: "خطأ",
-        description: error.message || "حدث خطأ أثناء الدفع",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessingPayment(false);
-    }
-  };
-
-  const selectMaterial = (material: Material) => {
-    if (!currentUser) {
+    if (!isSignedIn) {
       toast({
         title: "تنبيه",
         description: "الرجاء تسجيل الدخول أولاً",
@@ -250,41 +140,148 @@ export default function AcademicPage() {
       return;
     }
 
-    setSelectedMaterial(material);
-    setIsCheckoutOpen(true);
-    setIsPaid(false);
-    setPurchaseStatus("idle");
-    setPaymentProof("");
-    setPaymentProofFile(null);
+    if (!currentUser && clerkUser) {
+      toast({
+        title: "جاري التسجيل",
+        description: "يتم إنشاء حسابك... يرجى الانتظار",
+      });
+      return;
+    }
+
+    if (currentUser) {
+      setSelectedTeacher(teacher);
+      setIsCheckoutOpen(true);
+    }
+  }, [isReady, isSignedIn, currentUser, clerkUser, toast]);
+
+  // ✅ معالج رفع الصورة
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("حجم الصورة يجب أن لا يتجاوز 5 ميجابايت");
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      setError("يرجى رفع ملف صورة فقط");
+      return;
+    }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setPaymentProof(reader.result as string);
+      setError(null);
+      setIsUploading(false);
+    };
+    reader.onerror = () => {
+      setError("حدث خطأ أثناء قراءة الصورة");
+      setIsUploading(false);
+    };
+    reader.readAsDataURL(file);
   };
 
-  const getTypeIcon = (type: MaterialType) => {
-    return materialTypeLabels[type]?.icon || FileText;
+  // ✅ معالج الدفع - استخدم academicCoursePrice
+  const handlePaymentSubmit = async () => {
+    if (!selectedTeacher) return;
+    if (!currentUser) {
+      setError("الرجاء تسجيل الدخول أولاً");
+      return;
+    }
+    if (!paymentProof) {
+      setError("يرجى رفع إيصال الدفع");
+      return;
+    }
+
+    setIsProcessingPayment(true);
+    try {
+      const result = await createPurchase({
+        teacherId: selectedTeacher._id as Id<"users">,
+        amount: selectedTeacher.academicCoursePrice || 150,
+        currency: selectedTeacher.academicCourseCurrency || "EGP",
+        paymentProof: paymentProof,
+      });
+
+      setPurchaseId(result as string);
+      setPurchaseStatus("pending");
+      setIsCheckoutOpen(false);
+      setPaymentProof("");
+      setError(null);
+
+      toast({
+        title: "تم إرسال الطلب",
+        description: "تم إرسال طلب الدفع للمراجعة، سيتم إعلامك عند الموافقة",
+      });
+    } catch (error: any) {
+      setError(error.message || "حدث خطأ أثناء الدفع");
+    } finally {
+      setIsProcessingPayment(false);
+    }
   };
 
-  const getTypeLabel = (type: MaterialType, lang: "en" | "ar") => {
-    return materialTypeLabels[type]?.[lang] || type;
+  // ✅ التحقق من حالة الشراء للمعلم المختار
+  const getTeacherPurchaseStatus = (teacherId: string) => {
+    const status = purchaseStatuses?.find((p: any) => p.teacherId === teacherId);
+    return status || null;
   };
 
-  // ── فلترة المواد ──────────────────────────────────────────────
-  const filteredMaterials = (materials || []).filter((material: any) => {
-    const matchesSearch =
+  // ✅ عرض المواد بعد الموافقة
+  const viewApprovedMaterials = (teacher: any) => {
+    setSelectedTeacher(teacher);
+    setIsMaterialsOpen(true);
+  };
+
+  // ── فلترة المعلمين ──────────────────────────────────────────
+  const filteredTeachers = (teachersData || []).filter((teacher: any) => {
+    const search = searchQuery.toLowerCase();
+    const matchSearch =
       !searchQuery ||
-      material.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      material.titleAr?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      material.subject?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      material.teacherName?.toLowerCase().includes(searchQuery.toLowerCase());
+      teacher.name?.toLowerCase().includes(search) ||
+      teacher.email?.toLowerCase().includes(search) ||
+      teacher.specialization?.toLowerCase().includes(search) ||
+      teacher.subjects?.some((s: string) => s.toLowerCase().includes(search));
 
-    const matchesType = selectedType === "all" || material.type === selectedType;
-
-    return matchesSearch && matchesType;
+    return matchSearch;
   });
 
+  const teacherMaterials = (materials || [])
+    .filter((m: any) => m.teacherId === selectedTeacher?._id)
+    .map((m: any) => ({
+      ...m,
+      teacherName: selectedTeacher?.name || m.teacherName || "غير معروف",
+    }));
+
   // ── حالة التحميل ──────────────────────────────────────────────
-  if (materials === undefined || (currentUser === undefined && currentUser !== null)) {
+  // ✅ تحقق من teachersData فقط، materials يمكن أن تكون undefined طبيعياً
+  if (!authLoaded || !userLoaded || teachersData === undefined) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-[#1a7a8a]" />
+      </div>
+    );
+  }
+
+  // ✅ لو مش مسجل دخول
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#f7fafa]">
+        <div className="text-center bg-white p-8 rounded-2xl shadow-lg max-w-md">
+          <h1 className="text-2xl font-bold text-[#001f24] mb-4">
+            {lang === "ar" ? "الرجاء تسجيل الدخول" : "Please Sign In"}
+          </h1>
+          <p className="text-gray-500 mb-6">
+            {lang === "ar"
+              ? "يجب تسجيل الدخول أولاً للوصول إلى المواد التحصيلية"
+              : "You must sign in first to access academic materials"}
+          </p>
+          <SignInButton mode="modal">
+            <button className="bg-[#001f24] hover:bg-[#03363d] text-white font-semibold px-8 py-3 rounded-xl transition-colors">
+              {lang === "ar" ? "تسجيل الدخول" : "Sign In"}
+            </button>
+          </SignInButton>
+        </div>
       </div>
     );
   }
@@ -322,112 +319,138 @@ export default function AcademicPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-6 py-8 space-y-6">
-        {/* Search & Filter */}
-        <div className="flex flex-col sm:flex-row gap-4">
+        {/* Search */}
+        <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder={lang === "ar" ? "بحث عن مادة أو معلم..." : "Search for material or teacher..."}
+              placeholder={lang === "ar" ? "ابحث عن معلم أو مادة..." : "Search for teacher or subject..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pr-10 border-gray-200"
             />
           </div>
-          <select
-            value={selectedType}
-            onChange={(e) => setSelectedType(e.target.value)}
-            className="px-4 py-2 border rounded-lg text-sm bg-white"
-          >
-            <option value="all">{lang === "ar" ? "جميع المواد" : "All Materials"}</option>
-            {Object.entries(materialTypeLabels).map(([key, value]) => (
-              <option key={key} value={key}>
-                {lang === "ar" ? value.ar : value.en}
-              </option>
-            ))}
-          </select>
         </div>
 
-        {/* Materials Grid */}
-        {filteredMaterials.length === 0 ? (
+        {/* Teachers Grid */}
+        {filteredTeachers.length === 0 ? (
           <div className="text-center py-16">
-            <BookOpen className="h-12 w-12 mx-auto text-gray-300 mb-4" />
+            <Users className="h-12 w-12 mx-auto text-gray-300 mb-4" />
             <p className="text-gray-500">
-              {lang === "ar" ? "لا توجد مواد تعليمية متاحة" : "No educational materials available"}
+              {lang === "ar" ? "لا توجد نتائج مطابقة للبحث" : "No results match your search"}
             </p>
           </div>
         ) : (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredMaterials.map((material: any) => {
-              const Icon = getTypeIcon(material.type);
+            {filteredTeachers.map((teacher: any) => {
+              const purchaseStatus = getTeacherPurchaseStatus(teacher._id);
+              // ✅ استخدم academicCoursePrice
+              const isFree = (teacher.academicCoursePrice || 0) === 0;
+              const isPending = purchaseStatus?.status === "pending";
+              const isApproved = purchaseStatus?.status === "approved";
+              const isRejected = purchaseStatus?.status === "rejected";
+
+              const hasAccess = isApproved || isFree;
+
               return (
-                <Card
-                  key={material._id}
-                  className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100 bg-white"
-                >
+                <Card key={teacher._id} className="overflow-hidden hover:shadow-xl transition-all duration-300 hover:-translate-y-2 border border-gray-100 bg-white">
                   <CardContent className="p-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#e0f5f7] flex items-center justify-center">
-                          <Icon className="h-5 w-5 text-[#1a7a8a]" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-[#0a2540] line-clamp-1">
-                            {lang === "ar" ? material.titleAr || material.title : material.title}
-                          </h3>
-                          <p className="text-xs text-gray-500">{material.subject}</p>
-                        </div>
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 rounded-full bg-[#e0f5f7] flex items-center justify-center">
+                        <span className="text-2xl font-bold text-[#1a7a8a]">
+                          {teacher.name?.charAt(0) || "?"}
+                        </span>
                       </div>
-                      <Badge className="bg-[#1a7a8a]/10 text-[#1a7a8a] border-none">
-                        {getTypeLabel(material.type, lang)}
-                      </Badge>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-[#0a2540] text-lg line-clamp-1">
+                          {teacher.name}
+                        </h3>
+                        <p className="text-sm text-gray-500 line-clamp-1">
+                          {teacher.specialization || teacher.subjects?.join(" • ")}
+                        </p>
+                      </div>
                     </div>
 
                     <div className="mt-4 space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <User className="h-4 w-4" />
-                        <span>{material.teacherName || "غير معروف"}</span>
+                      <div className="flex flex-wrap gap-2">
+                        {teacher.subjects?.slice(0, 3).map((subject: string) => (
+                          <Badge key={subject} className="bg-[#1a7a8a]/10 text-[#1a7a8a] border-none text-xs">
+                            {subject}
+                          </Badge>
+                        ))}
+                        {teacher.subjects?.length > 3 && (
+                          <Badge className="bg-gray-100 text-gray-500 border-none text-xs">
+                            +{teacher.subjects.length - 3}
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <GraduationCap className="h-4 w-4" />
-                        <span>{material.grade}</span>
+                        <Clock className="h-4 w-4" />
+                        <span>{teacher.experience || 0} {lang === "ar" ? "سنوات خبرة" : "years experience"}</span>
                       </div>
-                      {material.fileSize && (
-                        <div className="flex items-center gap-2 text-sm text-gray-400">
-                          <FileText className="h-4 w-4" />
-                          <span>{material.fileSize}</span>
+                      {teacher.qualification && (
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                          <GraduationCap className="h-4 w-4" />
+                          <span className="line-clamp-1">{teacher.qualification}</span>
                         </div>
                       )}
-                      {material.duration && (
-                        <div className="flex items-center gap-2 text-sm text-gray-400">
-                          <Clock className="h-4 w-4" />
-                          <span>{material.duration}</span>
+                      {/* ✅ عرض السعر باستخدام academicCoursePrice */}
+                      <div className="flex items-center gap-1 text-[#1a7a8a] font-bold">
+                        <DollarSign className="h-4 w-4" />
+                        <span>
+                          {isFree 
+                            ? (lang === "ar" ? "مجاني" : "Free") 
+                            : `${teacher.academicCoursePrice || 0} ${teacher.academicCourseCurrency || "EGP"}`}
+                        </span>
+                      </div>
+
+                      {isPending && (
+                        <div className="flex items-center gap-2 text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg text-sm">
+                          <Clock className="h-4 w-4 animate-pulse" />
+                          <span>{lang === "ar" ? "في انتظار الموافقة" : "Awaiting approval"}</span>
                         </div>
                       )}
-                      {material.deadline && (
-                        <div className="flex items-center gap-2 text-sm text-amber-600">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            {lang === "ar" ? "تسليم: " : "Deadline: "}
-                            {new Date(material.deadline).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US")}
-                          </span>
+                      {isRejected && (
+                        <div className="flex items-center gap-2 text-red-600 bg-red-50 px-3 py-1.5 rounded-lg text-sm">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>{lang === "ar" ? "تم رفض الطلب" : "Rejected"}</span>
+                        </div>
+                      )}
+                      {isApproved && (
+                        <div className="flex items-center gap-2 text-green-600 bg-green-50 px-3 py-1.5 rounded-lg text-sm">
+                          <CheckCircle className="h-4 w-4" />
+                          <span>{lang === "ar" ? "تمت الموافقة ✅" : "Approved ✅"}</span>
                         </div>
                       )}
                     </div>
 
-                    <div className="mt-4 pt-4 border-t flex items-center justify-between">
-                      <div className="flex items-center gap-1 text-[#1a7a8a] font-bold">
-                        <DollarSign className="h-4 w-4" />
-                        <span>
-                          {material.teacherCoursePrice || 150} {material.teacherCourseCurrency || "EGP"}
-                        </span>
-                      </div>
-                      <Button
-                        onClick={() => selectMaterial(material)}
-                        className="bg-[#0a2540] hover:bg-[#1a3a5c] text-white"
-                      >
-                        {lang === "ar" ? "شراء المادة" : "Purchase"}
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
+                    <div className="mt-4 flex gap-2">
+                      {hasAccess ? (
+                        <Button
+                          className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => viewApprovedMaterials(teacher)}
+                        >
+                          {lang === "ar" ? "عرض المواد" : "View Materials"}
+                          <Eye className="h-4 w-4 ml-2" />
+                        </Button>
+                      ) : isPending ? (
+                        <Button
+                          className="flex-1 bg-amber-500 hover:bg-amber-600 text-white cursor-not-allowed"
+                          disabled
+                        >
+                          {lang === "ar" ? "في انتظار الموافقة" : "Awaiting Approval"}
+                          <Clock className="h-4 w-4 ml-2 animate-pulse" />
+                        </Button>
+                      ) : (
+                        <Button
+                          className="flex-1 bg-[#0a2540] hover:bg-[#1a3a5c] text-white"
+                          onClick={() => selectTeacher(teacher)}
+                          disabled={!isReady || !isSignedIn}
+                        >
+                          {lang === "ar" ? "شراء المواد" : "Purchase"}
+                          <DollarSign className="h-4 w-4 ml-2" />
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -437,36 +460,44 @@ export default function AcademicPage() {
         )}
       </div>
 
-      {/* ── Checkout Dialog ────────────────────────────────────── */}
-      <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
-        <DialogContent className="max-w-lg" dir={lang === "ar" ? "rtl" : "ltr"}>
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#0a2540]">
-              {lang === "ar" ? "الدفع والاشتراك" : "Payment & Subscription"}
-            </DialogTitle>
-            <DialogDescription>
-              {lang === "ar"
-                ? "قم برفع إيصال الدفع للموافقة على طلبك"
-                : "Upload payment receipt for approval"}
-            </DialogDescription>
-          </DialogHeader>
+      {/* ── Checkout Modal ──────────────────────────────────────── */}
+      {isCheckoutOpen && selectedTeacher && currentUser && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white z-10">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {lang === "ar" ? "الدفع والاشتراك" : "Payment & Subscription"}
+                </h2>
+                <p className="text-sm text-gray-500">
+                  {selectedTeacher.name} - {selectedTeacher.specialization || selectedTeacher.subjects?.join(" • ")}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setIsCheckoutOpen(false);
+                  setPaymentProof("");
+                  setError(null);
+                }}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="h-6 w-6 text-gray-500" />
+              </button>
+            </div>
 
-          {selectedMaterial && (
-            <div className="space-y-4 py-4">
-              <div className="bg-[#f7fafa] rounded-xl p-4">
+            <div className="p-6 space-y-6">
+              <div className="bg-gray-50 rounded-xl p-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-[#e0f5f7] flex items-center justify-center">
-                    {React.createElement(getTypeIcon(selectedMaterial.type), {
-                      className: "h-6 w-6 text-[#1a7a8a]",
-                    })}
+                  <div className="w-14 h-14 rounded-full bg-[#e0f5f7] flex items-center justify-center">
+                    <User className="h-7 w-7 text-[#1a7a8a]" />
                   </div>
                   <div>
-                    <p className="font-semibold text-[#0a2540]">
-                      {lang === "ar" ? selectedMaterial.titleAr || selectedMaterial.title : selectedMaterial.title}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {selectedMaterial.teacherName || "غير معروف"} • {selectedMaterial.subject}
-                    </p>
+                    <p className="font-semibold text-[#0a2540]">{selectedTeacher.name}</p>
+                    <p className="text-sm text-gray-500">{selectedTeacher.specialization}</p>
+                    <div className="flex items-center gap-1 text-xs text-gray-400">
+                      <GraduationCap className="h-3 w-3" />
+                      <span>{selectedTeacher.experience || 0} {lang === "ar" ? "سنوات خبرة" : "years exp"}</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -475,192 +506,173 @@ export default function AcademicPage() {
                 <p className="text-sm font-semibold text-[#0a2540]">
                   {lang === "ar" ? "تفاصيل الدفع" : "Payment Details"}
                 </p>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">
-                    {lang === "ar" ? "سعر المادة" : "Material Price"}
-                  </span>
-                  <span className="font-semibold">
-                    {selectedMaterial.teacherCoursePrice || 150} {selectedMaterial.teacherCourseCurrency || "EGP"}
-                  </span>
-                </div>
-                <div className="border-t border-gray-200 pt-2 flex justify-between text-sm font-bold">
-                  <span>{lang === "ar" ? "الإجمالي" : "Total"}</span>
-                  <span className="text-[#1a7a8a]">
-                    {selectedMaterial.teacherCoursePrice || 150} {selectedMaterial.teacherCourseCurrency || "EGP"}
-                  </span>
+                <div className="bg-gray-50 rounded-xl p-3 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-500">{lang === "ar" ? "سعر الكورس" : "Course Price"}</span>
+                    <span className="font-semibold">
+                      {selectedTeacher.academicCoursePrice || 150} {selectedTeacher.academicCourseCurrency || "EGP"}
+                    </span>
+                  </div>
+                  <div className="border-t border-gray-200 pt-2 flex justify-between text-sm font-bold">
+                    <span>{lang === "ar" ? "الإجمالي" : "Total"}</span>
+                    <span className="text-[#1a7a8a]">
+                      {selectedTeacher.academicCoursePrice || 150} {selectedTeacher.academicCourseCurrency || "EGP"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* رفع الإيصال */}
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-[#0a2540]">
+              <div>
+                <label className="text-sm font-semibold text-gray-700 block mb-2">
                   {lang === "ar" ? "رفع إيصال الدفع" : "Upload Payment Receipt"}
                   <span className="text-red-500 mr-1">*</span>
-                </p>
-                <div className="flex items-center gap-4">
-                  <Button
-                    variant="outline"
-                    className="flex-1 relative"
-                    disabled={isUploading}
+                </label>
+
+                {!paymentProof ? (
+                  <div
                     onClick={() => document.getElementById("receipt-upload")?.click()}
+                    className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-[#1a7a8a] transition-colors cursor-pointer"
                   >
                     {isUploading ? (
-                      <Loader2 className="h-4 w-4 animate-spin ml-2" />
-                    ) : paymentProof ? (
-                      <Check className="h-4 w-4 text-green-500 ml-2" />
+                      <Loader2 className="h-10 w-10 text-[#1a7a8a] animate-spin mx-auto" />
                     ) : (
-                      <Upload className="h-4 w-4 ml-2" />
+                      <>
+                        <Upload className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+                        <p className="text-sm font-medium text-gray-600">
+                          {lang === "ar" ? "رفع إيصال الدفع" : "Upload Payment Receipt"}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {lang === "ar" ? "PNG, JPG, JPEG (حد أقصى 5MB)" : "PNG, JPG, JPEG (Max 5MB)"}
+                        </p>
+                      </>
                     )}
-                    {paymentProof ? (
-                      lang === "ar" ? "تم الرفع" : "Uploaded"
-                    ) : (
-                      lang === "ar" ? "اختر ملف" : "Choose File"
-                    )}
-                  </Button>
-                  <input
-                    id="receipt-upload"
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handleFileChange}
-                    disabled={isUploading}
-                  />
-                  {paymentProof && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        setPaymentProof("");
-                        setPaymentProofFile(null);
-                      }}
-                    >
-                      <X className="h-4 w-4 text-red-500" />
-                    </Button>
-                  )}
-                </div>
-                {paymentProof && (
-                  <div className="relative w-32 h-32 rounded-lg overflow-hidden border">
-                    <img
-                      src={paymentProof}
-                      alt="إيصال الدفع"
-                      className="w-full h-full object-cover cursor-pointer"
-                      onClick={() => setImageModalUrl(paymentProof)}
+                    <input
+                      id="receipt-upload"
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      disabled={isUploading}
                     />
-                    <div className="absolute bottom-1 left-1 right-1 bg-black/50 text-white text-xs text-center py-0.5 rounded">
-                      {lang === "ar" ? "اضغط للتكبير" : "Tap to expand"}
+                  </div>
+                ) : (
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <div className="flex items-center gap-4">
+                      <div
+                        className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200 shrink-0 cursor-pointer"
+                        onClick={() => setImageModalUrl(paymentProof)}
+                      >
+                        <img
+                          src={paymentProof}
+                          alt="إيصال الدفع"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-700">
+                          {lang === "ar" ? "تم رفع الإيصال" : "Receipt Uploaded"}
+                        </p>
+                        <p className="text-xs text-gray-400">صورة الإيصال</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => document.getElementById("receipt-upload")?.click()}
+                        className="px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors text-sm"
+                      >
+                        {lang === "ar" ? "تغيير" : "Change"}
+                      </button>
+                      <input
+                        id="receipt-upload"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
                     </div>
                   </div>
                 )}
-                <p className="text-xs text-gray-400">
-                  {lang === "ar"
-                    ? "يرجى رفع صورة واضحة لإيصال الدفع (jpg, png, jpeg - max 5MB)"
-                    : "Please upload a clear image of the payment receipt (jpg, png, jpeg - max 5MB)"}
+              </div>
+
+              {error && (
+                <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl text-sm">
+                  {error}
+                </div>
+              )}
+
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <p className="text-sm text-amber-700 flex items-start gap-2">
+                  <span className="text-lg">⏳</span>
+                  <span>
+                    {lang === "ar"
+                      ? "سيتم مراجعة إيصال الدفع من قبل الإدارة. سيتم إعلامك عند الموافقة أو الرفض."
+                      : "Your payment receipt will be reviewed by the admin. You will be notified upon approval or rejection."}
+                  </span>
                 </p>
               </div>
 
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
-                <div className="flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                  <p className="text-sm text-amber-700">
-                    {lang === "ar"
-                      ? "سيتم مراجعة إيصال الدفع من قبل الإدارة قبل تفعيل المادة"
-                      : "The payment receipt will be reviewed by the admin before activating the material"}
-                  </p>
-                </div>
+              <div className="flex gap-3 pt-4 border-t border-gray-100">
+                <Button
+                  onClick={handlePaymentSubmit}
+                  disabled={isProcessingPayment || !paymentProof}
+                  className="flex-1 bg-[#001f24] hover:bg-[#03363d] disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors"
+                >
+                  {isProcessingPayment ? (
+                    <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                  ) : (
+                    lang === "ar" ? "تأكيد الدفع" : "Confirm Payment"
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setIsCheckoutOpen(false);
+                    setPaymentProof("");
+                    setError(null);
+                  }}
+                  className="px-6"
+                >
+                  {lang === "ar" ? "إلغاء" : "Cancel"}
+                </Button>
               </div>
             </div>
-          )}
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCheckoutOpen(false)}>
-              {lang === "ar" ? "إلغاء" : "Cancel"}
-            </Button>
-            <Button
-              onClick={handlePayment}
-              disabled={isProcessingPayment || !paymentProof}
-              className="bg-[#1a7a8a] hover:bg-[#15707e] text-white"
-            >
-              {isProcessingPayment ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin ml-2" />
-                  {lang === "ar" ? "جاري المعالجة..." : "Processing..."}
-                </>
-              ) : (
-                <>
-                  {lang === "ar" ? "إرسال الطلب" : "Submit Request"}
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </>
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* ── Payment Status Dialog ──────────────────────────────── */}
-      <Dialog open={isPaid && purchaseStatus === "pending"} onOpenChange={() => {}}>
-        <DialogContent className="max-w-md text-center" dir={lang === "ar" ? "rtl" : "ltr"}>
-          <div className="py-6">
-            <div className="w-20 h-20 rounded-full bg-amber-100 flex items-center justify-center mx-auto mb-4">
-              <Clock className="h-10 w-10 text-amber-500" />
-            </div>
-            <h3 className="text-xl font-bold text-[#0a2540]">
-              {lang === "ar" ? "في انتظار الموافقة" : "Awaiting Approval"}
-            </h3>
-            <p className="text-gray-500 text-sm mt-2">
-              {lang === "ar"
-                ? "تم إرسال طلبك بنجاح، سيتم مراجعته من قبل الإدارة"
-                : "Your request has been sent successfully, it will be reviewed by admin"}
-            </p>
-            {purchaseId && (
-              <p className="text-xs text-gray-400 mt-2">
-                {lang === "ar" ? "رقم الطلب: " : "Request ID: "}
-                {purchaseId}
-              </p>
-            )}
           </div>
-          <DialogFooter>
-            <Button
-              onClick={() => {
-                setIsPaid(false);
-                setSelectedMaterial(null);
-                setPaymentProof("");
-                setPaymentProofFile(null);
-              }}
-              className="w-full bg-[#1a7a8a] hover:bg-[#15707e] text-white"
-            >
-              {lang === "ar" ? "حسناً" : "OK"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
+
+      {/* ── Materials Display Modal ────────────────────────────── */}
+      <MaterialsDisplay
+        isOpen={isMaterialsOpen}
+        onClose={() => {
+          setIsMaterialsOpen(false);
+          setSelectedTeacher(null);
+        }}
+        teacher={selectedTeacher}
+        materials={teacherMaterials}
+        lang={lang}
+      />
 
       {/* ── Image Modal ────────────────────────────────────────── */}
-      <Dialog open={!!imageModalUrl} onOpenChange={() => setImageModalUrl(null)}>
-        <DialogContent className="max-w-2xl" dir={lang === "ar" ? "rtl" : "ltr"}>
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-[#0a2540]">
-              {lang === "ar" ? "صورة الإيصال" : "Receipt Image"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4">
-            {imageModalUrl && (
-              <img
-                src={imageModalUrl}
-                alt="إيصال الدفع"
-                className="w-full rounded-xl"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = "/images/no-image.png";
-                }}
-              />
-            )}
+      {imageModalUrl && (
+        <div
+          className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setImageModalUrl(null)}
+        >
+          <div className="relative max-w-2xl w-full" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={imageModalUrl}
+              alt="إيصال الدفع"
+              className="w-full rounded-xl"
+            />
+            <button
+              onClick={() => setImageModalUrl(null)}
+              className="absolute top-2 right-2 p-2 bg-black/50 rounded-full hover:bg-black/70 transition-colors"
+            >
+              <X className="h-5 w-5 text-white" />
+            </button>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setImageModalUrl(null)}>
-              {lang === "ar" ? "إغلاق" : "Close"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </div>
+      )}
     </div>
   );
 }

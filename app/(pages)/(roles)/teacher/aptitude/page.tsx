@@ -26,22 +26,23 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AddMaterialModal } from "@/app/_components/Teacher/AddMaterialModal";
-import { CoursePriceModal } from "@/app/_components/Teacher/CoursePriceModal";
+import { AptitudeCoursePriceModal } from "@/app/_components/Teacher/AptitudeCoursePriceModal";
+
 
 
 export default function TeacherMaterialsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedType, setSelectedType] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-   const [isCoursePriceModalOpen, setIsCoursePriceModalOpen] = useState(false);
+  const [isCoursePriceModalOpen, setIsCoursePriceModalOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState<any>(null);
-  
+
 
   const currentUser = useQuery(api.user.auth.getCurrentUser);
   const materials = useQuery(
-    api.teacherMaterials.teacherMaterials.getTeacherMaterials,
-    currentUser?._id ? { teacherId: currentUser._id as any } : "skip"
-  );
+  api.teacherMaterials.teacherMaterials.getTeacherMaterials,
+  currentUser?._id ? { teacherId: currentUser._id as any } : "skip"
+);
 
   const deleteMaterial = useMutation(api.teacherMaterials.teacherMaterials.deleteMaterial);
   const updateMaterial = useMutation(api.teacherMaterials.teacherMaterials.updateMaterial);
@@ -107,13 +108,13 @@ export default function TeacherMaterialsPage() {
             className="border-green-500 text-green-600 hover:bg-green-50 gap-2"
           >
             <DollarSign className="h-4 w-4" />
-            {currentUser?.coursePrice ? (
-              <span>{currentUser.coursePrice} {currentUser.courseCurrency || "EGP"}</span>
+            {currentUser?.aptitudeCoursePrice ? (
+              <span>{currentUser.aptitudeCoursePrice} {currentUser.aptitudeCourseCurrency || "EGP"}</span>
             ) : (
               "تحديد سعر الكورس"
             )}
           </Button>
-          
+
           <Button
             onClick={() => {
               setEditingMaterial(null);
@@ -252,13 +253,13 @@ export default function TeacherMaterialsPage() {
         editingMaterial={editingMaterial}
       />
 
-      
-      <CoursePriceModal
+
+      <AptitudeCoursePriceModal
         isOpen={isCoursePriceModalOpen}
         onClose={() => setIsCoursePriceModalOpen(false)}
         teacherId={currentUser?._id}
-        initialPrice={currentUser?.coursePrice || 0}
-        initialCurrency={currentUser?.courseCurrency || "EGP"}
+        initialPrice={currentUser?.aptitudeCoursePrice || 0}
+        initialCurrency={currentUser?.aptitudeCourseCurrency || "EGP"}
         teacherName={currentUser?.name}
       />
     </div>

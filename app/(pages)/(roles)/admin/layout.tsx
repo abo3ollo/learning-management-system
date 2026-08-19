@@ -95,7 +95,7 @@ export default function AdminLayout({
     { href: "/admin/approvals", label: "الموافقة علي التسجيلات", icon: ClipboardCheck },
     { href: "/admin/subscription-approvals", label: "الموافقة على الاشتراكات", icon: ClipboardCheck },
     { href: "/admin/aptitude-approvals", label: "الموافقة على القدرات", icon: IoIosCheckmarkCircleOutline },
-    { href: "/admin/academic-approvals", label: "الموافقة على التحصيلات", icon: HiAcademicCap  },
+    { href: "/admin/academic-approvals", label: "الموافقة على التحصيلي", icon: HiAcademicCap  },
     
     // { href: "/admin/settings", label: "الإعدادات", icon: Settings },
   ];

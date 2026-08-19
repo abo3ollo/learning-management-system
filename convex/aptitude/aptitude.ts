@@ -1,7 +1,25 @@
+// convex/aptitude/aptitude.ts
 import { v } from "convex/values";
 import { mutation, query } from "../_generated/server";
+import { Id } from "../_generated/dataModel";
 
-// ── جلب جميع معلمي القدرات المتاحين ──────────────────────────
+// ── Helper ──────────────────────────────────────────────────────
+async function getAdminUser(ctx: any) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("غير مصرح");
+
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_clerkId", (q: any) => q.eq("clerkId", identity.subject))
+    .first();
+
+  if (!user) throw new Error("المستخدم غير موجود");
+  if (user.role !== "admin") throw new Error("مطلوب صلاحيات أدمن");
+
+  return user;
+}
+
+// ── جلب جميع المعلمين المتاحين للقدرات ──────────────────────
 export const getAvailableTeachers = query({
   handler: async (ctx) => {
     const teachers = await ctx.db
@@ -25,6 +43,8 @@ export const getAvailableTeachers = query({
         return {
           ...teacher,
           materialsCount: activeMaterials.length,
+          aptitudeCoursePrice: teacher.aptitudeCoursePrice || 0,
+          aptitudeCourseCurrency: teacher.aptitudeCourseCurrency || "EGP",
         };
       })
     );
@@ -33,7 +53,7 @@ export const getAvailableTeachers = query({
   },
 });
 
-// ── جلب مواد معلم معين ──────────────────────────────────────
+// ── جلب مواد معلم معين للقدرات ──────────────────────────────
 export const getTeacherMaterials = query({
   args: {
     teacherId: v.id("users"),
@@ -80,13 +100,16 @@ export const createAptitudePurchase = mutation({
       throw new Error("لديك طلب قيد المراجعة لهذا المعلم");
     }
 
+    const now = Date.now();
+
     const purchaseId = await ctx.db.insert("aptitudePurchases", {
       teacherId: args.teacherId,
       studentId: student._id,
       amount: args.amount,
       paymentProof: args.paymentProof,
       status: "pending",
-      createdAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     });
 
     return purchaseId;
@@ -242,83 +265,76 @@ export const getPurchaseStatus = query({
   },
 });
 
-// ── إضافة مواد للمعلم (للأدمن) ──────────────────────────────
-export const addAptitudeMaterial = mutation({
+// ── جلب حالة الشراء للطالب الحالي ──────────────────────────────
+export const getMyAptitudePurchaseStatus = query({
   args: {
     teacherId: v.id("users"),
-    title: v.string(),
-    titleAr: v.optional(v.string()),
-    type: v.union(
-      v.literal("pdf"),
-      v.literal("video"),
-      v.literal("exam"),
-      v.literal("assignment"),
-      v.literal("revision")
-    ),
-    url: v.string(),
-    size: v.optional(v.string()),
-    duration: v.optional(v.string()),
-    description: v.optional(v.string()),
-    descriptionAr: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    const admin = await ctx.db
+    const student = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .first();
 
-    if (!admin || admin.role !== "admin") {
-      throw new Error("غير مصرح");
-    }
+    if (!student) throw new Error("المستخدم غير موجود");
 
-    const materialId = await ctx.db.insert("aptitudeMaterials", {
-      teacherId: args.teacherId,
-      title: args.title,
-      titleAr: args.titleAr,
-      type: args.type,
-      url: args.url,
-      size: args.size,
-      duration: args.duration,
-      description: args.description,
-      descriptionAr: args.descriptionAr,
-      isActive: true,
-      createdAt: Date.now(),
-    });
+    const purchases = await ctx.db
+      .query("aptitudePurchases")
+      .withIndex("by_studentId", (q) => q.eq("studentId", student._id))
+      .collect();
 
-    return materialId;
+    const purchase = purchases.find((p) => p.teacherId === args.teacherId);
+
+    if (!purchase) return null;
+
+    return {
+      ...purchase,
+      status: purchase.status,
+    };
   },
 });
 
-// ── حذف مادة (تعطيل) ──────────────────────────────────────────
-export const removeAptitudeMaterial = mutation({
-  args: {
-    materialId: v.id("aptitudeMaterials"),
-  },
-  handler: async (ctx, args) => {
+// ── جلب جميع طلبات القدرات للطالب مع حالة الموافقة ────────────
+export const getMyAptitudePurchasesWithStatus = query({
+  handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("غير مصرح");
 
-    const admin = await ctx.db
+    const student = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
       .first();
 
-    if (!admin || admin.role !== "admin") {
-      throw new Error("غير مصرح");
-    }
+    if (!student) throw new Error("المستخدم غير موجود");
 
-    await ctx.db.patch(args.materialId, {
-      isActive: false,
-    });
+    const purchases = await ctx.db
+      .query("aptitudePurchases")
+      .withIndex("by_studentId", (q) => q.eq("studentId", student._id))
+      .order("desc")
+      .collect();
 
-    return args.materialId;
+    const purchasesWithDetails = await Promise.all(
+      purchases.map(async (purchase) => {
+        const teacher = await ctx.db.get(purchase.teacherId);
+        return {
+          ...purchase,
+          teacherName: teacher?.name || "غير معروف",
+          teacherSpecialization: teacher?.specialization || "",
+          isApproved: purchase.status === "approved",
+          isPending: purchase.status === "pending",
+          isRejected: purchase.status === "rejected",
+        };
+      })
+    );
+
+    return purchasesWithDetails;
   },
 });
 
-// ── الحصول على إحصائيات القدرات ──────────────────────────────
+// ── إحصائيات القدرات ──────────────────────────────────────────
 export const getAptitudeStats = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -363,73 +379,16 @@ export const getAptitudeStats = query({
   },
 });
 
-
-// ✅ جلب حالة الشراء للطالب الحالي (للتحقق من الموافقة)
-export const getMyAptitudePurchaseStatus = query({
-  args: {
-    teacherId: v.id("users"),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("غير مصرح");
-
-    const student = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!student) throw new Error("المستخدم غير موجود");
-
-    const purchases = await ctx.db
-      .query("aptitudePurchases")
-      .withIndex("by_studentId", (q) => q.eq("studentId", student._id))
-      .collect();
-
-    // البحث عن طلب لهذا المعلم
-    const purchase = purchases.find((p) => p.teacherId === args.teacherId);
-
-    if (!purchase) return null;
-
-    return {
-      ...purchase,
-      status: purchase.status, // pending | approved | rejected
-    };
-  },
-});
-
-// ✅ جلب جميع طلبات القدرات للطالب مع حالة الموافقة
-export const getMyAptitudePurchasesWithStatus = query({
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("غير مصرح");
-
-    const student = await ctx.db
-      .query("users")
-      .withIndex("by_clerkId", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!student) throw new Error("المستخدم غير موجود");
-
-    const purchases = await ctx.db
-      .query("aptitudePurchases")
-      .withIndex("by_studentId", (q) => q.eq("studentId", student._id))
-      .order("desc")
-      .collect();
-
-    const purchasesWithDetails = await Promise.all(
-      purchases.map(async (purchase) => {
-        const teacher = await ctx.db.get(purchase.teacherId);
-        return {
-          ...purchase,
-          teacherName: teacher?.name || "غير معروف",
-          teacherSpecialization: teacher?.specialization || "",
-          isApproved: purchase.status === "approved",
-          isPending: purchase.status === "pending",
-          isRejected: purchase.status === "rejected",
-        };
-      })
-    );
-
-    return purchasesWithDetails;
-  },
-});
+// ── تصدير الدوال ──────────────────────────────────────────────────
+export const aptitude = {
+  getAvailableTeachers,
+  getTeacherMaterials,
+  createAptitudePurchase,
+  getMyAptitudePurchases,
+  getAllAptitudePurchases,
+  updateAptitudePurchaseStatus,
+  getPurchaseStatus,
+  getMyAptitudePurchaseStatus,
+  getMyAptitudePurchasesWithStatus,
+  getAptitudeStats,
+};

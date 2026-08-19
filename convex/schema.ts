@@ -65,8 +65,13 @@ export default defineSchema({
     salary: v.optional(v.number()), // الراتب
     subjects: v.optional(v.array(v.string())), // المواد التي يدرسها
 
-    coursePrice: v.optional(v.number()),
-    courseCurrency: v.optional(v.string()),
+    // ✅ سعر كورس القدرات (Aptitude)
+    aptitudeCoursePrice: v.optional(v.number()),
+    aptitudeCourseCurrency: v.optional(v.string()),
+
+    // ✅ سعر كورس التحصيلي (Academic)
+    academicCoursePrice: v.optional(v.number()),
+    academicCourseCurrency: v.optional(v.string()),
 
     // Parent specific fields
     parentId: v.optional(v.string()),
@@ -1275,27 +1280,54 @@ export default defineSchema({
     .index("by_status", ["status"])
     .index("by_createdAt", ["createdAt"]),
 
-  // ── طلبات القدرات (Aptitude Purchases) ────────────────────
-  aptitudePurchases: defineTable({
-    teacherId: v.id("users"), // المعلم المختار
-    studentId: v.id("users"), // الطالب
-    amount: v.number(),
-    paymentProof: v.string(), // رابط الصورة
-    status: v.union(
-      v.literal("pending"),
-      v.literal("approved"),
-      v.literal("rejected"),
+  // ── مواد التحصيلي (Academic Materials) ──────────────────────────
+  academicMaterials: defineTable({
+    teacherId: v.id("users"),
+    title: v.string(),
+    titleAr: v.string(),
+    description: v.optional(v.string()),
+    descriptionAr: v.optional(v.string()),
+    type: v.union(
+      v.literal("pdf"),
+      v.literal("video"),
+      v.literal("exam"),
+      v.literal("assignment"),
+      v.literal("revision"),
     ),
-    rejectionReason: v.optional(v.string()),
-    adminNotes: v.optional(v.string()),
+    fileUrl: v.optional(v.string()),
+    fileSize: v.optional(v.string()),
+    duration: v.optional(v.string()),
+    subject: v.string(),
+    grade: v.string(),
+    // ✅ حقل للمواد التحصيلية فقط
+    academicLevel: v.optional(
+      v.union(v.literal("primary"), v.literal("middle"), v.literal("high")),
+    ),
+    // ✅ حقل للامتحانات
+    questions: v.optional(
+      v.array(
+        v.object({
+          id: v.string(),
+          text: v.string(),
+          options: v.optional(v.array(v.string())),
+          correctAnswer: v.optional(v.string()),
+          marks: v.number(),
+        }),
+      ),
+    ),
+    deadline: v.optional(v.number()),
+    isPublished: v.boolean(),
+    displayOrder: v.number(),
     createdAt: v.number(),
-    updatedAt: v.optional(v.number()),
+    updatedAt: v.number(),
   })
-    .index("by_studentId", ["studentId"])
-    .index("by_teacherId", ["teacherId"])
-    .index("by_status", ["status"]),
+    .index("by_teacher", ["teacherId"])
+    .index("by_subject", ["subject"])
+    .index("by_type", ["type"])
+    .index("by_published", ["isPublished"])
+    .index("by_grade", ["grade"]),
 
-  // ── مواد القدرات (Aptitude Materials) ──────────────────────
+  // ── مواد القدرات (Aptitude Materials) ──────────────────────────
   aptitudeMaterials: defineTable({
     teacherId: v.id("users"),
     title: v.string(),
@@ -1314,18 +1346,15 @@ export default defineSchema({
     descriptionAr: v.optional(v.string()),
     isActive: v.boolean(),
     createdAt: v.number(),
-  })
-    .index("by_teacherId", ["teacherId"])
-    .index("by_type", ["type"])
-    .index("by_isActive", ["isActive"]),
+  }).index("by_teacherId", ["teacherId"]),
 
+  // ── طلبات شراء التحصيلي ──────────────────────────────────────────
   academicPurchases: defineTable({
-    materialId: v.id("teacherMaterials"),
     teacherId: v.id("users"),
     studentId: v.id("users"),
     amount: v.number(),
     currency: v.string(),
-    paymentProof: v.string(), // رابط الصورة
+    paymentProof: v.string(),
     status: v.union(
       v.literal("pending"),
       v.literal("approved"),
@@ -1338,75 +1367,101 @@ export default defineSchema({
   })
     .index("by_studentId", ["studentId"])
     .index("by_teacherId", ["teacherId"])
-    .index("by_materialId", ["materialId"])
     .index("by_status", ["status"])
     .index("by_createdAt", ["createdAt"]),
 
-  transactions: defineTable({
+  // ── طلبات شراء القدرات ──────────────────────────────────────────
+  aptitudePurchases: defineTable({
+    teacherId: v.id("users"),
     studentId: v.id("users"),
-    parentId: v.optional(v.id("users")),
-    type: v.union(
-      v.literal("platform"),
-      v.literal("aptitude"),
-      v.literal("purchase"),
-    ),
-    category: v.string(),
-    description: v.string(),
-    descriptionAr: v.string(),
     amount: v.number(),
-    currency: v.string(),
+    paymentProof: v.string(),
     status: v.union(
       v.literal("pending"),
-      v.literal("completed"),
-      v.literal("refunded"),
-      v.literal("failed"),
+      v.literal("approved"),
+      v.literal("rejected"),
     ),
-    referenceId: v.string(),
-    referenceType: v.string(),
-    paymentProof: v.optional(v.string()),
+    rejectionReason: v.optional(v.string()),
+    adminNotes: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_studentId", ["studentId"])
+    .index("by_teacherId", ["teacherId"])
+    .index("by_status", ["status"])
+    .index("by_createdAt", ["createdAt"]),
+
+
+
+// ── جدول المعاملات ──────────────────────────────────────────────
+transactions: defineTable({
+  studentId: v.id("users"),
+  parentId: v.optional(v.id("users")),
+  type: v.union(
+    v.literal("platform"),
+    v.literal("aptitude"),
+    v.literal("academic"), // ✅ أضف academic
+    v.literal("purchase")
+  ),
+  category: v.string(),
+  amount: v.number(),
+  currency: v.string(),
+  status: v.union(
+    v.literal("pending"),
+    v.literal("completed"),
+    v.literal("approved"),    // ✅ أضف approved
+    v.literal("rejected"),    // ✅ أضف rejected
+    v.literal("refunded"),
+    v.literal("failed")
+  ),
+  referenceId: v.string(),
+  referenceType: v.string(),
+  description: v.string(),
+  descriptionAr: v.string(),
+  paymentProof: v.optional(v.string()),
+  createdAt: v.number(),
+  updatedAt: v.optional(v.number()),
+})
+  .index("by_student", ["studentId"])
+  .index("by_parent", ["parentId"])
+  .index("by_type", ["type"])
+  .index("by_status", ["status"])
+  .index("by_createdAt", ["createdAt"])
+  .index("by_reference", ["referenceId"]),
+
+  // ── سندات القبض (Receipt Vouchers) ────────────────────────────
+  receiptVouchers: defineTable({
+    voucherNumber: v.string(), // رقم السند (auto-generated)
+    recipientId: v.id("users"), // المستلم (الطالب أو ولي الأمر)
+    recipientName: v.string(), // اسم المستلم (للعرض السريع)
+    amount: v.number(), // المبلغ
+    currency: v.string(), // العملة
+    notes: v.optional(v.string()), // البيان / الملاحظات
+    date: v.number(), // تاريخ السند
+    createdBy: v.id("users"), // من قام بالإضافة
     createdAt: v.number(),
     updatedAt: v.optional(v.number()),
   })
-    .index("by_student", ["studentId"])
-    .index("by_parent", ["parentId"])
-    .index("by_type", ["type"])
-    .index("by_status", ["status"])
-    .index("by_created", ["createdAt"]),
+    .index("by_voucherNumber", ["voucherNumber"])
+    .index("by_recipient", ["recipientId"])
+    .index("by_date", ["date"])
+    .index("by_createdBy", ["createdBy"]),
 
-
-// ── سندات القبض (Receipt Vouchers) ────────────────────────────
-receiptVouchers: defineTable({
-  voucherNumber: v.string(), // رقم السند (auto-generated)
-  recipientId: v.id("users"), // المستلم (الطالب أو ولي الأمر)
-  recipientName: v.string(), // اسم المستلم (للعرض السريع)
-  amount: v.number(), // المبلغ
-  currency: v.string(), // العملة
-  notes: v.optional(v.string()), // البيان / الملاحظات
-  date: v.number(), // تاريخ السند
-  createdBy: v.id("users"), // من قام بالإضافة
-  createdAt: v.number(),
-  updatedAt: v.optional(v.number()),
-})
-  .index("by_voucherNumber", ["voucherNumber"])
-  .index("by_recipient", ["recipientId"])
-  .index("by_date", ["date"])
-  .index("by_createdBy", ["createdBy"]),
-
-// ── سندات الصرف (Payment Vouchers) ────────────────────────────
-paymentVouchers: defineTable({
-  voucherNumber: v.string(), // رقم السند (auto-generated)
-  payeeId: v.id("users"), // المدفوع له
-  payeeName: v.string(), // اسم المدفوع له (للعرض السريع)
-  amount: v.number(), // المبلغ
-  currency: v.string(), // العملة
-  notes: v.optional(v.string()), // البيان / الملاحظات
-  date: v.number(), // تاريخ السند
-  createdBy: v.id("users"), // من قام بالإضافة
-  createdAt: v.number(),
-  updatedAt: v.optional(v.number()),
-})
-  .index("by_voucherNumber", ["voucherNumber"])
-  .index("by_payee", ["payeeId"])
-  .index("by_date", ["date"])
-  .index("by_createdBy", ["createdBy"]),
+  // ── سندات الصرف (Payment Vouchers) ────────────────────────────
+  paymentVouchers: defineTable({
+    voucherNumber: v.string(), // رقم السند (auto-generated)
+    payeeId: v.id("users"), // المدفوع له
+    payeeName: v.string(), // اسم المدفوع له (للعرض السريع)
+    amount: v.number(), // المبلغ
+    currency: v.string(), // العملة
+    notes: v.optional(v.string()), // البيان / الملاحظات
+    date: v.number(), // تاريخ السند
+    createdBy: v.id("users"), // من قام بالإضافة
+    createdAt: v.number(),
+    updatedAt: v.optional(v.number()),
+  })
+    .index("by_voucherNumber", ["voucherNumber"])
+    .index("by_payee", ["payeeId"])
+    .index("by_date", ["date"])
+    .index("by_createdBy", ["createdBy"]),
 });
