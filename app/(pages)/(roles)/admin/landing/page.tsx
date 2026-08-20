@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
@@ -52,25 +52,22 @@ import { toast } from "sonner";
 interface LandingSettings {
   _id?: string;
   // Hero Fields
-  heroBadge: string;
-  heroBadgeAr: string;
+  // heroBadge: string;
+  // heroBadgeAr: string;
   heroTitle: string;
   heroTitleAr: string;
-  heroSubtitle: string;
-  heroSubtitleAr: string;
+  // heroSubtitle: string;
+  // heroSubtitleAr: string;
   heroImageUrl: string;
   heroRating?: string;
   heroRatingLabel?: string;
   heroRatingLabelAr?: string;
-
   heroBottomText?: string;
   heroBottomTextAr?: string;
   heroBottomSmText?: string;
   heroBottomSmTextAr?: string;
-
   schoolName: string;
   schoolNameAr: string;
-
   // CTA
   ctaText: string;
   ctaTextAr: string;
@@ -78,7 +75,6 @@ interface LandingSettings {
   secondaryCta: string;
   secondaryCtaAr: string;
   secondaryCtaUrl: string;
-
   // Trust Badges
   trustBadge1?: string;
   trustBadge1Ar?: string;
@@ -88,37 +84,32 @@ interface LandingSettings {
   trustBadge3Value?: string;
   trustBadge3?: string;
   trustBadge3Ar?: string;
-
   // Floating Badges
   floatingBadge1?: string;
   floatingBadge1Ar?: string;
   floatingBadge2?: string;
   floatingBadge2Ar?: string;
-
   // Stats
   stats: Array<{ value: string; label: string; labelAr: string }>;
   themeMode: "dark" | "light";
   showTestimonials: boolean;
   showCourses: boolean;
   showGallery: boolean;
-
   // Contact
   contactEmail: string;
   contactPhone: string;
   whatsappLink: string;
   address: string;
   addressAr: string;
-
   // Footer
   footerDescription: string;
   footerDescriptionAr: string;
-
   // SEO
   seoTitle: string;
   seoTitleAr: string;
   seoDescription: string;
   seoDescriptionAr: string;
-  updatedAt?: number;
+
 }
 
 // ─── Default Values ─────────────────────────────────────────────
@@ -234,17 +225,18 @@ export default function AdminLandingPage() {
   const deleteSubscription = useMutation(api.landing.landing.deleteSubscription);
 
   const [settings, setSettings] = useState<LandingSettings>({
-    heroBadge: "The Future of Marine Education",
-    heroBadgeAr: "مستقبل التعليم البحري",
+
     heroTitle: "Book Your Private Tutor for",
     heroTitleAr: "احجز معلمك الخصوصي لـ",
-    heroSubtitle: "A comprehensive educational platform designed to empower students and teachers through advanced interactive tools.",
-    heroSubtitleAr: "منصة تعليمية شاملة مصممة لتمكين الطلاب والمعلمين من خلال أدوات تفاعلية متقدمة.",
+
     heroBottomText: "Learn English in Britain with Confidence",
     heroBottomTextAr: "تعلم الإنجليزية في بريطانيا بخطوات واضحة",
     heroBottomSmText: "Steps Steps to Learn English in Britain",
     heroBottomSmTextAr: "خطوات تعلم الإنجليزية في بريطانيا",
     heroImageUrl: "/images/Hero1.png",
+    heroRating: "4.8",
+    heroRatingLabel: "Student Satisfaction",
+    heroRatingLabelAr: "نسبة رضا الطالب",
     schoolName: "Test Academy",
     schoolNameAr: "أكاديمية تجريبي",
     ctaText: "Start Your Journey Now",
@@ -273,7 +265,80 @@ export default function AdminLandingPage() {
     seoTitleAr: "أكاديمية تجريبي - منصة التعليم البحري الرائدة",
     seoDescription: "Marine Academy offers comprehensive marine education with live classes, expert teachers, and interactive learning tools.",
     seoDescriptionAr: "تقدم أكاديمية مارين تعليماً بحرياً شاملاً مع فصول مباشرة ومعلمين خبراء وأدوات تعلم تفاعلية.",
+    trustBadge1: "National eLearning Center",
+    trustBadge1Ar: "المركز الوطني للتعليم الإلكتروني",
+    trustBadge2: "Most Downloaded School",
+    trustBadge2Ar: "المدرسة الأكثر تحميلاً",
+    trustBadge2Year: "2023/2024",
+    trustBadge3Value: "14+",
+    trustBadge3: "For All Academic Levels",
+    trustBadge3Ar: "لجميع المراحل الدراسية",
+    floatingBadge1: "IB/IGCSE",
+    floatingBadge1Ar: "المنهاج الوطني",
+    floatingBadge2: "Live Classes",
+    floatingBadge2Ar: "فصول مباشرة",
   });
+
+
+  useEffect(() => {
+    if (landingData?.settings) {
+      const dbSettings = landingData.settings;
+      setSettings((prev) => ({
+        ...prev,
+        // Hero Fields
+        // heroBadge: dbSettings.heroBadge ?? prev.heroBadge,
+        // heroBadgeAr: dbSettings.heroBadgeAr ?? prev.heroBadgeAr,
+        heroTitle: dbSettings.heroTitle ?? prev.heroTitle,
+        heroTitleAr: dbSettings.heroTitleAr ?? prev.heroTitleAr,
+        // heroSubtitle: dbSettings.heroSubtitle ?? prev.heroSubtitle,
+        // heroSubtitleAr: dbSettings.heroSubtitleAr ?? prev.heroSubtitleAr,
+        heroImageUrl: dbSettings.heroImageUrl ?? prev.heroImageUrl,
+        heroRating: dbSettings.heroRating ?? prev.heroRating,
+        heroRatingLabel: dbSettings.heroRatingLabel ?? prev.heroRatingLabel,
+        heroRatingLabelAr: dbSettings.heroRatingLabelAr ?? prev.heroRatingLabelAr,
+        heroBottomText: dbSettings.heroBottomText ?? prev.heroBottomText,
+        heroBottomTextAr: dbSettings.heroBottomTextAr ?? prev.heroBottomTextAr,
+        heroBottomSmText: dbSettings.heroBottomSmText ?? prev.heroBottomSmText,
+        heroBottomSmTextAr: dbSettings.heroBottomSmTextAr ?? prev.heroBottomSmTextAr,
+        // School Name
+        schoolName: dbSettings.schoolName ?? prev.schoolName,
+        schoolNameAr: dbSettings.schoolNameAr ?? prev.schoolNameAr,
+
+        // CTA
+        ctaText: dbSettings.ctaText ?? prev.ctaText,
+        ctaTextAr: dbSettings.ctaTextAr ?? prev.ctaTextAr,
+        ctaUrl: dbSettings.ctaUrl ?? prev.ctaUrl,
+        secondaryCta: dbSettings.secondaryCta ?? prev.secondaryCta,
+        secondaryCtaAr: dbSettings.secondaryCtaAr ?? prev.secondaryCtaAr,
+        secondaryCtaUrl: dbSettings.secondaryCtaUrl ?? prev.secondaryCtaUrl,
+        // Stats
+        stats: dbSettings.stats ?? prev.stats,
+        // Theme
+        themeMode: dbSettings.themeMode ?? prev.themeMode,
+        // Visibility
+        showTestimonials: dbSettings.showTestimonials ?? prev.showTestimonials,
+        showCourses: dbSettings.showCourses ?? prev.showCourses,
+        showGallery: dbSettings.showGallery ?? prev.showGallery,
+        // Contact
+        contactEmail: dbSettings.contactEmail ?? prev.contactEmail,
+        contactPhone: dbSettings.contactPhone ?? prev.contactPhone,
+        whatsappLink: dbSettings.whatsappLink ?? prev.whatsappLink,
+        address: dbSettings.address ?? prev.address,
+        addressAr: dbSettings.addressAr ?? prev.addressAr,
+        // Footer
+        footerDescription: dbSettings.footerDescription ?? prev.footerDescription,
+        footerDescriptionAr: dbSettings.footerDescriptionAr ?? prev.footerDescriptionAr,
+        // SEO
+        seoTitle: dbSettings.seoTitle ?? prev.seoTitle,
+        seoTitleAr: dbSettings.seoTitleAr ?? prev.seoTitleAr,
+        seoDescription: dbSettings.seoDescription ?? prev.seoDescription,
+        seoDescriptionAr: dbSettings.seoDescriptionAr ?? prev.seoDescriptionAr,
+
+      }));
+    }
+  }, [landingData]);
+
+
 
   const [playingVideo, setPlayingVideo] = useState<string | null>(null);
   // ─── Dialog Handlers ──────────────────────────────────────────
@@ -341,7 +406,9 @@ export default function AdminLandingPage() {
   const handleSaveSettings = async () => {
     setIsSaving(true);
     try {
-      await updateSettings(settings);
+      // ✅ إزالة updatedAt من الكائن قبل الإرسال
+      const { ...settingsToSave } = settings;
+      await updateSettings(settingsToSave);
       toast.success("تم حفظ الإعدادات بنجاح!");
     } catch (error: any) {
       toast.error(error.message || "حدث خطأ أثناء حفظ الإعدادات");
@@ -467,45 +534,22 @@ export default function AdminLandingPage() {
             <div className="space-y-2">
               <Label>تقييم الطالب</Label>
               <Input
-                value={settings.heroRating || "4.8"}
+                value={settings.heroRating || ""}
                 onChange={(e) => setSettings({ ...settings, heroRating: e.target.value })}
-                placeholder="4.8"
               />
             </div>
             <div className="space-y-2">
               <Label>نص التقييم (عربي)</Label>
               <Input
-                value={settings.heroRatingLabelAr || "نسبة رضا الطالب"}
+                value={settings.heroRatingLabelAr || ""}
                 onChange={(e) => setSettings({ ...settings, heroRatingLabelAr: e.target.value })}
-                placeholder="نسبة رضا الطالب"
               />
             </div>
             <div className="space-y-2">
               <Label>نص التقييم (إنجليزي)</Label>
               <Input
-                value={settings.heroRatingLabel || "Student Satisfaction"}
+                value={settings.heroRatingLabel || ""}
                 onChange={(e) => setSettings({ ...settings, heroRatingLabel: e.target.value })}
-                placeholder="Student Satisfaction"
-              />
-            </div>
-          </div>
-
-          {/* Badge */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>الشارة (عربي)</Label>
-              <Input
-                value={settings.heroBadgeAr || "مستقبل التعليم البحري"}
-                onChange={(e) => setSettings({ ...settings, heroBadgeAr: e.target.value })}
-                placeholder="مثال: مستقبل التعليم البحري"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>الشارة (إنجليزي)</Label>
-              <Input
-                value={settings.heroBadge || "The Future of Marine Education"}
-                onChange={(e) => setSettings({ ...settings, heroBadge: e.target.value })}
-                placeholder="Example: The Future of Marine Education"
               />
             </div>
           </div>
@@ -515,40 +559,16 @@ export default function AdminLandingPage() {
             <div className="space-y-2">
               <Label>العنوان الرئيسي (عربي)</Label>
               <Textarea
-                value={settings.heroTitleAr || "احجز معلمك الخصوصي لـ"}
+                value={settings.heroTitleAr || ""}
                 onChange={(e) => setSettings({ ...settings, heroTitleAr: e.target.value })}
-                placeholder="احجز معلمك الخصوصي لـ"
                 rows={2}
               />
             </div>
             <div className="space-y-2">
               <Label>العنوان الرئيسي (إنجليزي)</Label>
               <Textarea
-                value={settings.heroTitle || "Book Your Private Tutor for"}
+                value={settings.heroTitle || ""}
                 onChange={(e) => setSettings({ ...settings, heroTitle: e.target.value })}
-                placeholder="Book Your Private Tutor for"
-                rows={2}
-              />
-            </div>
-          </div>
-
-          {/* Subtitle */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>النص الفرعي (عربي)</Label>
-              <Textarea
-                value={settings.heroSubtitleAr || "يفهمك المادة ويضمنك العالمة الكاملة"}
-                onChange={(e) => setSettings({ ...settings, heroSubtitleAr: e.target.value })}
-                placeholder="يفهمك المادة ويضمنك العالمة الكاملة"
-                rows={2}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>النص الفرعي (إنجليزي)</Label>
-              <Textarea
-                value={settings.heroSubtitle || "Understands the subject and guarantees you the full mark"}
-                onChange={(e) => setSettings({ ...settings, heroSubtitle: e.target.value })}
-                placeholder="Understands the subject and guarantees you the full mark"
                 rows={2}
               />
             </div>
@@ -558,61 +578,76 @@ export default function AdminLandingPage() {
           <div className="space-y-2">
             <Label>صورة الهيرو (رابط)</Label>
             <Input
-              value={settings.heroImageUrl || "/images/hero.png"}
+              value={settings.heroImageUrl || ""}
               onChange={(e) => setSettings({ ...settings, heroImageUrl: e.target.value })}
-              placeholder="/images/hero.png"
+              placeholder="أدخل رابط الصورة"
             />
             {settings.heroImageUrl && (
-              <div className="mt-2 relative w-full h-48 rounded-lg overflow-hidden border border-[#c0c8c9]">
+              <div className="mt-2 relative w-full h-48 rounded-lg overflow-hidden border border-[#c0c8c9] bg-gray-100">
                 <img
                   src={settings.heroImageUrl}
                   alt="Hero"
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).style.display = "none";
+                    // ✅ عند حدوث خطأ، اعرض رسالة بدلاً من الصورة
+                    e.currentTarget.style.display = 'none';
+                    // ✅ أظهر رسالة بديلة
+                    const parent = e.currentTarget.parentElement;
+                    if (parent) {
+                      const fallback = document.createElement('div');
+                      fallback.className = 'w-full h-full flex items-center justify-center text-gray-400';
+                      fallback.innerHTML = '⚠️ تعذر تحميل الصورة';
+                      parent.appendChild(fallback);
+                    }
                   }}
                 />
+                {/* ✅ زر لفتح الصورة في نافذة جديدة */}
+                <a
+                  href={settings.heroImageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-3 py-1 rounded-lg hover:bg-black/90 transition-colors"
+                >
+                  فتح الصورة
+                </a>
               </div>
             )}
           </div>
 
-          {/* ✅ Hero Bottom Text - النص الموجود تحت الصورة */}
+          {/* Hero Bottom Text */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#f7fafa] rounded-lg border border-[#c0c8c9]">
             <div className="space-y-2">
-              <Label>نص تحت الصورة (عربي)</Label>
+              <Label>نص تحت صوره الهيرو (عربي)</Label>
               <Textarea
-                value={settings.heroBottomTextAr || "تعلم الإنجليزية في بريطانيا بخطوات واضحة"}
+                value={settings.heroBottomTextAr || ""}
                 onChange={(e) => setSettings({ ...settings, heroBottomTextAr: e.target.value })}
-                placeholder="نص تحت الصورة بالعربية"
                 rows={2}
               />
             </div>
             <div className="space-y-2">
-              <Label>نص تحت الصورة (إنجليزي)</Label>
+              <Label>نص تحت صوره الهيرو (إنجليزي)</Label>
               <Textarea
-                value={settings.heroBottomText || "Learn English in Britain with Confidence"}
+                value={settings.heroBottomText || ""}
                 onChange={(e) => setSettings({ ...settings, heroBottomText: e.target.value })}
-                placeholder="Text under image in English"
                 rows={1}
               />
             </div>
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#f7fafa] rounded-lg border border-[#c0c8c9]">
             <div className="space-y-2">
-              <Label>نص الصغير تحت الصورة (عربي)</Label>
+              <Label>نص الصغير تحت صوره الهيرو (عربي)</Label>
               <Textarea
-                value={settings.heroBottomSmTextAr || "تعلم الإنجليزية في بريطانيا بخطوات واضحة"}
+                value={settings.heroBottomSmTextAr || ""}
                 onChange={(e) => setSettings({ ...settings, heroBottomSmTextAr: e.target.value })}
-                placeholder="نص تحت الصورة بالعربية"
                 rows={1}
               />
             </div>
             <div className="space-y-2">
-              <Label>نص الصغير تحت الصورة (إنجليزي)</Label>
+              <Label>نص الصغير تحت صوره الهيرو (إنجليزي)</Label>
               <Textarea
-                value={settings.heroBottomSmText || "Learn English in Britain with Confidence"}
+                value={settings.heroBottomSmText || ""}
                 onChange={(e) => setSettings({ ...settings, heroBottomSmText: e.target.value })}
-                placeholder="Text under image in English"
                 rows={1}
               />
             </div>
@@ -623,56 +658,50 @@ export default function AdminLandingPage() {
             <div className="space-y-2">
               <Label>زر الدعوة الأساسي (عربي)</Label>
               <Input
-                value={settings.ctaTextAr || "إعرف أكثر عن باقات الدروس"}
+                value={settings.ctaTextAr || ""}
                 onChange={(e) => setSettings({ ...settings, ctaTextAr: e.target.value })}
-                placeholder="إعرف أكثر عن باقات الدروس"
               />
             </div>
             <div className="space-y-2">
               <Label>زر الدعوة الأساسي (إنجليزي)</Label>
               <Input
-                value={settings.ctaText || "Learn More About Lesson Packages"}
+                value={settings.ctaText || ""}
                 onChange={(e) => setSettings({ ...settings, ctaText: e.target.value })}
-                placeholder="Learn More About Lesson Packages"
               />
             </div>
             <div className="space-y-2">
               <Label>الرابط</Label>
               <Input
-                value={settings.ctaUrl || "/onboarding"}
+                value={settings.ctaUrl || ""}
                 onChange={(e) => setSettings({ ...settings, ctaUrl: e.target.value })}
-                placeholder="/onboarding"
               />
             </div>
           </div>
 
           {/* Secondary CTA */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>زر ثانوي (عربي)</Label>
               <Input
-                value={settings.secondaryCtaAr || "تواصل معنا"}
+                value={settings.secondaryCtaAr || ""}
                 onChange={(e) => setSettings({ ...settings, secondaryCtaAr: e.target.value })}
-                placeholder="تواصل معنا"
               />
             </div>
             <div className="space-y-2">
               <Label>زر ثانوي (إنجليزي)</Label>
               <Input
-                value={settings.secondaryCta || "Contact Us"}
+                value={settings.secondaryCta || ""}
                 onChange={(e) => setSettings({ ...settings, secondaryCta: e.target.value })}
-                placeholder="Contact Us"
               />
             </div>
             <div className="space-y-2">
               <Label>الرابط</Label>
               <Input
-                value={settings.secondaryCtaUrl || "#"}
+                value={settings.secondaryCtaUrl || ""}
                 onChange={(e) => setSettings({ ...settings, secondaryCtaUrl: e.target.value })}
-                placeholder="#"
               />
             </div>
-          </div>
+          </div> */}
         </CardContent>
       </Card>
 
@@ -696,14 +725,12 @@ export default function AdminLandingPage() {
               </div>
               <div className="space-y-2">
                 <Input
-                  value={settings.trustBadge1Ar || "المركز الوطني للتعليم الإلكتروني"}
+                  value={settings.trustBadge1Ar || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge1Ar: e.target.value })}
-                  placeholder="المركز الوطني للتعليم الإلكتروني"
                 />
                 <Input
-                  value={settings.trustBadge1 || "National eLearning Center"}
+                  value={settings.trustBadge1 || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge1: e.target.value })}
-                  placeholder="National eLearning Center"
                 />
               </div>
             </div>
@@ -718,19 +745,16 @@ export default function AdminLandingPage() {
               </div>
               <div className="space-y-2">
                 <Input
-                  value={settings.trustBadge2Ar || "المدرسة الأكثر تحميلاً"}
+                  value={settings.trustBadge2Ar || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge2Ar: e.target.value })}
-                  placeholder="المدرسة الأكثر تحميلاً"
                 />
                 <Input
-                  value={settings.trustBadge2 || "Most Downloaded School"}
+                  value={settings.trustBadge2 || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge2: e.target.value })}
-                  placeholder="Most Downloaded School"
                 />
                 <Input
-                  value={settings.trustBadge2Year || "2023/2024"}
+                  value={settings.trustBadge2Year || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge2Year: e.target.value })}
-                  placeholder="2023/2024"
                 />
               </div>
             </div>
@@ -745,19 +769,16 @@ export default function AdminLandingPage() {
               </div>
               <div className="space-y-2">
                 <Input
-                  value={settings.trustBadge3Value || "14+"}
+                  value={settings.trustBadge3Value || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge3Value: e.target.value })}
-                  placeholder="14+"
                 />
                 <Input
-                  value={settings.trustBadge3Ar || "لجميع المراحل الدراسية"}
+                  value={settings.trustBadge3Ar || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge3Ar: e.target.value })}
-                  placeholder="لجميع المراحل الدراسية"
                 />
                 <Input
-                  value={settings.trustBadge3 || "For All Academic Levels"}
+                  value={settings.trustBadge3 || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge3: e.target.value })}
-                  placeholder="For All Academic Levels"
                 />
               </div>
             </div>
@@ -771,17 +792,15 @@ export default function AdminLandingPage() {
                 <div className="space-y-2">
                   <Label className="text-xs">العنوان</Label>
                   <Input
-                    value={settings.floatingBadge1 || "IB/IGCSE"}
+                    value={settings.floatingBadge1 || ""}
                     onChange={(e) => setSettings({ ...settings, floatingBadge1: e.target.value })}
-                    placeholder="IB/IGCSE"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs">الوصف</Label>
                   <Input
-                    value={settings.floatingBadge1Ar || "المنهاج الوطني"}
+                    value={settings.floatingBadge1Ar || ""}
                     onChange={(e) => setSettings({ ...settings, floatingBadge1Ar: e.target.value })}
-                    placeholder="المنهاج الوطني"
                   />
                 </div>
               </div>
@@ -793,17 +812,15 @@ export default function AdminLandingPage() {
                 <div className="space-y-2">
                   <Label className="text-xs">العنوان</Label>
                   <Input
-                    value={settings.floatingBadge2 || "Live Classes"}
+                    value={settings.floatingBadge2 || ""}
                     onChange={(e) => setSettings({ ...settings, floatingBadge2: e.target.value })}
-                    placeholder="Live Classes"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-xs">الوصف</Label>
                   <Input
-                    value={settings.floatingBadge2Ar || "فصول مباشرة"}
+                    value={settings.floatingBadge2Ar || ""}
                     onChange={(e) => setSettings({ ...settings, floatingBadge2Ar: e.target.value })}
-                    placeholder="فصول مباشرة"
                   />
                 </div>
               </div>
@@ -811,73 +828,6 @@ export default function AdminLandingPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Stats Section */}
-      {/* <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-[#1a7a8a]" />
-            الإحصائيات
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {settings.stats.map((stat, index) => (
-              <div key={index} className="grid grid-cols-3 gap-4 items-end border-b pb-4">
-                <div className="space-y-1">
-                  <Label className="text-xs">القيمة</Label>
-                  <Input
-                    value={stat.value}
-                    onChange={(e) => {
-                      const newStats = [...settings.stats];
-                      newStats[index].value = e.target.value;
-                      setSettings({ ...settings, stats: newStats });
-                    }}
-                    placeholder="5000+"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">التسمية (عربي)</Label>
-                  <Input
-                    value={stat.labelAr}
-                    onChange={(e) => {
-                      const newStats = [...settings.stats];
-                      newStats[index].labelAr = e.target.value;
-                      setSettings({ ...settings, stats: newStats });
-                    }}
-                    placeholder="طالب نشط"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">التسمية (إنجليزي)</Label>
-                  <Input
-                    value={stat.label}
-                    onChange={(e) => {
-                      const newStats = [...settings.stats];
-                      newStats[index].label = e.target.value;
-                      setSettings({ ...settings, stats: newStats });
-                    }}
-                    placeholder="Active Students"
-                  />
-                </div>
-              </div>
-            ))}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setSettings({
-                  ...settings,
-                  stats: [...settings.stats, { value: "", label: "", labelAr: "" }],
-                });
-              }}
-            >
-              <Plus className="h-4 w-4 ml-2" />
-              إضافة إحصائية
-            </Button>
-          </div>
-        </CardContent>
-      </Card> */}
     </div>
   );
 
@@ -1177,169 +1127,169 @@ export default function AdminLandingPage() {
   };
 
 
-const renderVideoTestimonialsTab = () => {
-  
+  const renderVideoTestimonialsTab = () => {
 
-  const getEmbedUrl = (videoUrl: string, embedType: string) => {
-    if (embedType === "youtube") {
-      // استخراج ID الفيديو من رابط YouTube
-      const match = videoUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
-      if (match) {
-        return `https://www.youtube.com/embed/${match[1]}`;
+
+    const getEmbedUrl = (videoUrl: string, embedType: string) => {
+      if (embedType === "youtube") {
+        // استخراج ID الفيديو من رابط YouTube
+        const match = videoUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+        if (match) {
+          return `https://www.youtube.com/embed/${match[1]}`;
+        }
+        return videoUrl;
+      }
+      if (embedType === "vimeo") {
+        const match = videoUrl.match(/vimeo\.com\/(\d+)/);
+        if (match) {
+          return `https://player.vimeo.com/video/${match[1]}`;
+        }
+        return videoUrl;
       }
       return videoUrl;
-    }
-    if (embedType === "vimeo") {
-      const match = videoUrl.match(/vimeo\.com\/(\d+)/);
-      if (match) {
-        return `https://player.vimeo.com/video/${match[1]}`;
-      }
-      return videoUrl;
-    }
-    return videoUrl;
-  };
+    };
 
-  return (
-    <div className="space-y-4" dir="rtl">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">فيديوهات الشهادات</h3>
-        <Button
-          onClick={() => openCreateDialog("video")}
-          className="bg-[#001f24] hover:bg-[#03363d] text-white"
-        >
-          <Plus className="h-4 w-4 ml-2" />
-          إضافة فيديو
-        </Button>
-      </div>
-
-      {!videoTestimonials || videoTestimonials.length === 0 ? (
-        <Card className="p-8 text-center">
-          <Play className="h-12 w-12 mx-auto text-gray-300 mb-2" />
-          <p className="text-gray-500">لا توجد فيديوهات شهادات</p>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {videoTestimonials.map((video: any) => {
-            const isPlaying = playingVideo === video._id;
-            const embedUrl = getEmbedUrl(video.videoUrl, video.embedType || "youtube");
-
-            return (
-              <Card key={video._id} className="overflow-hidden">
-                <CardContent className="p-4">
-                  {/* Video Player / Thumbnail */}
-                  <div 
-                    className="relative w-full aspect-video rounded-lg overflow-hidden mb-3 bg-gray-100 cursor-pointer group"
-                    onClick={() => setPlayingVideo(isPlaying ? null : video._id)}
-                  >
-                    {isPlaying ? (
-                      // ✅ تشغيل الفيديو
-                      <iframe
-                        src={embedUrl}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        title={video.title || video.titleAr}
-                      />
-                    ) : (
-                      // ✅ عرض الصورة المصغرة
-                      <>
-                        {video.thumbnailUrl ? (
-                          <img
-                            src={video.thumbnailUrl}
-                            alt={video.title || video.titleAr}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = "none";
-                            }}
-                          />
-                        ) : (
-                          // ✅ صورة افتراضية إذا لم توجد صورة مصغرة
-                          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1a7a8a]/20 to-[#001f24]/20">
-                            <Play className="h-16 w-16 text-[#1a7a8a]/40" />
-                          </div>
-                        )}
-                        {/* ✅ زر التشغيل overlay */}
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-all duration-300">
-                          <div className="w-14 h-14 bg-[#1a7a8a] rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            <Play className="h-6 w-6 text-white mr-1" />
-                          </div>
-                        </div>
-                        {/* ✅ شارة النوع */}
-                        <div className="absolute top-2 right-2">
-                          <Badge className="bg-black/70 text-white text-xs">
-                            {video.embedType === "youtube" ? "YouTube" : 
-                             video.embedType === "vimeo" ? "Vimeo" : "فيديو"}
-                          </Badge>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* ✅ معلومات الفيديو */}
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-sm truncate">
-                        {video.title || video.titleAr}
-                      </h4>
-                      <p className="text-xs text-gray-500 line-clamp-2 mt-1">
-                        {video.description || video.descriptionAr}
-                      </p>
-                    </div>
-                    <div className="flex gap-1 mr-2 shrink-0">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditDialog("video", video)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-red-500 hover:text-red-700"
-                        onClick={() => handleDeleteItem("video", video._id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* ✅ حالة النشر */}
-                  <div className="mt-2 flex items-center gap-3">
-                    <Badge className={video.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
-                      {video.isPublished ? "منشور" : "غير منشور"}
-                    </Badge>
-                    {isPlaying && (
-                      <Badge variant="outline" className="text-[#1a7a8a] border-[#1a7a8a]">
-                        <Play className="h-3 w-3 ml-1" />
-                        يعمل الآن
-                      </Badge>
-                    )}
-                  </div>
-
-                  {/* ✅ زر إغلاق الفيديو */}
-                  {isPlaying && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPlayingVideo(null);
-                      }}
-                      className="mt-2 text-xs text-gray-400 hover:text-gray-600 w-full"
-                    >
-                      إغلاق الفيديو
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
+    return (
+      <div className="space-y-4" dir="rtl">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">فيديوهات الشهادات</h3>
+          <Button
+            onClick={() => openCreateDialog("video")}
+            className="bg-[#001f24] hover:bg-[#03363d] text-white"
+          >
+            <Plus className="h-4 w-4 ml-2" />
+            إضافة فيديو
+          </Button>
         </div>
-      )}
-    </div>
-  );
-};
+
+        {!videoTestimonials || videoTestimonials.length === 0 ? (
+          <Card className="p-8 text-center">
+            <Play className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+            <p className="text-gray-500">لا توجد فيديوهات شهادات</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {videoTestimonials.map((video: any) => {
+              const isPlaying = playingVideo === video._id;
+              const embedUrl = getEmbedUrl(video.videoUrl, video.embedType || "youtube");
+
+              return (
+                <Card key={video._id} className="overflow-hidden">
+                  <CardContent className="p-4">
+                    {/* Video Player / Thumbnail */}
+                    <div
+                      className="relative w-full aspect-video rounded-lg overflow-hidden mb-3 bg-gray-100 cursor-pointer group"
+                      onClick={() => setPlayingVideo(isPlaying ? null : video._id)}
+                    >
+                      {isPlaying ? (
+                        // ✅ تشغيل الفيديو
+                        <iframe
+                          src={embedUrl}
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          title={video.title || video.titleAr}
+                        />
+                      ) : (
+                        // ✅ عرض الصورة المصغرة
+                        <>
+                          {video.thumbnailUrl ? (
+                            <img
+                              src={video.thumbnailUrl}
+                              alt={video.title || video.titleAr}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = "none";
+                              }}
+                            />
+                          ) : (
+                            // ✅ صورة افتراضية إذا لم توجد صورة مصغرة
+                            <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1a7a8a]/20 to-[#001f24]/20">
+                              <Play className="h-16 w-16 text-[#1a7a8a]/40" />
+                            </div>
+                          )}
+                          {/* ✅ زر التشغيل overlay */}
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-all duration-300">
+                            <div className="w-14 h-14 bg-[#1a7a8a] rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                              <Play className="h-6 w-6 text-white mr-1" />
+                            </div>
+                          </div>
+                          {/* ✅ شارة النوع */}
+                          <div className="absolute top-2 right-2">
+                            <Badge className="bg-black/70 text-white text-xs">
+                              {video.embedType === "youtube" ? "YouTube" :
+                                video.embedType === "vimeo" ? "Vimeo" : "فيديو"}
+                            </Badge>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* ✅ معلومات الفيديو */}
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm truncate">
+                          {video.title || video.titleAr}
+                        </h4>
+                        <p className="text-xs text-gray-500 line-clamp-2 mt-1">
+                          {video.description || video.descriptionAr}
+                        </p>
+                      </div>
+                      <div className="flex gap-1 mr-2 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditDialog("video", video)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500 hover:text-red-700"
+                          onClick={() => handleDeleteItem("video", video._id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* ✅ حالة النشر */}
+                    <div className="mt-2 flex items-center gap-3">
+                      <Badge className={video.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                        {video.isPublished ? "منشور" : "غير منشور"}
+                      </Badge>
+                      {isPlaying && (
+                        <Badge variant="outline" className="text-[#1a7a8a] border-[#1a7a8a]">
+                          <Play className="h-3 w-3 ml-1" />
+                          يعمل الآن
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* ✅ زر إغلاق الفيديو */}
+                    {isPlaying && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPlayingVideo(null);
+                        }}
+                        className="mt-2 text-xs text-gray-400 hover:text-gray-600 w-full"
+                      >
+                        إغلاق الفيديو
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderCoursesTab = () => (
     <div className="space-y-4" dir="rtl">
@@ -2176,12 +2126,12 @@ const renderVideoTestimonialsTab = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          <Link href="/" target="_blank">
+          {/* <Link href="/" target="_blank">
             <Button variant="outline" className="gap-2">
               <Eye className="h-4 w-4" />
               معاينة
             </Button>
-          </Link>
+          </Link> */}
           <Button
             onClick={handleSaveSettings}
             disabled={isSaving}

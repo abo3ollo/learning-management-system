@@ -50,22 +50,18 @@ export const getPublicSettings = query({
   },
 });
 
-// ✅ تحديث إعدادات Landing Page
+
+
+
 // convex/landing/landing.ts
 
-// ✅ تحديث دالة updateSettings - أضف جميع الحقول المفقودة
 export const updateSettings = mutation({
   args: {
     // Hero Fields
-    heroBadge: v.optional(v.string()),
-    heroBadgeAr: v.optional(v.string()),
     heroTitle: v.optional(v.string()),
     heroTitleAr: v.optional(v.string()),
-    heroSubtitle: v.optional(v.string()),
-    heroSubtitleAr: v.optional(v.string()),
     heroImageUrl: v.optional(v.string()),
 
-    // ✅ أضف heroRating والحقول المرتبطة
     heroRating: v.optional(v.string()),
     heroRatingLabel: v.optional(v.string()),
     heroRatingLabelAr: v.optional(v.string()),
@@ -144,29 +140,34 @@ export const updateSettings = mutation({
 
     const existing = await ctx.db.query("landingSettings").first();
 
-    const data = {
-      ...args,
-      updatedAt: Date.now(),
-    };
+    // ✅ تنظيف البيانات من القيم غير المحددة
+    const cleanData: any = {};
+    for (const [key, value] of Object.entries(args)) {
+      if (value !== undefined && value !== null) {
+        cleanData[key] = value;
+      }
+    }
+
+    // ✅ لا نضيف updatedAt إطلاقاً
+    const data = cleanData;
 
     if (existing) {
+      // ✅ تحديث فقط بدون updatedAt
       await ctx.db.patch(existing._id, data);
       return existing._id;
     } else {
-      // ✅ أضف جميع القيم الافتراضية
+      // ✅ الإدراج الجديد بدون updatedAt
       const defaults = {
         heroBadge: "The Future of Marine Education",
         heroBadgeAr: "مستقبل التعليم البحري",
         heroTitle: "Learn Anytime, Anywhere with Marine Academy",
         heroTitleAr: "تعلّم في أي وقت، من أي مكان مع أكاديمية مارين",
-        heroSubtitle:
-          "A comprehensive educational platform designed to empower students and teachers through advanced interactive tools.",
-        heroSubtitleAr:
-          "منصة تعليمية شاملة مصممة لتمكين الطلاب والمعلمين من خلال أدوات تفاعلية متقدمة.",
+        heroSubtitle: "A comprehensive educational platform designed to empower students and teachers through advanced interactive tools.",
+        heroSubtitleAr: "منصة تعليمية شاملة مصممة لتمكين الطلاب والمعلمين من خلال أدوات تفاعلية متقدمة.",
         heroImageUrl: "/images/Hero1.png",
         heroBottomText: "Learn English in Britain with Confidence",
         heroBottomTextAr: "تعلم الإنجليزية في بريطانيا بخطوات واضحة",
-         heroBottomSmText: "Steps Steps to Learn English in Britain",
+        heroBottomSmText: "Steps Steps to Learn English in Britain",
         heroBottomSmTextAr: "خطوات تعلم الإنجليزية في بريطانيا",
         heroRating: "4.8",
         heroRatingLabel: "Student Satisfaction",
@@ -197,17 +198,27 @@ export const updateSettings = mutation({
         whatsappLink: "https://wa.me/966500000000",
         address: "Riyadh, Saudi Arabia",
         addressAr: "الرياض، المملكة العربية السعودية",
-        footerDescription:
-          "The global leader in marine and technical education.",
+        footerDescription: "The global leader in marine and technical education.",
         footerDescriptionAr: "الرائد العالمي في التعليم البحري والتقني.",
         seoTitle: "Marine Academy - Premier Marine Education Platform",
         seoTitleAr: "أكاديمية مارين - منصة التعليم البحري الرائدة",
-        seoDescription:
-          "Marine Academy offers comprehensive marine education with live classes, expert teachers, and interactive learning tools.",
-        seoDescriptionAr:
-          "تقدم أكاديمية مارين تعليماً بحرياً شاملاً مع فصول مباشرة ومعلمين خبراء وأدوات تعلم تفاعلية.",
+        seoDescription: "Marine Academy offers comprehensive marine education with live classes, expert teachers, and interactive learning tools.",
+        seoDescriptionAr: "تقدم أكاديمية مارين تعليماً بحرياً شاملاً مع فصول مباشرة ومعلمين خبراء وأدوات تعلم تفاعلية.",
+        trustBadge1: "National eLearning Center",
+        trustBadge1Ar: "المركز الوطني للتعليم الإلكتروني",
+        trustBadge2: "Most Downloaded School",
+        trustBadge2Ar: "المدرسة الأكثر تحميلاً",
+        trustBadge2Year: "2023/2024",
+        trustBadge3Value: "14+",
+        trustBadge3: "For All Academic Levels",
+        trustBadge3Ar: "لجميع المراحل الدراسية",
+        floatingBadge1: "IB/IGCSE",
+        floatingBadge1Ar: "المنهاج الوطني",
+        floatingBadge2: "Live Classes",
+        floatingBadge2Ar: "فصول مباشرة",
       };
 
+      // ✅ دمج القيم الافتراضية مع البيانات الجديدة (بدون updatedAt)
       return await ctx.db.insert("landingSettings", {
         ...defaults,
         ...data,

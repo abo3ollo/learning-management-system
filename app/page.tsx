@@ -947,7 +947,7 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left Content */}
             <div>
-              {/* Rating Badge */}
+              {/* Rating Badge - ✅ من Convex */}
               <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur border border-gray-200 rounded-full px-4 py-2 shadow-sm animate-fade-in-up">
                 <div className="flex items-center gap-1">
                   <span className="text-yellow-400 text-sm">★★★★★</span>
@@ -965,11 +965,11 @@ export default function LandingPage() {
                 </span>
               </div>
 
-              {/* Main Heading */}
+              {/* Main Heading - ✅ من Convex */}
               <h1 className="text-4xl lg:text-5xl xl:text-6xl font-bold text-[#0a2540] leading-tight mb-4">
                 {lang === "ar" ? (
                   <>
-                    احجز معلمك الخصوصي لـ
+                    {data.heroTitleAr || "احجز معلمك الخصوصي لـ"}
                     <br />
                     <span className="text-[#1a7a8a] inline-block min-w-30 transition-all duration-500 ease-in-out">
                       {subjects.ar[currentSubjectIndex]}
@@ -977,7 +977,7 @@ export default function LandingPage() {
                   </>
                 ) : (
                   <>
-                    Book Your Private Tutor for
+                    {data.heroTitle || "Book Your Private Tutor for"}
                     <br />
                     <span className="text-[#1a7a8a] inline-block min-w-35 transition-all duration-500 ease-in-out">
                       {subjects.en[currentSubjectIndex]}
@@ -993,11 +993,11 @@ export default function LandingPage() {
                   : "Understands the subject and guarantees you the full mark"}
               </p>
 
-              {/* CTA Buttons */}
+              {/* CTA Buttons - ✅ من Convex */}
               <div className="flex flex-wrap gap-4 mb-8">
                 <Link href={data.ctaUrl || "/onboarding"}>
                   <button className="bg-[#0a2540] hover:bg-[#1a3a5c] text-white font-semibold px-8 py-3.5 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105">
-                    {lang === "ar" ? "إعرف أكثر عن باقات الدروس" : "Learn More About Lesson Packages"}
+                    {lang === "ar" ? data.ctaTextAr || "إعرف أكثر عن باقات الدروس" : data.ctaText || "Learn More About Lesson Packages"}
                   </button>
                 </Link>
                 <button className="border-2 border-[#0a2540] text-[#0a2540] hover:bg-[#0a2540] hover:text-white font-semibold px-8 py-3.5 rounded-xl transition-all duration-300">
@@ -1005,8 +1005,9 @@ export default function LandingPage() {
                 </button>
               </div>
 
-              {/* Trust Badges */}
+              {/* Trust Badges - ✅ من Convex */}
               <div className="flex flex-wrap items-center gap-6 pt-4 border-t border-gray-200">
+                {/* Badge 1 - Accreditation */}
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-[#e0f5f7] rounded-xl flex items-center justify-center">
                     <svg className="w-7 h-7 text-[#1a7a8a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1018,11 +1019,14 @@ export default function LandingPage() {
                       {lang === "ar" ? "معتمدين من" : "Accredited by"}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {lang === "ar" ? "المركز الوطني للتعليم الإلكتروني" : "National eLearning Center"}
+                      {lang === "ar"
+                        ? data.trustBadge1Ar || "المركز الوطني للتعليم الإلكتروني"
+                        : data.trustBadge1 || "National eLearning Center"}
                     </p>
                   </div>
                 </div>
 
+                {/* Badge 2 - Most Downloaded */}
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-[#e0f5f7] rounded-xl flex items-center justify-center">
                     <svg className="w-7 h-7 text-[#1a7a8a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1034,11 +1038,12 @@ export default function LandingPage() {
                       {lang === "ar" ? "المدرسة الأكثر تحميلاً" : "Most Downloaded School"}
                     </p>
                     <p className="text-xs text-gray-500">
-                      2023/2024 {lang === "ar" ? "لعام" : "Year"}
+                      {data.trustBadge2Year || "2023/2024"} {lang === "ar" ? "لعام" : "Year"}
                     </p>
                   </div>
                 </div>
 
+                {/* Badge 3 - Academic Levels */}
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 bg-[#e0f5f7] rounded-xl flex items-center justify-center">
                     <svg className="w-7 h-7 text-[#1a7a8a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1047,10 +1052,12 @@ export default function LandingPage() {
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-[#0a2540]">
-                      14+
+                      {data.trustBadge3Value || "14+"}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {lang === "ar" ? "لجميع المراحل الدراسية" : "For All Academic Levels"}
+                      {lang === "ar"
+                        ? data.trustBadge3Ar || "لجميع المراحل الدراسية"
+                        : data.trustBadge3 || "For All Academic Levels"}
                     </p>
                   </div>
                 </div>
@@ -1074,21 +1081,21 @@ export default function LandingPage() {
                   <div className="absolute inset-0 bg-linear-to-t from-[#0a2540]/20 to-transparent"></div>
                 </div>
 
-                {/* ✅ Text under image - النص تحت الصورة */}
+                {/* ✅ Text under image - النص تحت الصورة (من Convex) */}
                 <div className="mt-7 text-center">
                   <p className="text-xl md:text-2xl font-bold text-[#0a2540]">
                     {lang === "ar"
                       ? data.heroBottomTextAr || "تعلم الإنجليزية في بريطانيا بخطوات واضحة"
                       : data.heroBottomText || "Learn English in Britain with Confidence"}
                   </p>
-                  <p className="mt-1 text-lg md:text-md  text-[#6a7885]">
+                  <p className="mt-1 text-lg md:text-md text-[#6a7885]">
                     {lang === "ar"
                       ? data.heroBottomSmTextAr || "تعلم الإنجليزية في بريطانيا بخطوات واضحة"
                       : data.heroBottomSmText || "Steps Steps to Learn English in Britain"}
                   </p>
                 </div>
 
-                {/* Floating Badge - IB/IGCSE */}
+                {/* Floating Badge - IB/IGCSE (من Convex) */}
                 <div className="absolute -top-4 -right-4 bg-white rounded-2xl shadow-xl px-5 py-3 border border-gray-100">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-[#e0f5f7] rounded-xl flex items-center justify-center">
@@ -1097,9 +1104,13 @@ export default function LandingPage() {
                       </svg>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-[#0a2540]">IB/IGCSE</p>
+                      <p className="text-sm font-bold text-[#0a2540]">
+                        {data.floatingBadge1 || "IB/IGCSE"}
+                      </p>
                       <p className="text-xs text-gray-500">
-                        {lang === "ar" ? "المنهاج الوطني" : "National Curriculum"}
+                        {lang === "ar"
+                          ? data.floatingBadge1Ar || "المنهاج الوطني"
+                          : data.floatingBadge1 || "National Curriculum"}
                       </p>
                     </div>
                   </div>

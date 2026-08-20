@@ -663,13 +663,14 @@ export default defineSchema({
 
   // ─── Landing Page Tables ──────────────────────────────────────
 
-  landingSettings: defineTable({
-    heroBadge: v.string(),
-    heroBadgeAr: v.string(),
+landingSettings: defineTable({
+    // ✅ Hero Fields
+    heroBadge: v.optional(v.string()),
+    heroBadgeAr: v.optional(v.string()),
     heroTitle: v.string(),
     heroTitleAr: v.string(),
-    heroSubtitle: v.string(),
-    heroSubtitleAr: v.string(),
+    heroSubtitle: v.optional(v.string()),
+    heroSubtitleAr: v.optional(v.string()),
     heroImageUrl: v.string(),
     heroRating: v.optional(v.string()),
     heroRatingLabel: v.optional(v.string()),
@@ -678,38 +679,71 @@ export default defineSchema({
     heroBottomTextAr: v.optional(v.string()),
     heroBottomSmText: v.optional(v.string()),
     heroBottomSmTextAr: v.optional(v.string()),
+
+    // ✅ School Name
     schoolName: v.optional(v.string()),
     schoolNameAr: v.optional(v.string()),
+
+    // ✅ Trust Badges
+    trustBadge1: v.optional(v.string()),
+    trustBadge1Ar: v.optional(v.string()),
+    trustBadge2: v.optional(v.string()),
+    trustBadge2Ar: v.optional(v.string()),
+    trustBadge2Year: v.optional(v.string()),
+    trustBadge3Value: v.optional(v.string()),
+    trustBadge3: v.optional(v.string()),
+    trustBadge3Ar: v.optional(v.string()),
+
+    // ✅ Floating Badges
+    floatingBadge1: v.optional(v.string()),
+    floatingBadge1Ar: v.optional(v.string()),
+    floatingBadge2: v.optional(v.string()),
+    floatingBadge2Ar: v.optional(v.string()),
+
+    // ✅ CTA
     ctaText: v.string(),
     ctaTextAr: v.string(),
     ctaUrl: v.string(),
     secondaryCta: v.string(),
     secondaryCtaAr: v.string(),
     secondaryCtaUrl: v.string(),
+
+    // ✅ Stats
     stats: v.array(
       v.object({
         value: v.string(),
         label: v.string(),
         labelAr: v.string(),
-      }),
+      })
     ),
+
+    // ✅ Theme
     themeMode: v.union(v.literal("dark"), v.literal("light")),
+
+    // ✅ Visibility
     showTestimonials: v.boolean(),
     showCourses: v.boolean(),
     showGallery: v.boolean(),
+
+    // ✅ Contact
     contactEmail: v.string(),
     contactPhone: v.string(),
     whatsappLink: v.string(),
     address: v.string(),
     addressAr: v.string(),
+
+    // ✅ Footer
     footerDescription: v.string(),
     footerDescriptionAr: v.string(),
+
+    // ✅ SEO
     seoTitle: v.string(),
     seoTitleAr: v.string(),
     seoDescription: v.string(),
     seoDescriptionAr: v.string(),
-    updatedAt: v.number(),
+
   }),
+
 
   landingSections: defineTable({
     slug: v.string(),
