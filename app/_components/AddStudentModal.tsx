@@ -100,6 +100,7 @@ export function AddStudentModal({ isOpen, onClose }: AddStudentModalProps) {
         address: formData.address || undefined,
         gradeId: formData.gradeId ? (formData.gradeId as any) : undefined,
         groupId: formData.groupId ? (formData.groupId as any) : undefined,
+        status: "pending", // ✅ الحالة الافتراضية للطالب الجديد
       });
 
       // Reset form and close

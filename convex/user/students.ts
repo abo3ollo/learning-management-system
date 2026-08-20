@@ -29,6 +29,16 @@ export const createStudent = mutation({
     gradeId: v.optional(v.id("grades")),
     groupId: v.optional(v.id("groups")),
     parentId: v.optional(v.id("users")),
+    status: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("approved"),
+        v.literal("rejected"),
+        v.literal("active"),
+        v.literal("inactive"),
+        v.literal("on_leave")
+      )
+    ),
   },
   handler: async (ctx, args) => {
     // التحقق من صلاحيات المشرف
@@ -140,9 +150,6 @@ export const createStudent = mutation({
     return { success: true, studentId, userId: student };
   },
 });
-
-// ✅ جلب جميع الطلاب مع معلومات الصف والمجموعة
-// convex/user/students.ts
 
 // ✅ جلب جميع الطلاب مع معلومات الصف والمجموعة
 export const getStudents = query({
@@ -666,6 +673,7 @@ export const registerStudent = mutation({
     };
   },
 });
+
 // تحديث طالب
 // Update student (Admin only)
 export const updateStudent = mutation({
@@ -678,7 +686,18 @@ export const updateStudent = mutation({
     gender: v.optional(v.union(v.literal("male"), v.literal("female"))),
     address: v.optional(v.string()),
     grade: v.optional(v.string()),
-    status: v.optional(v.union(v.literal("active"), v.literal("inactive"))),
+    gradeId: v.optional(v.id("grades")), // ✅ أضف gradeId
+    groupId: v.optional(v.id("groups")), // ✅ أضف groupId
+    status: v.optional(
+      v.union(
+        v.literal("pending"),
+        v.literal("approved"),
+        v.literal("rejected"),
+        v.literal("active"),
+        v.literal("inactive"),
+        v.literal("on_leave")
+      )
+    ),
     guardianName: v.optional(v.string()),
     guardianPhone: v.optional(v.string()),
     guardianEmail: v.optional(v.string()),
@@ -686,7 +705,7 @@ export const updateStudent = mutation({
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Not authenticated");
+    if (!identity) throw new Error("غير مصرح");
 
     const admin = await ctx.db
       .query("users")
@@ -694,12 +713,12 @@ export const updateStudent = mutation({
       .first();
 
     if (!admin || admin.role !== "admin") {
-      throw new Error("Unauthorized: Admin only");
+      throw new Error("مطلوب صلاحيات مشرف");
     }
 
     const student = await ctx.db.get(args.studentId);
     if (!student || student.role !== "student") {
-      throw new Error("Student not found");
+      throw new Error("الطالب غير موجود");
     }
 
     const updateData: any = {
@@ -708,21 +727,49 @@ export const updateStudent = mutation({
 
     if (args.name !== undefined) updateData.name = args.name;
     if (args.email !== undefined) updateData.email = args.email;
-    if (args.phoneNumber !== undefined)
-      updateData.phoneNumber = args.phoneNumber;
+    if (args.phoneNumber !== undefined) updateData.phoneNumber = args.phoneNumber;
     if (args.birthDate !== undefined) updateData.birthDate = args.birthDate;
     if (args.gender !== undefined) updateData.gender = args.gender;
     if (args.address !== undefined) updateData.address = args.address;
     if (args.grade !== undefined) updateData.grade = args.grade;
+    if (args.gradeId !== undefined) updateData.gradeId = args.gradeId;
+    if (args.groupId !== undefined) updateData.groupId = args.groupId;
     if (args.status !== undefined) updateData.status = args.status;
-    if (args.guardianName !== undefined)
-      updateData.guardianName = args.guardianName;
-    if (args.guardianPhone !== undefined)
-      updateData.guardianPhone = args.guardianPhone;
-    if (args.guardianEmail !== undefined)
-      updateData.guardianEmail = args.guardianEmail;
-    if (args.guardianRelationship !== undefined)
-      updateData.guardianRelationship = args.guardianRelationship;
+    if (args.guardianName !== undefined) updateData.guardianName = args.guardianName;
+    if (args.guardianPhone !== undefined) updateData.guardianPhone = args.guardianPhone;
+    if (args.guardianEmail !== undefined) updateData.guardianEmail = args.guardianEmail;
+    if (args.guardianRelationship !== undefined) updateData.guardianRelationship = args.guardianRelationship;
+
+    // ✅ إذا تم تغيير المجموعة، قم بتحديث المجموعة القديمة والجديدة
+    if (args.groupId !== undefined && args.groupId !== student.groupId) {
+      // إزالة الطالب من المجموعة القديمة
+      if (student.groupId) {
+        const oldGroup = await ctx.db.get(student.groupId);
+        if (oldGroup) {
+          const updatedStudents = (oldGroup.students || []).filter(
+            (id) => id !== args.studentId
+          );
+          await ctx.db.patch(student.groupId, {
+            students: updatedStudents,
+            currentStudents: updatedStudents.length,
+            updatedAt: Date.now(),
+          });
+        }
+      }
+
+      // إضافة الطالب إلى المجموعة الجديدة
+      if (args.groupId) {
+        const newGroup = await ctx.db.get(args.groupId);
+        if (newGroup) {
+          const updatedStudents = [...(newGroup.students || []), args.studentId];
+          await ctx.db.patch(args.groupId, {
+            students: updatedStudents,
+            currentStudents: updatedStudents.length,
+            updatedAt: Date.now(),
+          });
+        }
+      }
+    }
 
     await ctx.db.patch(args.studentId, updateData);
 

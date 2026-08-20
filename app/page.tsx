@@ -28,6 +28,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LuClock5 } from "react-icons/lu";
 import { HiOutlineUserGroup } from "react-icons/hi";
+import Image from "next/image";
 
 
 // ─── Icon Mapping ────────────────────────────────────────────────
@@ -867,8 +868,36 @@ export default function LandingPage() {
       {/* ── NAV ─────────────────────────────────────────────────── */}
       <nav className="fixed top-0 inset-x-0 z-50 p-3 bg-white/90 backdrop-blur border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
-          <Link href="/" className="text-3xl  font-semibold text-[#0a2540] shrink-0">
-            {lang === "ar" ? data.schoolNameAr || "أكاديمية تجريبي" : data.schoolName || "Test Academy"}
+          {/* ✅ Logo + Title */}
+          <Link href="/" className="flex items-center gap-3 shrink-0">
+            {/* <img
+              src="/images/logo.jpg"
+              alt="Logo"
+              className="h-12 w-12 object-contain rounded-full"
+              onLoad={(e) => {
+                // ✅ عند تحميل الصورة بنجاح
+                console.log('Logo loaded successfully');
+              }}
+              onError={(e) => {
+                // ✅ عند فشل التحميل، استخدم أيقونة افتراضية
+                const img = e.currentTarget;
+                img.style.display = 'none';
+                const parent = img.parentElement;
+                if (parent) {
+                  const icon = document.createElement('div');
+                  icon.className = 'w-10 h-10 bg-[#e0f5f7] rounded-xl flex items-center justify-center';
+                  icon.innerHTML = `
+          <svg class="h-6 w-6 text-[#1a7a8a]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+        `;
+                  parent.appendChild(icon);
+                }
+              }}
+            /> */}
+            <span className="text-4xl font-semibold text-[#0a2540]">
+              {lang === "ar" ? data.schoolNameAr || "أكاديمية إتقان" : data.schoolName || "Test Academy"}
+            </span>
           </Link>
 
           <div className="hidden lg:flex items-center gap-3">
@@ -1000,9 +1029,11 @@ export default function LandingPage() {
                     {lang === "ar" ? data.ctaTextAr || "إعرف أكثر عن باقات الدروس" : data.ctaText || "Learn More About Lesson Packages"}
                   </button>
                 </Link>
-                <button className="border-2 border-[#0a2540] text-[#0a2540] hover:bg-[#0a2540] hover:text-white font-semibold px-8 py-3.5 rounded-xl transition-all duration-300">
-                  {lang === "ar" ? "تواصل معنا" : "Contact Us"}
-                </button>
+                <Link href="/onboarding">
+                  <button className="border-2 border-[#0a2540] text-[#0a2540] hover:bg-[#0a2540] hover:text-white font-semibold px-8 py-3.5 rounded-xl transition-all duration-300">
+                    {lang === "ar" ? "تواصل معنا" : "Contact Us"}
+                  </button>
+                </Link>
               </div>
 
               {/* Trust Badges - ✅ من Convex */}

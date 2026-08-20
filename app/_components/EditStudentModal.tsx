@@ -1,0 +1,399 @@
+// app/_components/EditStudentModal.tsx
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+    X,
+    User,
+    Phone,
+    Calendar,
+    MapPin,
+    Mail,
+    AlertCircle,
+    Loader2,
+} from "lucide-react";
+
+interface EditStudentModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    student: any;
+}
+
+export function EditStudentModal({ isOpen, onClose, student }: EditStudentModalProps) {
+    const [formData, setFormData] = useState({
+        fullName: "",
+        email: "",
+        phone: "",
+        birthDate: "",
+        gender: "",
+        address: "",
+        gradeId: "",
+        groupId: "",
+        status: "",
+    });
+    const [errors, setErrors] = useState<Record<string, string>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const updateStudent = useMutation(api.user.students.updateStudent);
+    const grades = useQuery(api.grades.grades.getActiveGrades, {});
+    const groups = useQuery(api.groups.groups.getGroups, {});
+
+    // Populate form when student data changes
+    useEffect(() => {
+        if (student && isOpen) {
+            setFormData({
+                fullName: student.name || "",
+                email: student.email || "",
+                phone: student.phoneNumber || "",
+                birthDate: student.birthDate ? new Date(student.birthDate).toISOString().split('T')[0] : "",
+                gender: student.gender || "",
+                address: student.address || "",
+                gradeId: student.gradeId || "",
+                groupId: student.groupId || "",
+                status: student.status || "active",
+            });
+            setErrors({});
+        }
+    }, [student, isOpen]);
+
+    // Reset form when modal closes
+    useEffect(() => {
+        if (!isOpen) {
+            setFormData({
+                fullName: "",
+                email: "",
+                phone: "",
+                birthDate: "",
+                gender: "",
+                address: "",
+                gradeId: "",
+                groupId: "",
+                status: "",
+            });
+            setErrors({});
+        }
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const validateForm = () => {
+        const newErrors: Record<string, string> = {};
+
+        if (!formData.fullName.trim()) {
+            newErrors.fullName = "اسم الطالب مطلوب";
+        }
+        if (!formData.phone.trim()) {
+            newErrors.phone = "رقم الهاتف مطلوب";
+        }
+        if (!formData.birthDate) {
+            newErrors.birthDate = "تاريخ الميلاد مطلوب";
+        }
+        if (!formData.gender) {
+            newErrors.gender = "يرجى اختيار الجنس";
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const convertDateToTimestamp = (dateString: string): number => {
+        return new Date(dateString).getTime();
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!validateForm()) return;
+
+        setIsSubmitting(true);
+        try {
+            await updateStudent({
+                studentId: student._id as any,
+                name: formData.fullName,
+                email: formData.email || undefined,
+                phoneNumber: formData.phone,
+                birthDate: convertDateToTimestamp(formData.birthDate),
+                gender: formData.gender as "male" | "female",
+                address: formData.address || undefined,
+                gradeId: formData.gradeId ? (formData.gradeId as any) : undefined,
+                groupId: formData.groupId ? (formData.groupId as any) : undefined,
+                status: formData.status as "active" | "inactive",
+            });
+
+            onClose();
+        } catch (error: any) {
+            console.error("Error updating student:", error);
+            setErrors({ submit: error.message || "حدث خطأ أثناء تحديث بيانات الطالب" });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    // Filter groups based on selected grade
+    const filteredGroups = groups?.filter(
+        (group: any) => group.gradeId === formData.gradeId
+    );
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                {/* Modal Header */}
+                <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900">تعديل بيانات الطالب</h2>
+                        <p className="text-sm text-gray-500 mt-1">تحديث معلومات الطالب</p>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                        <X className="h-5 w-5 text-gray-500" />
+                    </button>
+                </div>
+
+                {/* Modal Body */}
+                <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                    {/* Section: Personal Information */}
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">
+                            المعلومات الشخصية
+                        </h3>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Full Name */}
+                            <div className="space-y-2">
+                                <Label htmlFor="fullName" className="flex items-center gap-1">
+                                    اسم الطالب <span className="text-red-500">*</span>
+                                </Label>
+                                <div className="relative">
+                                    <User className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <Input
+                                        id="fullName"
+                                        value={formData.fullName}
+                                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                        className={`pr-10 ${errors.fullName ? 'border-red-500' : ''}`}
+                                        placeholder="أدخل اسم الطالب كاملاً"
+                                    />
+                                </div>
+                                {errors.fullName && (
+                                    <p className="text-xs text-red-500 flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3" /> {errors.fullName}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Phone */}
+                            <div className="space-y-2">
+                                <Label htmlFor="phone" className="flex items-center gap-1">
+                                    رقم الهاتف <span className="text-red-500">*</span>
+                                </Label>
+                                <div className="relative">
+                                    <Phone className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <Input
+                                        id="phone"
+                                        type="tel"
+                                        value={formData.phone}
+                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                        className={`pr-10 ${errors.phone ? 'border-red-500' : ''}`}
+                                        placeholder="05XXXXXXXX"
+                                    />
+                                </div>
+                                {errors.phone && (
+                                    <p className="text-xs text-red-500 flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3" /> {errors.phone}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Birth Date */}
+                            <div className="space-y-2">
+                                <Label htmlFor="birthDate" className="flex items-center gap-1">
+                                    تاريخ الميلاد <span className="text-red-500">*</span>
+                                </Label>
+                                <div className="relative">
+                                    <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <Input
+                                        id="birthDate"
+                                        type="date"
+                                        value={formData.birthDate}
+                                        onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
+                                        className={`pr-10 ${errors.birthDate ? 'border-red-500' : ''}`}
+                                    />
+                                </div>
+                                {errors.birthDate && (
+                                    <p className="text-xs text-red-500 flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3" /> {errors.birthDate}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Gender */}
+                            <div className="space-y-2">
+                                <Label htmlFor="gender" className="flex items-center gap-1">
+                                    الجنس <span className="text-red-500">*</span>
+                                </Label>
+                                <select
+                                    id="gender"
+                                    value={formData.gender}
+                                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                                    className={`w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 ${errors.gender ? 'border-red-500' : 'border-gray-200'
+                                        }`}
+                                >
+                                    <option value="">-- اختر --</option>
+                                    <option value="male">ذكر</option>
+                                    <option value="female">أنثى</option>
+                                </select>
+                                {errors.gender && (
+                                    <p className="text-xs text-red-500 flex items-center gap-1">
+                                        <AlertCircle className="h-3 w-3" /> {errors.gender}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Email */}
+                            <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="email">
+                                    البريد الإلكتروني <span className="text-gray-400 text-xs">(اختياري)</span>
+                                </Label>
+                                <div className="relative">
+                                    <Mail className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                    <Input
+                                        id="email"
+                                        type="email"
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                        className="pr-10"
+                                        placeholder="student@example.com"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Grade */}
+                            <div className="space-y-2">
+                                <Label htmlFor="gradeId">الصف الدراسي</Label>
+                                <select
+                                    id="gradeId"
+                                    value={formData.gradeId}
+                                    onChange={(e) => setFormData({ ...formData, gradeId: e.target.value, groupId: "" })}
+                                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                >
+                                    <option value="">-- اختر الصف --</option>
+                                    {grades?.map((grade: any) => (
+                                        <option key={grade._id} value={grade._id}>
+                                            {grade.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Group */}
+                            <div className="space-y-2">
+                                <Label htmlFor="groupId">المجموعة</Label>
+                                <select
+                                    id="groupId"
+                                    value={formData.groupId}
+                                    onChange={(e) => setFormData({ ...formData, groupId: e.target.value })}
+                                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100"
+                                    disabled={!formData.gradeId}
+                                >
+                                    <option value="">-- اختر المجموعة --</option>
+                                    {filteredGroups?.map((group: any) => (
+                                        <option key={group._id} value={group._id}>
+                                            {group.name} - {group.subject}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Address */}
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">
+                            العنوان
+                        </h3>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="address">العنوان الكامل</Label>
+                                <div className="relative">
+                                    <MapPin className="absolute right-3 top-3 h-4 w-4 text-gray-400" />
+                                    <textarea
+                                        id="address"
+                                        value={formData.address}
+                                        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                                        className="w-full px-3 py-2 pr-10 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                                        rows={3}
+                                        placeholder="العنوان الكامل للطالب"
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Status */}
+  
+                    <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4 pb-2 border-b border-gray-100">
+                            الحالة
+                        </h3>
+                        <div className="space-y-2">
+                            <Label htmlFor="status">حالة الطالب</Label>
+                            <select
+                                id="status"
+                                value={formData.status}
+                                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value="active">نشط</option>
+                                <option value="inactive">غير نشط</option>
+                                <option value="pending">قيد الانتظار</option>
+                                <option value="approved">موافق عليه</option>
+                                <option value="rejected">مرفوض</option>
+                                <option value="on_leave">في إجازة</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    {/* Submit Error */}
+                    {errors.submit && (
+                        <div className="bg-red-50 text-red-700 p-3 rounded-lg text-sm">
+                            {errors.submit}
+                        </div>
+                    )}
+
+                    {/* Modal Footer */}
+                    <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={onClose}
+                            disabled={isSubmitting}
+                        >
+                            إلغاء
+                        </Button>
+                        <Button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="min-w-25 bg-[#001f24] hover:bg-[#03363d] text-white gap-2"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    جاري التحديث...
+                                </>
+                            ) : (
+                                "تحديث البيانات"
+                            )}
+                        </Button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}

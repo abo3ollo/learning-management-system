@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AddStudentModal } from "@/app/_components/AddStudentModal";
 import { SiGoogleclassroom } from "react-icons/si";
+import { EditStudentModal } from "@/app/_components/EditStudentModal";
 
 export default function AdminStudentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,6 +33,8 @@ export default function AdminStudentsPage() {
   const [selectedGrade, setSelectedGrade] = useState("all");
   const [selectedGroup, setSelectedGroup] = useState("all");
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
   // جلب الطلاب
   const studentsData = useQuery(api.user.students.getStudents, {
@@ -111,15 +114,22 @@ export default function AdminStudentsPage() {
   };
 
   const statusStyle: Record<string, string> = {
+    active: "bg-green-50 text-green-700 border border-green-200",
     approved: "bg-green-50 text-green-700 border border-green-200",
     pending: "bg-amber-50 text-amber-700 border border-amber-200",
     rejected: "bg-red-50 text-red-600 border border-red-200",
+    inactive: "bg-gray-50 text-gray-600 border border-gray-200",
+    on_leave: "bg-blue-50 text-blue-600 border border-blue-200",
   };
 
+  // ✅ تحديث دالة statusLabel
   const statusLabel: Record<string, string> = {
-    approved: "نشط",
+    active: "نشط",
+    approved: "موافق عليه",
     pending: "قيد الانتظار",
     rejected: "مرفوض",
+    inactive: "غير نشط",
+    on_leave: "في إجازة",
   };
 
   return (
@@ -228,9 +238,12 @@ export default function AdminStudentsPage() {
               className="px-4 py-2 border border-gray-200 rounded-lg text-sm text-gray-600 focus:outline-none focus:ring-2 focus:ring-[#03363d]/20 bg-white min-w-30"
             >
               <option value="all">جميع الحالات</option>
-              <option value="approved">نشط</option>
+              <option value="active">نشط</option>
               <option value="pending">قيد الانتظار</option>
+              <option value="approved">موافق عليه</option>
               <option value="rejected">مرفوض</option>
+              <option value="inactive">غير نشط</option>
+              <option value="on_leave">في إجازة</option>
             </select>
 
             <Button
@@ -381,11 +394,15 @@ export default function AdminStudentsPage() {
                       {/* الإجراءات */}
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-1">
-                          <Link href={`/admin/students/${student._id}`}>
-                            <button className="p-2 hover:bg-blue-50 rounded-lg transition-colors group">
-                              <Edit className="h-4 w-4 text-gray-400 group-hover:text-blue-600" />
-                            </button>
-                          </Link>
+                          <button
+                            className="p-2 hover:bg-blue-50 rounded-lg transition-colors group"
+                            onClick={() => {
+                              setSelectedStudent(student);
+                              setIsEditModalOpen(true);
+                            }}
+                          >
+                            <Edit className="h-4 w-4 text-gray-400 group-hover:text-blue-600" />
+                          </button>
                           <button
                             className="p-2 hover:bg-red-50 rounded-lg transition-colors group"
                             onClick={() => handleDelete(student._id)}
@@ -421,6 +438,15 @@ export default function AdminStudentsPage() {
       </div>
 
       <AddStudentModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
+
+      <EditStudentModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedStudent(null);
+        }}
+        student={selectedStudent}
+      />
     </div>
   );
 }

@@ -1127,169 +1127,229 @@ export default function AdminLandingPage() {
   };
 
 
-  const renderVideoTestimonialsTab = () => {
+// app/(pages)/(roles)/admin/landing/page.tsx
 
-
-    const getEmbedUrl = (videoUrl: string, embedType: string) => {
-      if (embedType === "youtube") {
-        // استخراج ID الفيديو من رابط YouTube
-        const match = videoUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
-        if (match) {
-          return `https://www.youtube.com/embed/${match[1]}`;
-        }
-        return videoUrl;
-      }
-      if (embedType === "vimeo") {
-        const match = videoUrl.match(/vimeo\.com\/(\d+)/);
-        if (match) {
-          return `https://player.vimeo.com/video/${match[1]}`;
-        }
-        return videoUrl;
+const renderVideoTestimonialsTab = () => {
+  const getEmbedUrl = (videoUrl: string, embedType: string) => {
+    if (embedType === "youtube") {
+      const match = videoUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+      if (match) {
+        return `https://www.youtube.com/embed/${match[1]}`;
       }
       return videoUrl;
-    };
+    }
+    if (embedType === "vimeo") {
+      const match = videoUrl.match(/vimeo\.com\/(\d+)/);
+      if (match) {
+        return `https://player.vimeo.com/video/${match[1]}`;
+      }
+      return videoUrl;
+    }
+    return videoUrl;
+  };
 
-    return (
-      <div className="space-y-4" dir="rtl">
-        <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">فيديوهات الشهادات</h3>
-          <Button
-            onClick={() => openCreateDialog("video")}
-            className="bg-[#001f24] hover:bg-[#03363d] text-white"
-          >
-            <Plus className="h-4 w-4 ml-2" />
-            إضافة فيديو
-          </Button>
-        </div>
+  // ✅ دالة لجلب صورة مصغرة من YouTube
+  const getYouTubeThumbnail = (videoUrl: string) => {
+    const match = videoUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+    if (match) {
+      const videoId = match[1];
+      // ✅ محاولة جلب أعلى جودة للصورة
+      return [
+        `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+        `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+        `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+      ];
+    }
+    return null;
+  };
 
-        {!videoTestimonials || videoTestimonials.length === 0 ? (
-          <Card className="p-8 text-center">
-            <Play className="h-12 w-12 mx-auto text-gray-300 mb-2" />
-            <p className="text-gray-500">لا توجد فيديوهات شهادات</p>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {videoTestimonials.map((video: any) => {
-              const isPlaying = playingVideo === video._id;
-              const embedUrl = getEmbedUrl(video.videoUrl, video.embedType || "youtube");
+  return (
+    <div className="space-y-4" dir="rtl">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-semibold">فيديوهات الشهادات</h3>
+        <Button
+          onClick={() => openCreateDialog("video")}
+          className="bg-[#001f24] hover:bg-[#03363d] text-white"
+        >
+          <Plus className="h-4 w-4 ml-2" />
+          إضافة فيديو
+        </Button>
+      </div>
 
-              return (
-                <Card key={video._id} className="overflow-hidden">
-                  <CardContent className="p-4">
-                    {/* Video Player / Thumbnail */}
-                    <div
-                      className="relative w-full aspect-video rounded-lg overflow-hidden mb-3 bg-gray-100 cursor-pointer group"
-                      onClick={() => setPlayingVideo(isPlaying ? null : video._id)}
-                    >
-                      {isPlaying ? (
-                        // ✅ تشغيل الفيديو
-                        <iframe
-                          src={embedUrl}
-                          className="w-full h-full"
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          title={video.title || video.titleAr}
-                        />
-                      ) : (
-                        // ✅ عرض الصورة المصغرة
-                        <>
-                          {video.thumbnailUrl ? (
-                            <img
-                              src={video.thumbnailUrl}
-                              alt={video.title || video.titleAr}
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = "none";
-                              }}
-                            />
-                          ) : (
-                            // ✅ صورة افتراضية إذا لم توجد صورة مصغرة
-                            <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1a7a8a]/20 to-[#001f24]/20">
-                              <Play className="h-16 w-16 text-[#1a7a8a]/40" />
-                            </div>
-                          )}
-                          {/* ✅ زر التشغيل overlay */}
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-all duration-300">
-                            <div className="w-14 h-14 bg-[#1a7a8a] rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                              <Play className="h-6 w-6 text-white mr-1" />
+      {!videoTestimonials || videoTestimonials.length === 0 ? (
+        <Card className="p-8 text-center">
+          <Play className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+          <p className="text-gray-500">لا توجد فيديوهات شهادات</p>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {videoTestimonials.map((video: any) => {
+            const isPlaying = playingVideo === video._id;
+            const embedUrl = getEmbedUrl(video.videoUrl, video.embedType || "youtube");
+            
+            // ✅ الحصول على الصورة المصغرة
+            let thumbnailUrl = video.thumbnailUrl;
+            let thumbnailError = false;
+            
+            // ✅ إذا كان الفيديو من YouTube ولم توجد صورة مصغرة، جرب جلبها تلقائياً
+            if (!thumbnailUrl && video.embedType === "youtube") {
+              const thumbnails = getYouTubeThumbnail(video.videoUrl);
+              if (thumbnails) {
+                thumbnailUrl = thumbnails[0]; // استخدم أعلى جودة
+              }
+            }
+
+            return (
+              <Card key={video._id} className="overflow-hidden">
+                <CardContent className="p-4">
+                  {/* Video Player / Thumbnail */}
+                  <div 
+                    className="relative w-full aspect-video rounded-lg overflow-hidden mb-3 bg-gray-100 cursor-pointer group"
+                    onClick={() => setPlayingVideo(isPlaying ? null : video._id)}
+                  >
+                    {isPlaying ? (
+                      <iframe
+                        src={embedUrl}
+                        className="w-full h-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        title={video.title || video.titleAr}
+                      />
+                    ) : (
+                      <>
+                        {thumbnailUrl ? (
+                          <img
+                            src={thumbnailUrl}
+                            alt={video.title || video.titleAr}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // ✅ إذا فشلت الصورة، جرب الصورة التالية
+                              const img = e.currentTarget;
+                              const thumbnails = getYouTubeThumbnail(video.videoUrl);
+                              if (thumbnails) {
+                                const currentSrc = img.src;
+                                const currentIndex = thumbnails.indexOf(currentSrc);
+                                if (currentIndex < thumbnails.length - 1) {
+                                  img.src = thumbnails[currentIndex + 1];
+                                } else {
+                                  img.style.display = 'none';
+                                  const parent = img.parentElement;
+                                  if (parent) {
+                                    const fallback = document.createElement('div');
+                                    fallback.className = 'w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1a7a8a]/20 to-[#001f24]/20';
+                                    fallback.innerHTML = `
+                                      <div class="text-center">
+                                        <span class="text-4xl block mb-2">🎬</span>
+                                        <span class="text-sm text-gray-500">لا توجد صورة</span>
+                                      </div>
+                                    `;
+                                    parent.appendChild(fallback);
+                                  }
+                                }
+                              }
+                            }}
+                          />
+                        ) : (
+                          // ✅ صورة افتراضية إذا لم توجد صورة مصغرة
+                          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1a7a8a]/20 to-[#001f24]/20">
+                            <div className="text-center">
+                              <Play className="h-16 w-16 text-[#1a7a8a]/40 mx-auto" />
+                              <span className="text-xs text-gray-400 block mt-2">🎬 فيديو</span>
                             </div>
                           </div>
-                          {/* ✅ شارة النوع */}
-                          <div className="absolute top-2 right-2">
-                            <Badge className="bg-black/70 text-white text-xs">
-                              {video.embedType === "youtube" ? "YouTube" :
-                                video.embedType === "vimeo" ? "Vimeo" : "فيديو"}
-                            </Badge>
+                        )}
+                        {/* ✅ زر التشغيل overlay */}
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-all duration-300">
+                          <div className="w-14 h-14 bg-[#1a7a8a] rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                            <Play className="h-6 w-6 text-white mr-1" />
                           </div>
-                        </>
-                      )}
-                    </div>
+                        </div>
+                        {/* ✅ شارة النوع */}
+                        <div className="absolute top-2 right-2">
+                          <Badge className="bg-black/70 text-white text-xs">
+                            {video.embedType === "youtube" ? "YouTube" : 
+                             video.embedType === "vimeo" ? "Vimeo" : "🎬 فيديو"}
+                          </Badge>
+                        </div>
+                      </>
+                    )}
+                  </div>
 
-                    {/* ✅ معلومات الفيديو */}
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-sm truncate">
-                          {video.title || video.titleAr}
-                        </h4>
-                        <p className="text-xs text-gray-500 line-clamp-2 mt-1">
-                          {video.description || video.descriptionAr}
-                        </p>
-                      </div>
-                      <div className="flex gap-1 mr-2 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEditDialog("video", video)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-500 hover:text-red-700"
-                          onClick={() => handleDeleteItem("video", video._id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
+                  {/* ✅ معلومات الفيديو */}
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-sm truncate">
+                        {video.title || video.titleAr}
+                      </h4>
+                      <p className="text-xs text-gray-500 line-clamp-2 mt-1">
+                        {video.description || video.descriptionAr}
+                      </p>
                     </div>
-
-                    {/* ✅ حالة النشر */}
-                    <div className="mt-2 flex items-center gap-3">
-                      <Badge className={video.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
-                        {video.isPublished ? "منشور" : "غير منشور"}
-                      </Badge>
-                      {isPlaying && (
-                        <Badge variant="outline" className="text-[#1a7a8a] border-[#1a7a8a]">
-                          <Play className="h-3 w-3 ml-1" />
-                          يعمل الآن
-                        </Badge>
-                      )}
-                    </div>
-
-                    {/* ✅ زر إغلاق الفيديو */}
-                    {isPlaying && (
+                    <div className="flex gap-1 mr-2 shrink-0">
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPlayingVideo(null);
-                        }}
-                        className="mt-2 text-xs text-gray-400 hover:text-gray-600 w-full"
+                        onClick={() => openEditDialog("video", video)}
                       >
-                        إغلاق الفيديو
+                        <Edit className="h-4 w-4" />
                       </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-700"
+                        onClick={() => handleDeleteItem("video", video._id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* ✅ حالة النشر ورابط الفيديو */}
+                  <div className="mt-2 flex items-center gap-3 flex-wrap">
+                    <Badge className={video.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                      {video.isPublished ? "منشور" : "غير منشور"}
+                    </Badge>
+                    {isPlaying && (
+                      <Badge variant="outline" className="text-[#1a7a8a] border-[#1a7a8a]">
+                        <Play className="h-3 w-3 ml-1" />
+                        يعمل الآن
+                      </Badge>
                     )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
-  };
+                    {video.videoUrl && (
+                      <a 
+                        href={video.videoUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-xs text-blue-500 hover:text-blue-700 truncate max-w-32"
+                      >
+                        🔗 رابط
+                      </a>
+                    )}
+                  </div>
+
+                  {/* ✅ زر إغلاق الفيديو */}
+                  {isPlaying && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setPlayingVideo(null);
+                      }}
+                      className="mt-2 text-xs text-gray-400 hover:text-gray-600 w-full"
+                    >
+                      ✕ إغلاق الفيديو
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
   const renderCoursesTab = () => (
     <div className="space-y-4" dir="rtl">
