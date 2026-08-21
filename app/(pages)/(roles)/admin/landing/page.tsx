@@ -191,6 +191,8 @@ export default function AdminLandingPage() {
   const [editingItem, setEditingItem] = useState<any>(null);
   const [dialogType, setDialogType] = useState<"section" | "course" | "testimonial" | "gallery" | "video" | "announcement" | "subscription">("section");
 
+  const [lang, setLang] = useState<"en" | "ar">("ar"); // الافتراضي عربي
+
   // جلب بيانات Landing Page
   const landingData = useQuery(api.landing.landing.getLandingData);
   const sections = useQuery(api.landing.landing.getSections);
@@ -401,6 +403,40 @@ export default function AdminLandingPage() {
     setIsDialogOpen(true);
   };
 
+
+  // ✅ تحديث دالة فتح التعديل للفيديو
+  const openEditVideoDialog = (video: any) => {
+    setDialogType("video");
+    setEditingItem({
+      _id: video._id,
+      title: video.title || "",
+      titleAr: video.titleAr || "",
+      description: video.description || "",
+      descriptionAr: video.descriptionAr || "",
+      videoUrl: video.videoUrl || "",
+      thumbnailUrl: video.thumbnailUrl || "",
+      embedType: video.embedType || "youtube",
+      isPublished: video.isPublished ?? true,
+    });
+    setIsDialogOpen(true);
+  };
+
+  // ✅ تحديث دالة فتح الإضافة للفيديو
+  const openCreateVideoDialog = () => {
+    setDialogType("video");
+    setEditingItem({
+      title: "",
+      titleAr: "",
+      description: "",
+      descriptionAr: "",
+      videoUrl: "",
+      thumbnailUrl: "",
+      embedType: "youtube",
+      isPublished: true,
+    });
+    setIsDialogOpen(true);
+  };
+
   // ─── Save Settings ──────────────────────────────────────────────
 
   const handleSaveSettings = async () => {
@@ -416,6 +452,8 @@ export default function AdminLandingPage() {
       setIsSaving(false);
     }
   };
+
+  const toggleLang = () => setLang((l) => (l === "en" ? "ar" : "en"));
 
   // ─── CRUD Handlers ─────────────────────────────────────────────
 
@@ -520,36 +558,39 @@ export default function AdminLandingPage() {
   // ─── Render Functions ─────────────────────────────────────────
 
   const renderHeroTab = () => (
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-6" dir={lang === "ar" ? "rtl" : "ltr"}>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Globe className="h-5 w-5 text-[#1a7a8a]" />
-            محتوى الهيرو
+            {lang === "ar" ? "محتوى الهيرو" : "Hero Content"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Rating Badge */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[#f7fafa] rounded-lg border border-[#c0c8c9]">
             <div className="space-y-2">
-              <Label>تقييم الطالب</Label>
+              <Label>{lang === "ar" ? "تقييم الطالب" : "Student Rating"}</Label>
               <Input
                 value={settings.heroRating || ""}
                 onChange={(e) => setSettings({ ...settings, heroRating: e.target.value })}
+                placeholder={lang === "ar" ? "4.8" : "4.8"}
               />
             </div>
             <div className="space-y-2">
-              <Label>نص التقييم (عربي)</Label>
+              <Label>{lang === "ar" ? "نص التقييم (عربي)" : "Rating Label (Arabic)"}</Label>
               <Input
                 value={settings.heroRatingLabelAr || ""}
                 onChange={(e) => setSettings({ ...settings, heroRatingLabelAr: e.target.value })}
+                placeholder={lang === "ar" ? "نسبة رضا الطالب" : "Student Satisfaction"}
               />
             </div>
             <div className="space-y-2">
-              <Label>نص التقييم (إنجليزي)</Label>
+              <Label>{lang === "ar" ? "نص التقييم (إنجليزي)" : "Rating Label (English)"}</Label>
               <Input
                 value={settings.heroRatingLabel || ""}
                 onChange={(e) => setSettings({ ...settings, heroRatingLabel: e.target.value })}
+                placeholder={lang === "ar" ? "Student Satisfaction" : "Student Satisfaction"}
               />
             </div>
           </div>
@@ -557,30 +598,32 @@ export default function AdminLandingPage() {
           {/* Main Title */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>العنوان الرئيسي (عربي)</Label>
+              <Label>{lang === "ar" ? "العنوان الرئيسي (عربي)" : "Main Title (Arabic)"}</Label>
               <Textarea
                 value={settings.heroTitleAr || ""}
                 onChange={(e) => setSettings({ ...settings, heroTitleAr: e.target.value })}
                 rows={2}
+                placeholder={lang === "ar" ? "احجز معلمك الخصوصي لـ" : "Book Your Private Tutor for"}
               />
             </div>
             <div className="space-y-2">
-              <Label>العنوان الرئيسي (إنجليزي)</Label>
+              <Label>{lang === "ar" ? "العنوان الرئيسي (إنجليزي)" : "Main Title (English)"}</Label>
               <Textarea
                 value={settings.heroTitle || ""}
                 onChange={(e) => setSettings({ ...settings, heroTitle: e.target.value })}
                 rows={2}
+                placeholder={lang === "ar" ? "Book Your Private Tutor for" : "Book Your Private Tutor for"}
               />
             </div>
           </div>
 
           {/* Hero Image */}
           <div className="space-y-2">
-            <Label>صورة الهيرو (رابط)</Label>
+            <Label>{lang === "ar" ? "صورة الهيرو (رابط)" : "Hero Image (URL)"}</Label>
             <Input
               value={settings.heroImageUrl || ""}
               onChange={(e) => setSettings({ ...settings, heroImageUrl: e.target.value })}
-              placeholder="أدخل رابط الصورة"
+              placeholder={lang === "ar" ? "أدخل رابط الصورة" : "Enter image URL"}
             />
             {settings.heroImageUrl && (
               <div className="mt-2 relative w-full h-48 rounded-lg overflow-hidden border border-[#c0c8c9] bg-gray-100">
@@ -589,26 +632,23 @@ export default function AdminLandingPage() {
                   alt="Hero"
                   className="w-full h-full object-cover"
                   onError={(e) => {
-                    // ✅ عند حدوث خطأ، اعرض رسالة بدلاً من الصورة
                     e.currentTarget.style.display = 'none';
-                    // ✅ أظهر رسالة بديلة
                     const parent = e.currentTarget.parentElement;
                     if (parent) {
                       const fallback = document.createElement('div');
                       fallback.className = 'w-full h-full flex items-center justify-center text-gray-400';
-                      fallback.innerHTML = '⚠️ تعذر تحميل الصورة';
+                      fallback.innerHTML = '⚠️ ' + (lang === "ar" ? "تعذر تحميل الصورة" : "Image failed to load");
                       parent.appendChild(fallback);
                     }
                   }}
                 />
-                {/* ✅ زر لفتح الصورة في نافذة جديدة */}
                 <a
                   href={settings.heroImageUrl}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-3 py-1 rounded-lg hover:bg-black/90 transition-colors"
                 >
-                  فتح الصورة
+                  {lang === "ar" ? "فتح الصورة" : "Open Image"}
                 </a>
               </div>
             )}
@@ -617,38 +657,42 @@ export default function AdminLandingPage() {
           {/* Hero Bottom Text */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#f7fafa] rounded-lg border border-[#c0c8c9]">
             <div className="space-y-2">
-              <Label>نص تحت صوره الهيرو (عربي)</Label>
+              <Label>{lang === "ar" ? "نص تحت صوره الهيرو (عربي)" : "Bottom Text (Arabic)"}</Label>
               <Textarea
                 value={settings.heroBottomTextAr || ""}
                 onChange={(e) => setSettings({ ...settings, heroBottomTextAr: e.target.value })}
                 rows={2}
+                placeholder={lang === "ar" ? "تعلم الإنجليزية في بريطانيا بخطوات واضحة" : "Learn English in Britain"}
               />
             </div>
             <div className="space-y-2">
-              <Label>نص تحت صوره الهيرو (إنجليزي)</Label>
+              <Label>{lang === "ar" ? "نص تحت صوره الهيرو (إنجليزي)" : "Bottom Text (English)"}</Label>
               <Textarea
                 value={settings.heroBottomText || ""}
                 onChange={(e) => setSettings({ ...settings, heroBottomText: e.target.value })}
                 rows={1}
+                placeholder={lang === "ar" ? "Learn English in Britain" : "Learn English in Britain"}
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#f7fafa] rounded-lg border border-[#c0c8c9]">
             <div className="space-y-2">
-              <Label>نص الصغير تحت صوره الهيرو (عربي)</Label>
+              <Label>{lang === "ar" ? "نص الصغير تحت صوره الهيرو (عربي)" : "Small Bottom Text (Arabic)"}</Label>
               <Textarea
                 value={settings.heroBottomSmTextAr || ""}
                 onChange={(e) => setSettings({ ...settings, heroBottomSmTextAr: e.target.value })}
                 rows={1}
+                placeholder={lang === "ar" ? "خطوات تعلم الإنجليزية في بريطانيا" : "Steps to Learn English"}
               />
             </div>
             <div className="space-y-2">
-              <Label>نص الصغير تحت صوره الهيرو (إنجليزي)</Label>
+              <Label>{lang === "ar" ? "نص الصغير تحت صوره الهيرو (إنجليزي)" : "Small Bottom Text (English)"}</Label>
               <Textarea
                 value={settings.heroBottomSmText || ""}
                 onChange={(e) => setSettings({ ...settings, heroBottomSmText: e.target.value })}
                 rows={1}
+                placeholder={lang === "ar" ? "Steps Steps to Learn English" : "Steps Steps to Learn English"}
               />
             </div>
           </div>
@@ -656,52 +700,30 @@ export default function AdminLandingPage() {
           {/* Primary CTA */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-[#f7fafa] rounded-lg border border-[#c0c8c9]">
             <div className="space-y-2">
-              <Label>زر الدعوة الأساسي (عربي)</Label>
+              <Label>{lang === "ar" ? "زر الدعوة الأساسي (عربي)" : "Primary CTA (Arabic)"}</Label>
               <Input
                 value={settings.ctaTextAr || ""}
                 onChange={(e) => setSettings({ ...settings, ctaTextAr: e.target.value })}
+                placeholder={lang === "ar" ? "إعرف أكثر عن باقات الدروس" : "Learn More"}
               />
             </div>
             <div className="space-y-2">
-              <Label>زر الدعوة الأساسي (إنجليزي)</Label>
+              <Label>{lang === "ar" ? "زر الدعوة الأساسي (إنجليزي)" : "Primary CTA (English)"}</Label>
               <Input
                 value={settings.ctaText || ""}
                 onChange={(e) => setSettings({ ...settings, ctaText: e.target.value })}
+                placeholder={lang === "ar" ? "Learn More About Lesson Packages" : "Learn More About Lesson Packages"}
               />
             </div>
             <div className="space-y-2">
-              <Label>الرابط</Label>
+              <Label>{lang === "ar" ? "الرابط" : "URL"}</Label>
               <Input
                 value={settings.ctaUrl || ""}
                 onChange={(e) => setSettings({ ...settings, ctaUrl: e.target.value })}
+                placeholder="/onboarding"
               />
             </div>
           </div>
-
-          {/* Secondary CTA */}
-          {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>زر ثانوي (عربي)</Label>
-              <Input
-                value={settings.secondaryCtaAr || ""}
-                onChange={(e) => setSettings({ ...settings, secondaryCtaAr: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>زر ثانوي (إنجليزي)</Label>
-              <Input
-                value={settings.secondaryCta || ""}
-                onChange={(e) => setSettings({ ...settings, secondaryCta: e.target.value })}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>الرابط</Label>
-              <Input
-                value={settings.secondaryCtaUrl || ""}
-                onChange={(e) => setSettings({ ...settings, secondaryCtaUrl: e.target.value })}
-              />
-            </div>
-          </div> */}
         </CardContent>
       </Card>
 
@@ -710,7 +732,7 @@ export default function AdminLandingPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-[#1a7a8a]" />
-            شهادات الثقة
+            {lang === "ar" ? "شهادات الثقة" : "Trust Badges"}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -721,16 +743,20 @@ export default function AdminLandingPage() {
                 <div className="w-10 h-10 bg-[#e0f5f7] rounded-xl flex items-center justify-center">
                   <Shield className="h-5 w-5 text-[#1a7a8a]" />
                 </div>
-                <Label className="text-sm font-semibold">الجهة المعتمدة</Label>
+                <Label className="text-sm font-semibold">
+                  {lang === "ar" ? "الجهة المعتمدة" : "Accredited By"}
+                </Label>
               </div>
               <div className="space-y-2">
                 <Input
                   value={settings.trustBadge1Ar || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge1Ar: e.target.value })}
+                  placeholder={lang === "ar" ? "المركز الوطني للتعليم الإلكتروني" : "National eLearning Center"}
                 />
                 <Input
                   value={settings.trustBadge1 || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge1: e.target.value })}
+                  placeholder={lang === "ar" ? "National eLearning Center" : "National eLearning Center"}
                 />
               </div>
             </div>
@@ -741,20 +767,25 @@ export default function AdminLandingPage() {
                 <div className="w-10 h-10 bg-[#e0f5f7] rounded-xl flex items-center justify-center">
                   <Trophy className="h-5 w-5 text-[#1a7a8a]" />
                 </div>
-                <Label className="text-sm font-semibold">الإنجاز</Label>
+                <Label className="text-sm font-semibold">
+                  {lang === "ar" ? "الإنجاز" : "Achievement"}
+                </Label>
               </div>
               <div className="space-y-2">
                 <Input
                   value={settings.trustBadge2Ar || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge2Ar: e.target.value })}
+                  placeholder={lang === "ar" ? "المدرسة الأكثر تحميلاً" : "Most Downloaded School"}
                 />
                 <Input
                   value={settings.trustBadge2 || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge2: e.target.value })}
+                  placeholder={lang === "ar" ? "Most Downloaded School" : "Most Downloaded School"}
                 />
                 <Input
                   value={settings.trustBadge2Year || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge2Year: e.target.value })}
+                  placeholder="2023/2024"
                 />
               </div>
             </div>
@@ -765,20 +796,25 @@ export default function AdminLandingPage() {
                 <div className="w-10 h-10 bg-[#e0f5f7] rounded-xl flex items-center justify-center">
                   <GraduationCap className="h-5 w-5 text-[#1a7a8a]" />
                 </div>
-                <Label className="text-sm font-semibold">المراحل الدراسية</Label>
+                <Label className="text-sm font-semibold">
+                  {lang === "ar" ? "المراحل الدراسية" : "Academic Levels"}
+                </Label>
               </div>
               <div className="space-y-2">
                 <Input
                   value={settings.trustBadge3Value || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge3Value: e.target.value })}
+                  placeholder="14+"
                 />
                 <Input
                   value={settings.trustBadge3Ar || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge3Ar: e.target.value })}
+                  placeholder={lang === "ar" ? "لجميع المراحل الدراسية" : "For All Academic Levels"}
                 />
                 <Input
                   value={settings.trustBadge3 || ""}
                   onChange={(e) => setSettings({ ...settings, trustBadge3: e.target.value })}
+                  placeholder={lang === "ar" ? "For All Academic Levels" : "For All Academic Levels"}
                 />
               </div>
             </div>
@@ -787,40 +823,48 @@ export default function AdminLandingPage() {
           {/* Floating Badges */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             <div className="p-4 border border-[#c0c8c9] rounded-lg">
-              <Label className="text-sm font-semibold">بطاقة عائمة - المنهاج</Label>
+              <Label className="text-sm font-semibold">
+                {lang === "ar" ? "بطاقة عائمة - المنهاج" : "Floating Badge - Curriculum"}
+              </Label>
               <div className="grid grid-cols-2 gap-4 mt-2">
                 <div className="space-y-2">
-                  <Label className="text-xs">العنوان</Label>
+                  <Label className="text-xs">{lang === "ar" ? "العنوان" : "Title"}</Label>
                   <Input
                     value={settings.floatingBadge1 || ""}
                     onChange={(e) => setSettings({ ...settings, floatingBadge1: e.target.value })}
+                    placeholder="IB/IGCSE"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">الوصف</Label>
+                  <Label className="text-xs">{lang === "ar" ? "الوصف" : "Description"}</Label>
                   <Input
                     value={settings.floatingBadge1Ar || ""}
                     onChange={(e) => setSettings({ ...settings, floatingBadge1Ar: e.target.value })}
+                    placeholder={lang === "ar" ? "المنهاج الوطني" : "National Curriculum"}
                   />
                 </div>
               </div>
             </div>
 
             <div className="p-4 border border-[#c0c8c9] rounded-lg">
-              <Label className="text-sm font-semibold">بطاقة عائمة - فصول مباشرة</Label>
+              <Label className="text-sm font-semibold">
+                {lang === "ar" ? "بطاقة عائمة - فصول مباشرة" : "Floating Badge - Live Classes"}
+              </Label>
               <div className="grid grid-cols-2 gap-4 mt-2">
                 <div className="space-y-2">
-                  <Label className="text-xs">العنوان</Label>
+                  <Label className="text-xs">{lang === "ar" ? "العنوان" : "Title"}</Label>
                   <Input
                     value={settings.floatingBadge2 || ""}
                     onChange={(e) => setSettings({ ...settings, floatingBadge2: e.target.value })}
+                    placeholder="Live Classes"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-xs">الوصف</Label>
+                  <Label className="text-xs">{lang === "ar" ? "الوصف" : "Description"}</Label>
                   <Input
                     value={settings.floatingBadge2Ar || ""}
                     onChange={(e) => setSettings({ ...settings, floatingBadge2Ar: e.target.value })}
+                    placeholder={lang === "ar" ? "فصول مباشرة" : "Live Classes"}
                   />
                 </div>
               </div>
@@ -901,10 +945,27 @@ export default function AdminLandingPage() {
       );
     }
 
+    // ✅ استخدم lang من الـ State
+    const t = {
+      title: lang === "ar" ? "الإعلانات" : "Announcements",
+      add: lang === "ar" ? "إضافة إعلان" : "Add Announcement",
+      noAnnouncements: lang === "ar" ? "لا توجد إعلانات" : "No announcements",
+      published: lang === "ar" ? "منشور" : "Published",
+      unpublished: lang === "ar" ? "غير منشور" : "Unpublished",
+      edit: lang === "ar" ? "تعديل" : "Edit",
+      delete: lang === "ar" ? "حذف" : "Delete",
+      confirmDelete: lang === "ar" ? "هل أنت متأكد من حذف هذا الإعلان؟" : "Are you sure you want to delete this announcement?",
+      deleteSuccess: lang === "ar" ? "تم حذف الإعلان بنجاح" : "Announcement deleted successfully",
+      points: lang === "ar" ? "نقاط أخرى" : "more points",
+      point: lang === "ar" ? "نقطة" : "point",
+      pointsLabel: lang === "ar" ? "نقاط" : "points",
+      imageAlt: lang === "ar" ? "صورة الإعلان" : "Announcement image",
+    };
+
     return (
-      <div className="space-y-4" dir="rtl">
+      <div className="space-y-4" dir={lang === "ar" ? "rtl" : "ltr"}>
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">الإعلانات</h3>
+          <h3 className="text-lg font-semibold">{t.title}</h3>
           <Button
             onClick={() => {
               setDialogType("announcement");
@@ -923,64 +984,81 @@ export default function AdminLandingPage() {
             className="bg-[#001f24] hover:bg-[#03363d] text-white"
           >
             <Plus className="h-4 w-4 ml-2" />
-            إضافة إعلان
+            {t.add}
           </Button>
         </div>
 
         {!announcements || announcements.length === 0 ? (
           <Card className="p-8 text-center">
             <Megaphone className="h-12 w-12 mx-auto text-gray-300 mb-2" />
-            <p className="text-gray-500">لا توجد إعلانات</p>
+            <p className="text-gray-500">{t.noAnnouncements}</p>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {announcements.map((item: any) => (
-              <Card key={item._id} className="overflow-hidden">
-                <div className="relative h-48 w-full  bg-gray-100">
+              <Card key={item._id} className="overflow-hidden hover:shadow-md transition-shadow duration-200">
+                <div className="relative h-48 w-full bg-gray-100">
                   <img
                     src={item.imageUrl || "/images/announcement-placeholder.jpg"}
-                    alt={item.title}
+                    alt={item.title || t.imageAlt}
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = "/images/announcement-placeholder.jpg";
                     }}
                   />
                   <Badge className={`absolute top-3 right-3 ${item.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>
-                    {item.isPublished ? "منشور" : "غير منشور"}
+                    {item.isPublished ? t.published : t.unpublished}
                   </Badge>
                 </div>
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h4 className="font-semibold text-[#001f24] line-clamp-1">
-                        {item.title || item.titleAr}
+                        {lang === "ar" ? item.titleAr || item.title : item.title || item.titleAr}
                       </h4>
                       <p className="text-sm text-gray-500 line-clamp-2 mt-1">
-                        {item.description || item.descriptionAr}
+                        {lang === "ar" ? item.descriptionAr || item.description : item.description || item.descriptionAr}
                       </p>
+                      {/* ✅ عرض النقاط حسب اللغة */}
                       {item.points && item.points.length > 0 && (
                         <div className="mt-2 space-y-1">
-                          {item.points.slice(0, 2).map((point: string, idx: number) => (
-                            <p key={idx} className="text-xs text-gray-400 flex items-start gap-1">
-                              <span className="text-[#1a7a8a]">•</span>
-                              {point.length > 30 ? point.slice(0, 30) + "..." : point}
+                          {(lang === "ar" ? item.pointsAr || item.points : item.points || item.pointsAr)
+                            .slice(0, 2)
+                            .map((point: string, idx: number) => (
+                              <p key={idx} className="text-xs text-gray-400 flex items-start gap-1">
+                                <span className="text-[#1a7a8a]">•</span>
+                                {point.length > 30 ? point.slice(0, 30) + "..." : point}
+                              </p>
+                            ))}
+                          {(lang === "ar" ? item.pointsAr || item.points : item.points || item.pointsAr).length > 2 && (
+                            <p className="text-xs text-[#1a7a8a]">
+                              +{(lang === "ar" ? item.pointsAr || item.points : item.points || item.pointsAr).length - 2} {t.points}
                             </p>
-                          ))}
-                          {item.points.length > 2 && (
-                            <p className="text-xs text-[#1a7a8a]">+{item.points.length - 2} نقاط أخرى</p>
                           )}
                         </div>
                       )}
+                      {item.points && item.points.length > 0 && (
+                        <div className="mt-1">
+                          <span className="text-xs text-[#1a7a8a]">
+                            📌 {item.points.length} {item.points.length === 1 ? t.point : t.pointsLabel}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex gap-1 mr-2">
+                    <div className="flex gap-1 mr-2 shrink-0">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => {
                           setDialogType("announcement");
-                          setEditingItem(item);
+                          setEditingItem({
+                            ...item,
+                            points: item.points || [],
+                            pointsAr: item.pointsAr || [],
+                          });
                           setIsDialogOpen(true);
                         }}
+                        title={t.edit}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -989,11 +1067,16 @@ export default function AdminLandingPage() {
                         size="sm"
                         className="text-red-500 hover:text-red-700"
                         onClick={async () => {
-                          if (confirm("هل أنت متأكد من حذف هذا الإعلان؟")) {
-                            await deleteAnnouncement({ announcementId: item._id });
-                            toast.success("تم حذف الإعلان بنجاح");
+                          if (confirm(t.confirmDelete)) {
+                            try {
+                              await deleteAnnouncement({ announcementId: item._id });
+                              toast.success(t.deleteSuccess);
+                            } catch (error: any) {
+                              toast.error(error.message || "حدث خطأ أثناء الحذف");
+                            }
                           }
                         }}
+                        title={t.delete}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -1010,12 +1093,36 @@ export default function AdminLandingPage() {
 
 
   const renderSubscriptionsTab = () => {
+    const t = {
+      title: lang === "ar" ? "باقات الاشتراك" : "Subscription Packages",
+      add: lang === "ar" ? "إضافة باقة" : "Add Package",
+      noPackages: lang === "ar" ? "لا توجد باقات اشتراك" : "No subscription packages",
+      popular: lang === "ar" ? "الأكثر طلباً" : "Popular",
+      published: lang === "ar" ? "منشور" : "Published",
+      unpublished: lang === "ar" ? "غير منشور" : "Unpublished",
+      edit: lang === "ar" ? "تعديل" : "Edit",
+      delete: lang === "ar" ? "حذف" : "Delete",
+      confirmDelete: lang === "ar" ? "هل أنت متأكد من حذف هذه الباقة؟" : "Are you sure you want to delete this package?",
+      deleteSuccess: lang === "ar" ? "تم حذف الباقة بنجاح" : "Package deleted successfully",
+      session: lang === "ar" ? "حصة" : "session",
+      sessions: lang === "ar" ? "حصص" : "sessions",
+      features: lang === "ar" ? "مميزات أخرى" : "more features",
+      primary: lang === "ar" ? "ابتدائي" : "Primary",
+      middle: lang === "ar" ? "متوسط" : "Middle",
+      high: lang === "ar" ? "ثانوي" : "High",
+      sar: "ر.س",
+    };
 
+    const gradeLabels = {
+      primary: t.primary,
+      middle: t.middle,
+      high: t.high,
+    };
 
     return (
-      <div className="space-y-4" dir="rtl">
+      <div className="space-y-4" dir={lang === "ar" ? "rtl" : "ltr"}>
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold">باقات الاشتراك</h3>
+          <h3 className="text-lg font-semibold">{t.title}</h3>
           <Button
             onClick={() => {
               setDialogType("subscription");
@@ -1039,14 +1146,14 @@ export default function AdminLandingPage() {
             className="bg-[#001f24] hover:bg-[#03363d] text-white"
           >
             <Plus className="h-4 w-4 ml-2" />
-            إضافة باقة
+            {t.add}
           </Button>
         </div>
 
         {!subscriptions || subscriptions.length === 0 ? (
           <Card className="p-8 text-center">
             <TrendingUp className="h-12 w-12 mx-auto text-gray-300 mb-2" />
-            <p className="text-gray-500">لا توجد باقات اشتراك</p>
+            <p className="text-gray-500">{t.noPackages}</p>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1054,48 +1161,64 @@ export default function AdminLandingPage() {
               <Card key={item._id} className={`overflow-hidden ${item.isPopular ? 'border-[#1a7a8a] border-2' : ''}`}>
                 {item.isPopular && (
                   <div className="bg-[#1a7a8a] text-white text-center text-xs font-semibold py-1">
-                    الأكثر طلباً
+                    {t.popular}
                   </div>
                 )}
                 <CardContent className="p-4">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <h4 className="font-semibold text-[#001f24]">
-                        {item.title || item.titleAr}
+                        {lang === "ar" ? item.titleAr || item.title : item.title || item.titleAr}
                       </h4>
                       <p className="text-sm text-gray-500 line-clamp-2 mt-1">
-                        {item.description || item.descriptionAr}
+                        {lang === "ar" ? item.descriptionAr || item.description : item.description || item.descriptionAr}
                       </p>
                       <div className="mt-2">
                         <span className="text-2xl font-bold text-[#1a7a8a]">{item.price}</span>
-                        <span className="text-sm text-gray-500 mr-1">ر.س</span>
+                        <span className="text-sm text-gray-500 mr-1">{t.sar}</span>
                       </div>
                       <div className="text-xs text-gray-400 mt-1">
-                        {item.sessionsCount} حصة • {item.grade === "primary" ? "ابتدائي" : item.grade === "middle" ? "متوسط" : "ثانوي"}
+                        {item.sessionsCount} {item.sessionsCount === 1 ? t.session : t.sessions} • {gradeLabels[item.grade as keyof typeof gradeLabels] || item.grade}
                       </div>
                       {item.features && item.features.length > 0 && (
                         <div className="mt-2 space-y-1">
-                          {item.features.slice(0, 2).map((feature: string, idx: number) => (
-                            <p key={idx} className="text-xs text-gray-400 flex items-start gap-1">
-                              <span className="text-[#1a7a8a]">•</span>
-                              {feature.length > 30 ? feature.slice(0, 30) + "..." : feature}
+                          {(lang === "ar" ? item.featuresAr || item.features : item.features || item.featuresAr)
+                            .slice(0, 2)
+                            .map((feature: string, idx: number) => (
+                              <p key={idx} className="text-xs text-gray-400 flex items-start gap-1">
+                                <span className="text-[#1a7a8a]">•</span>
+                                {feature.length > 30 ? feature.slice(0, 30) + "..." : feature}
+                              </p>
+                            ))}
+                          {(lang === "ar" ? item.featuresAr || item.features : item.features || item.featuresAr).length > 2 && (
+                            <p className="text-xs text-[#1a7a8a]">
+                              +{(lang === "ar" ? item.featuresAr || item.features : item.features || item.featuresAr).length - 2} {t.features}
                             </p>
-                          ))}
-                          {item.features.length > 2 && (
-                            <p className="text-xs text-[#1a7a8a]">+{item.features.length - 2} مميزات أخرى</p>
                           )}
                         </div>
                       )}
+                      {item.features && item.features.length > 0 && (
+                        <div className="mt-1">
+                          <span className="text-xs text-[#1a7a8a]">
+                            ✨ {item.features.length} {item.features.length === 1 ? "ميزة" : "ميزات"}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex gap-1 mr-2">
+                    <div className="flex gap-1 mr-2 shrink-0">
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => {
                           setDialogType("subscription");
-                          setEditingItem(item);
+                          setEditingItem({
+                            ...item,
+                            features: item.features || [],
+                            featuresAr: item.featuresAr || [],
+                          });
                           setIsDialogOpen(true);
                         }}
+                        title={t.edit}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -1104,18 +1227,23 @@ export default function AdminLandingPage() {
                         size="sm"
                         className="text-red-500 hover:text-red-700"
                         onClick={async () => {
-                          if (confirm("هل أنت متأكد من حذف هذه الباقة؟")) {
-                            await deleteSubscription({ subscriptionId: item._id });
-                            toast.success("تم حذف الباقة بنجاح");
+                          if (confirm(t.confirmDelete)) {
+                            try {
+                              await deleteSubscription({ subscriptionId: item._id });
+                              toast.success(t.deleteSuccess);
+                            } catch (error: any) {
+                              toast.error(error.message || "حدث خطأ أثناء الحذف");
+                            }
                           }
                         }}
+                        title={t.delete}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-                  <Badge className={item.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
-                    {item.isPublished ? "منشور" : "غير منشور"}
+                  <Badge className={`mt-2 ${item.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}`}>
+                    {item.isPublished ? t.published : t.unpublished}
                   </Badge>
                 </CardContent>
               </Card>
@@ -1127,169 +1255,323 @@ export default function AdminLandingPage() {
   };
 
 
-// app/(pages)/(roles)/admin/landing/page.tsx
+  const renderVideoTestimonialsTab = () => {
+    const getEmbedUrl = (videoUrl: string, embedType: string) => {
+      if (embedType === "youtube") {
+        const match = videoUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
+        if (match) {
+          return `https://www.youtube.com/embed/${match[1]}`;
+        }
+        return videoUrl;
+      }
+      if (embedType === "vimeo") {
+        const match = videoUrl.match(/vimeo\.com\/(\d+)/);
+        if (match) {
+          return `https://player.vimeo.com/video/${match[1]}`;
+        }
+        return videoUrl;
+      }
+      return videoUrl;
+    };
 
-const renderVideoTestimonialsTab = () => {
-  const getEmbedUrl = (videoUrl: string, embedType: string) => {
-    if (embedType === "youtube") {
+    const getYouTubeThumbnail = (videoUrl: string) => {
       const match = videoUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
       if (match) {
-        return `https://www.youtube.com/embed/${match[1]}`;
+        const videoId = match[1];
+        return [
+          `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+          `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
+          `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
+        ];
       }
-      return videoUrl;
-    }
-    if (embedType === "vimeo") {
-      const match = videoUrl.match(/vimeo\.com\/(\d+)/);
-      if (match) {
-        return `https://player.vimeo.com/video/${match[1]}`;
-      }
-      return videoUrl;
-    }
-    return videoUrl;
-  };
+      return null;
+    };
 
-  // ✅ دالة لجلب صورة مصغرة من YouTube
-  const getYouTubeThumbnail = (videoUrl: string) => {
-    const match = videoUrl.match(/(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/);
-    if (match) {
-      const videoId = match[1];
-      // ✅ محاولة جلب أعلى جودة للصورة
-      return [
-        `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
-        `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`,
-        `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`,
-      ];
-    }
-    return null;
-  };
+    const t = {
+      title: lang === "ar" ? "فيديوهات الشهادات" : "Video Testimonials",
+      add: lang === "ar" ? "إضافة فيديو" : "Add Video",
+      noVideos: lang === "ar" ? "لا توجد فيديوهات شهادات" : "No video testimonials",
+      published: lang === "ar" ? "منشور" : "Published",
+      unpublished: lang === "ar" ? "غير منشور" : "Unpublished",
+      edit: lang === "ar" ? "تعديل" : "Edit",
+      delete: lang === "ar" ? "حذف" : "Delete",
+      playing: lang === "ar" ? "يعمل الآن" : "Playing Now",
+      close: lang === "ar" ? "إغلاق الفيديو" : "Close Video",
+      link: lang === "ar" ? "رابط" : "Link",
+      noImage: lang === "ar" ? "لا توجد صورة" : "No image",
+      video: lang === "ar" ? "🎬 فيديو" : "🎬 Video",
+      confirmDelete: lang === "ar" ? "هل أنت متأكد من حذف هذا الفيديو؟" : "Are you sure you want to delete this video?",
+      deleteSuccess: lang === "ar" ? "✅ تم حذف الفيديو بنجاح" : "✅ Video deleted successfully",
+      deleteError: lang === "ar" ? "حدث خطأ أثناء الحذف" : "Error deleting video",
+    };
 
-  return (
-    <div className="space-y-4" dir="rtl">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">فيديوهات الشهادات</h3>
-        <Button
-          onClick={() => openCreateDialog("video")}
-          className="bg-[#001f24] hover:bg-[#03363d] text-white"
-        >
-          <Plus className="h-4 w-4 ml-2" />
-          إضافة فيديو
-        </Button>
-      </div>
+    return (
+      <div className="space-y-4" dir={lang === "ar" ? "rtl" : "ltr"}>
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">{t.title}</h3>
+          <Button
+            onClick={openCreateVideoDialog}
+            className="bg-[#001f24] hover:bg-[#03363d] text-white"
+          >
+            <Plus className="h-4 w-4 ml-2" />
+            {t.add}
+          </Button>
+        </div>
 
-      {!videoTestimonials || videoTestimonials.length === 0 ? (
-        <Card className="p-8 text-center">
-          <Play className="h-12 w-12 mx-auto text-gray-300 mb-2" />
-          <p className="text-gray-500">لا توجد فيديوهات شهادات</p>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {videoTestimonials.map((video: any) => {
-            const isPlaying = playingVideo === video._id;
-            const embedUrl = getEmbedUrl(video.videoUrl, video.embedType || "youtube");
-            
-            // ✅ الحصول على الصورة المصغرة
-            let thumbnailUrl = video.thumbnailUrl;
-            let thumbnailError = false;
-            
-            // ✅ إذا كان الفيديو من YouTube ولم توجد صورة مصغرة، جرب جلبها تلقائياً
-            if (!thumbnailUrl && video.embedType === "youtube") {
-              const thumbnails = getYouTubeThumbnail(video.videoUrl);
-              if (thumbnails) {
-                thumbnailUrl = thumbnails[0]; // استخدم أعلى جودة
+        {!videoTestimonials || videoTestimonials.length === 0 ? (
+          <Card className="p-8 text-center">
+            <Play className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+            <p className="text-gray-500">{t.noVideos}</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {videoTestimonials.map((video: any) => {
+              const isPlaying = playingVideo === video._id;
+              const embedUrl = getEmbedUrl(video.videoUrl, video.embedType || "youtube");
+
+              let thumbnailUrl = video.thumbnailUrl;
+
+              if (!thumbnailUrl && video.embedType === "youtube") {
+                const thumbnails = getYouTubeThumbnail(video.videoUrl);
+                if (thumbnails) {
+                  thumbnailUrl = thumbnails[0];
+                }
               }
-            }
 
-            return (
-              <Card key={video._id} className="overflow-hidden">
-                <CardContent className="p-4">
-                  {/* Video Player / Thumbnail */}
-                  <div 
-                    className="relative w-full aspect-video rounded-lg overflow-hidden mb-3 bg-gray-100 cursor-pointer group"
-                    onClick={() => setPlayingVideo(isPlaying ? null : video._id)}
-                  >
-                    {isPlaying ? (
-                      <iframe
-                        src={embedUrl}
-                        className="w-full h-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                        title={video.title || video.titleAr}
-                      />
-                    ) : (
-                      <>
-                        {thumbnailUrl ? (
-                          <img
-                            src={thumbnailUrl}
-                            alt={video.title || video.titleAr}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              // ✅ إذا فشلت الصورة، جرب الصورة التالية
-                              const img = e.currentTarget;
-                              const thumbnails = getYouTubeThumbnail(video.videoUrl);
-                              if (thumbnails) {
-                                const currentSrc = img.src;
-                                const currentIndex = thumbnails.indexOf(currentSrc);
-                                if (currentIndex < thumbnails.length - 1) {
-                                  img.src = thumbnails[currentIndex + 1];
-                                } else {
-                                  img.style.display = 'none';
-                                  const parent = img.parentElement;
-                                  if (parent) {
-                                    const fallback = document.createElement('div');
-                                    fallback.className = 'w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1a7a8a]/20 to-[#001f24]/20';
-                                    fallback.innerHTML = `
+              return (
+                <Card key={video._id} className="overflow-hidden hover:shadow-md transition-shadow duration-200">
+                  <CardContent className="p-4">
+                    {/* Video Player / Thumbnail */}
+                    <div
+                      className="relative w-full aspect-video rounded-lg overflow-hidden mb-3 bg-gray-100 cursor-pointer group"
+                      onClick={() => setPlayingVideo(isPlaying ? null : video._id)}
+                    >
+                      {isPlaying ? (
+                        <iframe
+                          src={embedUrl}
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          title={video.title || video.titleAr}
+                        />
+                      ) : (
+                        <>
+                          {thumbnailUrl ? (
+                            <img
+                              src={thumbnailUrl}
+                              alt={video.title || video.titleAr}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const img = e.currentTarget;
+                                const thumbnails = getYouTubeThumbnail(video.videoUrl);
+                                if (thumbnails) {
+                                  const currentSrc = img.src;
+                                  const currentIndex = thumbnails.indexOf(currentSrc);
+                                  if (currentIndex < thumbnails.length - 1) {
+                                    img.src = thumbnails[currentIndex + 1];
+                                  } else {
+                                    img.style.display = 'none';
+                                    const parent = img.parentElement;
+                                    if (parent) {
+                                      const fallback = document.createElement('div');
+                                      fallback.className = 'w-full h-full flex items-center justify-center bg-gradient-to-br from-[#1a7a8a]/20 to-[#001f24]/20';
+                                      fallback.innerHTML = `
                                       <div class="text-center">
                                         <span class="text-4xl block mb-2">🎬</span>
-                                        <span class="text-sm text-gray-500">لا توجد صورة</span>
+                                        <span class="text-sm text-gray-500">${t.noImage}</span>
                                       </div>
                                     `;
-                                    parent.appendChild(fallback);
+                                      parent.appendChild(fallback);
+                                    }
                                   }
                                 }
-                              }
-                            }}
-                          />
-                        ) : (
-                          // ✅ صورة افتراضية إذا لم توجد صورة مصغرة
-                          <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1a7a8a]/20 to-[#001f24]/20">
-                            <div className="text-center">
-                              <Play className="h-16 w-16 text-[#1a7a8a]/40 mx-auto" />
-                              <span className="text-xs text-gray-400 block mt-2">🎬 فيديو</span>
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-linear-to-br from-[#1a7a8a]/20 to-[#001f24]/20">
+                              <div className="text-center">
+                                <Play className="h-16 w-16 text-[#1a7a8a]/40 mx-auto" />
+                                <span className="text-xs text-gray-400 block mt-2">{t.video}</span>
+                              </div>
+                            </div>
+                          )}
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-all duration-300">
+                            <div className="w-14 h-14 bg-[#1a7a8a] rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
+                              <Play className="h-6 w-6 text-white mr-1" />
                             </div>
                           </div>
-                        )}
-                        {/* ✅ زر التشغيل overlay */}
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-all duration-300">
-                          <div className="w-14 h-14 bg-[#1a7a8a] rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300">
-                            <Play className="h-6 w-6 text-white mr-1" />
+                          <div className="absolute top-2 right-2">
+                            <Badge className="bg-black/70 text-white text-xs">
+                              {video.embedType === "youtube" ? "YouTube" :
+                                video.embedType === "vimeo" ? "Vimeo" : t.video}
+                            </Badge>
                           </div>
-                        </div>
-                        {/* ✅ شارة النوع */}
-                        <div className="absolute top-2 right-2">
-                          <Badge className="bg-black/70 text-white text-xs">
-                            {video.embedType === "youtube" ? "YouTube" : 
-                             video.embedType === "vimeo" ? "Vimeo" : "🎬 فيديو"}
-                          </Badge>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                        </>
+                      )}
+                    </div>
 
-                  {/* ✅ معلومات الفيديو */}
+                    {/* معلومات الفيديو */}
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-sm truncate">
+                          {lang === "ar" ? video.titleAr || video.title : video.title || video.titleAr}
+                        </h4>
+                        <p className="text-xs text-gray-500 line-clamp-2 mt-1">
+                          {lang === "ar" ? video.descriptionAr || video.description : video.description || video.descriptionAr}
+                        </p>
+                      </div>
+                      <div className="flex gap-1 mr-2 shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditVideoDialog(video)}
+                          title={t.edit}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500 hover:text-red-700"
+                          onClick={async () => {
+                            if (confirm(t.confirmDelete)) {
+                              try {
+                                await deleteVideoTestimonial({ videoId: video._id as any });
+                                toast.success(t.deleteSuccess);
+                              } catch (error: any) {
+                                toast.error(error.message || t.deleteError);
+                              }
+                            }
+                          }}
+                          title={t.delete}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* حالة النشر ورابط الفيديو */}
+                    <div className="mt-2 flex items-center gap-3 flex-wrap">
+                      <Badge className={video.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                        {video.isPublished ? t.published : t.unpublished}
+                      </Badge>
+                      {isPlaying && (
+                        <Badge variant="outline" className="text-[#1a7a8a] border-[#1a7a8a]">
+                          <Play className="h-3 w-3 ml-1" />
+                          {t.playing}
+                        </Badge>
+                      )}
+                      {video.videoUrl && (
+                        <a
+                          href={video.videoUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-500 hover:text-blue-700 truncate max-w-32"
+                        >
+                          🔗 {t.link}
+                        </a>
+                      )}
+                    </div>
+
+                    {isPlaying && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPlayingVideo(null);
+                        }}
+                        className="mt-2 text-xs text-gray-400 hover:text-gray-600 w-full"
+                      >
+                        ✕ {t.close}
+                      </Button>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderCoursesTab = () => {
+    const t = {
+      title: lang === "ar" ? "الدورات" : "Courses",
+      add: lang === "ar" ? "إضافة دورة" : "Add Course",
+      noCourses: lang === "ar" ? "لا توجد دورات" : "No courses",
+      published: lang === "ar" ? "منشور" : "Published",
+      unpublished: lang === "ar" ? "غير منشور" : "Unpublished",
+      edit: lang === "ar" ? "تعديل" : "Edit",
+      delete: lang === "ar" ? "حذف" : "Delete",
+      confirmDelete: lang === "ar" ? "هل أنت متأكد من حذف هذه الدورة؟" : "Are you sure you want to delete this course?",
+      deleteSuccess: lang === "ar" ? "تم حذف الدورة بنجاح" : "Course deleted successfully",
+      imageAlt: lang === "ar" ? "صورة الدورة" : "Course image",
+      instructor: lang === "ar" ? "المدرس" : "Instructor",
+      rating: lang === "ar" ? "تقييم" : "Rating",
+    };
+
+    return (
+      <div className="space-y-4" dir={lang === "ar" ? "rtl" : "ltr"}>
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">{t.title}</h3>
+          <Button
+            onClick={() => openCreateDialog("course")}
+            className="bg-[#001f24] hover:bg-[#03363d] text-white"
+          >
+            <Plus className="h-4 w-4 ml-2" />
+            {t.add}
+          </Button>
+        </div>
+
+        {!courses || courses.length === 0 ? (
+          <Card className="p-8 text-center">
+            <BookOpen className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+            <p className="text-gray-500">{t.noCourses}</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {courses.map((course: any) => (
+              <Card key={course._id} className="overflow-hidden hover:shadow-md transition-shadow duration-200">
+                <CardContent className="p-4">
+                  {course.imageUrl && (
+                    <div className="w-full h-32 rounded-lg overflow-hidden mb-3 bg-gray-100">
+                      <img
+                        src={course.imageUrl}
+                        alt={course.title || t.imageAlt}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "/images/course-placeholder.jpg";
+                        }}
+                      />
+                    </div>
+                  )}
                   <div className="flex justify-between items-start">
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-sm truncate">
-                        {video.title || video.titleAr}
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-[#001f24] line-clamp-1">
+                        {lang === "ar" ? course.titleAr || course.title : course.title || course.titleAr}
                       </h4>
-                      <p className="text-xs text-gray-500 line-clamp-2 mt-1">
-                        {video.description || video.descriptionAr}
+                      <p className="text-sm text-gray-500 line-clamp-1">
+                        {t.instructor}: {course.instructor || "—"}
                       </p>
+                      <div className="flex items-center gap-1 mt-1">
+                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                        <span className="text-sm text-gray-600">{course.rating || 0}</span>
+                        <span className="text-xs text-gray-400">({t.rating})</span>
+                      </div>
+                      {course.summary && (
+                        <p className="text-xs text-gray-400 line-clamp-2 mt-1">
+                          {lang === "ar" ? course.summaryAr || course.summary : course.summary || course.summaryAr}
+                        </p>
+                      )}
                     </div>
                     <div className="flex gap-1 mr-2 shrink-0">
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => openEditDialog("video", video)}
+                        onClick={() => openEditDialog("course", course)}
+                        title={t.edit}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -1297,188 +1579,164 @@ const renderVideoTestimonialsTab = () => {
                         variant="ghost"
                         size="sm"
                         className="text-red-500 hover:text-red-700"
-                        onClick={() => handleDeleteItem("video", video._id)}
+                        onClick={async () => {
+                          if (confirm(t.confirmDelete)) {
+                            try {
+                              await handleDeleteItem("course", course._id);
+                              toast.success(t.deleteSuccess);
+                            } catch (error: any) {
+                              toast.error(error.message || "حدث خطأ أثناء الحذف");
+                            }
+                          }
+                        }}
+                        title={t.delete}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
-
-                  {/* ✅ حالة النشر ورابط الفيديو */}
-                  <div className="mt-2 flex items-center gap-3 flex-wrap">
-                    <Badge className={video.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
-                      {video.isPublished ? "منشور" : "غير منشور"}
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Badge className={course.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                      {course.isPublished ? t.published : t.unpublished}
                     </Badge>
-                    {isPlaying && (
-                      <Badge variant="outline" className="text-[#1a7a8a] border-[#1a7a8a]">
-                        <Play className="h-3 w-3 ml-1" />
-                        يعمل الآن
+                    {course.isFeatured && (
+                      <Badge className="bg-yellow-100 text-yellow-700 border border-yellow-200">
+                        ⭐ {lang === "ar" ? "مميز" : "Featured"}
                       </Badge>
                     )}
-                    {video.videoUrl && (
-                      <a 
-                        href={video.videoUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-xs text-blue-500 hover:text-blue-700 truncate max-w-32"
-                      >
-                        🔗 رابط
-                      </a>
+                    {course.priceLabel && (
+                      <Badge variant="outline" className="text-xs">
+                        {course.priceLabel}
+                      </Badge>
                     )}
                   </div>
-
-                  {/* ✅ زر إغلاق الفيديو */}
-                  {isPlaying && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPlayingVideo(null);
-                      }}
-                      className="mt-2 text-xs text-gray-400 hover:text-gray-600 w-full"
-                    >
-                      ✕ إغلاق الفيديو
-                    </Button>
-                  )}
                 </CardContent>
               </Card>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-};
-
-  const renderCoursesTab = () => (
-    <div className="space-y-4" dir="rtl">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">الدورات</h3>
-        <Button
-          onClick={() => openCreateDialog("course")}
-          className="bg-[#001f24] hover:bg-[#03363d] text-white"
-        >
-          <Plus className="h-4 w-4 ml-2" />
-          إضافة دورة
-        </Button>
+            ))}
+          </div>
+        )}
       </div>
+    );
+  };
 
-      {!courses || courses.length === 0 ? (
-        <Card className="p-8 text-center">
-          <BookOpen className="h-12 w-12 mx-auto text-gray-300 mb-2" />
-          <p className="text-gray-500">لا توجد دورات</p>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {courses.map((course: any) => (
-            <Card key={course._id}>
-              <CardContent className="p-4">
-                {course.imageUrl && (
-                  <div className="w-full h-32 rounded-lg overflow-hidden mb-3">
-                    <img src={course.imageUrl} alt={course.title} className="w-full h-full object-cover" />
-                  </div>
-                )}
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h4 className="font-semibold">{course.title}</h4>
-                    <p className="text-sm text-gray-500">{course.instructor}</p>
-                    <div className="flex items-center gap-1 mt-1">
-                      <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
-                      <span className="text-sm">{course.rating || 0}</span>
+  const renderTestimonialsTab = () => {
+    const t = {
+      title: lang === "ar" ? "التوصيات" : "Testimonials",
+      add: lang === "ar" ? "إضافة توصية" : "Add Testimonial",
+      noTestimonials: lang === "ar" ? "لا توجد توصيات" : "No testimonials",
+      published: lang === "ar" ? "منشور" : "Published",
+      unpublished: lang === "ar" ? "غير منشور" : "Unpublished",
+      edit: lang === "ar" ? "تعديل" : "Edit",
+      delete: lang === "ar" ? "حذف" : "Delete",
+      confirmDelete: lang === "ar" ? "هل أنت متأكد من حذف هذه التوصية؟" : "Are you sure you want to delete this testimonial?",
+      deleteSuccess: lang === "ar" ? "تم حذف التوصية بنجاح" : "Testimonial deleted successfully",
+      deleteError: lang === "ar" ? "حدث خطأ أثناء الحذف" : "Error deleting testimonial",
+    };
+
+    return (
+      <div className="space-y-4" dir={lang === "ar" ? "rtl" : "ltr"}>
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">{t.title}</h3>
+          <Button
+            onClick={() => openCreateDialog("testimonial")}
+            className="bg-[#001f24] hover:bg-[#03363d] text-white"
+          >
+            <Plus className="h-4 w-4 ml-2" />
+            {t.add}
+          </Button>
+        </div>
+
+        {!testimonials || testimonials.length === 0 ? (
+          <Card className="p-8 text-center">
+            <Users className="h-12 w-12 mx-auto text-gray-300 mb-2" />
+            <p className="text-gray-500">{t.noTestimonials}</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {testimonials.map((item: any) => (
+              <Card key={item._id} className="overflow-hidden hover:shadow-md transition-shadow duration-200">
+                <CardContent className="p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      {/* Rating Stars */}
+                      <div className="flex gap-1 mb-2">
+                        {Array.from({ length: item.rating || 5 }).map((_, i) => (
+                          <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
+                        ))}
+                        <span className="text-xs text-gray-400 mr-1">
+                          ({item.rating || 0}/5)
+                        </span>
+                      </div>
+
+                      {/* Text */}
+                      <p className="text-sm text-gray-600 line-clamp-3">
+                        {lang === "ar" ? item.textAr || item.text : item.text || item.textAr}
+                      </p>
+
+                      {/* Name */}
+                      <p className="font-semibold text-[#001f24] mt-2">
+                        {lang === "ar" ? item.nameAr || item.name : item.name || item.nameAr}
+                      </p>
+
+                      {/* Role */}
+                      <p className="text-sm text-gray-500">
+                        {lang === "ar" ? item.roleAr || item.role : item.role || item.roleAr}
+                      </p>
+                    </div>
+                    <div className="flex gap-1 mr-2 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEditDialog("testimonial", item)}
+                        title={t.edit}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-700"
+                        onClick={async () => {
+                          if (confirm(t.confirmDelete)) {
+                            try {
+                              await handleDeleteItem("testimonial", item._id);
+                              toast.success(t.deleteSuccess);
+                            } catch (error: any) {
+                              toast.error(error.message || t.deleteError);
+                            }
+                          }
+                        }}
+                        title={t.delete}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openEditDialog("course", course)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-500 hover:text-red-700"
-                      onClick={() => handleDeleteItem("course", course._id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <Badge className={item.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
+                      {item.isPublished ? t.published : t.unpublished}
+                    </Badge>
+                    {item.avatarUrl && (
+                      <div className="w-6 h-6 rounded-full overflow-hidden border border-gray-200">
+                        <img
+                          src={item.avatarUrl}
+                          alt={item.name || "Avatar"}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    )}
                   </div>
-                </div>
-                <Badge className={course.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
-                  {course.isPublished ? "منشور" : "غير منشور"}
-                </Badge>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
-  const renderTestimonialsTab = () => (
-    <div className="space-y-4" dir="rtl">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">التوصيات</h3>
-        <Button
-          onClick={() => openCreateDialog("testimonial")}
-          className="bg-[#001f24] hover:bg-[#03363d] text-white"
-        >
-          <Plus className="h-4 w-4 ml-2" />
-          إضافة توصية
-        </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
-
-      {!testimonials || testimonials.length === 0 ? (
-        <Card className="p-8 text-center">
-          <Users className="h-12 w-12 mx-auto text-gray-300 mb-2" />
-          <p className="text-gray-500">لا توجد توصيات</p>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {testimonials.map((item: any) => (
-            <Card key={item._id}>
-              <CardContent className="p-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex gap-1 mb-2">
-                      {Array.from({ length: item.rating || 5 }).map((_, i) => (
-                        <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                      ))}
-                    </div>
-                    <p className="text-sm text-gray-600 line-clamp-3">{item.text}</p>
-                    <p className="font-semibold mt-2">{item.name}</p>
-                    <p className="text-sm text-gray-500">{item.role}</p>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openEditDialog("testimonial", item)}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-red-500 hover:text-red-700"
-                      onClick={() => handleDeleteItem("testimonial", item._id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <Badge className={item.isPublished ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"}>
-                  {item.isPublished ? "منشور" : "غير منشور"}
-                </Badge>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+    );
+  };
 
   // ─── Dialog ──────────────────────────────────────────────────
 
@@ -1825,12 +2083,17 @@ const renderVideoTestimonialsTab = () => {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>رابط الفيديو</Label>
+              <Label>رابط الفيديو *</Label>
               <Input
                 value={editingItem.videoUrl || ""}
                 onChange={(e) => setEditingItem({ ...editingItem, videoUrl: e.target.value })}
                 placeholder="https://www.youtube.com/watch?v=... أو رابط الملف"
               />
+              {editingItem.videoUrl && (
+                <p className="text-xs text-green-600">
+                  ✅ تم إدخال الرابط: {editingItem.videoUrl.length > 50 ? editingItem.videoUrl.slice(0, 50) + "..." : editingItem.videoUrl}
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label>صورة الغلاف (اختياري)</Label>
@@ -1839,6 +2102,18 @@ const renderVideoTestimonialsTab = () => {
                 onChange={(e) => setEditingItem({ ...editingItem, thumbnailUrl: e.target.value })}
                 placeholder="https://example.com/thumbnail.jpg"
               />
+              {editingItem.thumbnailUrl && (
+                <div className="mt-2 relative w-full h-32 rounded-lg overflow-hidden border border-[#c0c8c9]">
+                  <img
+                    src={editingItem.thumbnailUrl}
+                    alt="Thumbnail"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <Label>نوع التضمين</Label>
@@ -2186,12 +2461,16 @@ const renderVideoTestimonialsTab = () => {
           </p>
         </div>
         <div className="flex gap-2">
-          {/* <Link href="/" target="_blank">
-            <Button variant="outline" className="gap-2">
-              <Eye className="h-4 w-4" />
-              معاينة
-            </Button>
-          </Link> */}
+          {/* ✅ زر تبديل اللغة */}
+          <Button
+            onClick={toggleLang}
+            variant="outline"
+            className="gap-2 border-gray-300"
+          >
+            <Globe className="h-4 w-4" />
+            {lang === "ar" ? " عربي" : " English"}
+          </Button>
+
           <Button
             onClick={handleSaveSettings}
             disabled={isSaving}
@@ -2202,7 +2481,7 @@ const renderVideoTestimonialsTab = () => {
             ) : (
               <Save className="h-4 w-4" />
             )}
-            حفظ الإعدادات
+            {lang === "ar" ? "حفظ الإعدادات" : "Save Settings"}
           </Button>
         </div>
       </div>
@@ -2212,35 +2491,35 @@ const renderVideoTestimonialsTab = () => {
         <TabsList className="grid grid-cols-2 md:grid-cols-7 gap-2">
           <TabsTrigger value="hero">
             <Globe className="h-4 w-4 ml-2" />
-            الهيرو
+            {lang === "ar" ? "الهيرو" : "Hero"}
           </TabsTrigger>
           {/* <TabsTrigger value="sections">
-            <Layout className="h-4 w-4 ml-2" />
-            الأقسام
-          </TabsTrigger> */}
+      <Layout className="h-4 w-4 ml-2" />
+      {lang === "ar" ? "الأقسام" : "Sections"}
+    </TabsTrigger> */}
           <TabsTrigger value="announcements">
             <Megaphone className="h-4 w-4 ml-2" />
-            الإعلانات
+            {lang === "ar" ? "الإعلانات" : "Announcements"}
           </TabsTrigger>
           <TabsTrigger value="subscriptions">
             <TrendingUp className="h-4 w-4 ml-2" />
-            الاشتراكات
+            {lang === "ar" ? "الاشتراكات" : "Subscriptions"}
           </TabsTrigger>
           <TabsTrigger value="courses">
             <BookOpen className="h-4 w-4 ml-2" />
-            الدورات
+            {lang === "ar" ? "الدورات" : "Courses"}
           </TabsTrigger>
           <TabsTrigger value="videos">
             <Play className="h-4 w-4 ml-2" />
-            الفيديوهات
+            {lang === "ar" ? "الفيديوهات" : "Videos"}
           </TabsTrigger>
           <TabsTrigger value="testimonials">
             <Star className="h-4 w-4 ml-2" />
-            التوصيات
+            {lang === "ar" ? "التوصيات" : "Testimonials"}
           </TabsTrigger>
           <TabsTrigger value="settings">
             <Settings className="h-4 w-4 ml-2" />
-            الإعدادات
+            {lang === "ar" ? "الإعدادات" : "Settings"}
           </TabsTrigger>
         </TabsList>
 
@@ -2276,29 +2555,34 @@ const renderVideoTestimonialsTab = () => {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>إعدادات إضافية</CardTitle>
+                <CardTitle>
+                  {lang === "ar" ? "إعدادات إضافية" : "Additional Settings"}
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* School Name */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>اسم المدرسة (عربي)</Label>
+                    <Label>{lang === "ar" ? "اسم المدرسة (عربي)" : "School Name (Arabic)"}</Label>
                     <Input
                       value={settings.schoolNameAr || "أكاديمية مارين"}
                       onChange={(e) => setSettings({ ...settings, schoolNameAr: e.target.value })}
-                      placeholder="أكاديمية مارين"
+                      placeholder={lang === "ar" ? "أكاديمية مارين" : "Marine Academy"}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>اسم المدرسة (إنجليزي)</Label>
+                    <Label>{lang === "ar" ? "اسم المدرسة (إنجليزي)" : "School Name (English)"}</Label>
                     <Input
                       value={settings.schoolName || "Marine Academy"}
                       onChange={(e) => setSettings({ ...settings, schoolName: e.target.value })}
-                      placeholder="Marine Academy"
+                      placeholder={lang === "ar" ? "Marine Academy" : "Marine Academy"}
                     />
                   </div>
                 </div>
+
+                {/* Theme Mode */}
                 <div className="space-y-2">
-                  <Label>وضع السمة</Label>
+                  <Label>{lang === "ar" ? "وضع السمة" : "Theme Mode"}</Label>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -2307,7 +2591,7 @@ const renderVideoTestimonialsTab = () => {
                         checked={settings.themeMode === "dark"}
                         onChange={() => setSettings({ ...settings, themeMode: "dark" })}
                       />
-                      داكن
+                      {lang === "ar" ? "داكن" : "Dark"}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -2316,74 +2600,86 @@ const renderVideoTestimonialsTab = () => {
                         checked={settings.themeMode === "light"}
                         onChange={() => setSettings({ ...settings, themeMode: "light" })}
                       />
-                      فاتح
+                      {lang === "ar" ? "فاتح" : "Light"}
                     </label>
                   </div>
                 </div>
 
+                {/* Contact */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>البريد الإلكتروني</Label>
+                    <Label>{lang === "ar" ? "البريد الإلكتروني" : "Email"}</Label>
                     <Input
                       value={settings.contactEmail}
                       onChange={(e) => setSettings({ ...settings, contactEmail: e.target.value })}
+                      placeholder={lang === "ar" ? "info@example.com" : "info@example.com"}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>رقم الهاتف</Label>
+                    <Label>{lang === "ar" ? "رقم الهاتف" : "Phone Number"}</Label>
                     <Input
                       value={settings.contactPhone}
                       onChange={(e) => setSettings({ ...settings, contactPhone: e.target.value })}
+                      placeholder={lang === "ar" ? "+966 50 000 0000" : "+966 50 000 0000"}
                     />
                   </div>
                 </div>
 
+                {/* WhatsApp Link */}
                 <div className="space-y-2">
-                  <Label>رابط واتساب</Label>
+                  <Label>{lang === "ar" ? "رابط واتساب" : "WhatsApp Link"}</Label>
                   <Input
                     value={settings.whatsappLink}
                     onChange={(e) => setSettings({ ...settings, whatsappLink: e.target.value })}
+                    placeholder={lang === "ar" ? "https://wa.me/966500000000" : "https://wa.me/966500000000"}
                   />
                 </div>
 
+                {/* Address */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>العنوان (عربي)</Label>
+                    <Label>{lang === "ar" ? "العنوان (عربي)" : "Address (Arabic)"}</Label>
                     <Input
                       value={settings.addressAr}
                       onChange={(e) => setSettings({ ...settings, addressAr: e.target.value })}
+                      placeholder={lang === "ar" ? "الرياض، المملكة العربية السعودية" : "Riyadh, Saudi Arabia"}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>العنوان (إنجليزي)</Label>
+                    <Label>{lang === "ar" ? "العنوان (إنجليزي)" : "Address (English)"}</Label>
                     <Input
                       value={settings.address}
                       onChange={(e) => setSettings({ ...settings, address: e.target.value })}
+                      placeholder={lang === "ar" ? "Riyadh, Saudi Arabia" : "Riyadh, Saudi Arabia"}
                     />
                   </div>
                 </div>
 
+                {/* Footer Description */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>وصف التذييل (عربي)</Label>
+                    <Label>{lang === "ar" ? "وصف التذييل (عربي)" : "Footer Description (Arabic)"}</Label>
                     <Textarea
                       value={settings.footerDescriptionAr}
                       onChange={(e) => setSettings({ ...settings, footerDescriptionAr: e.target.value })}
                       rows={2}
+                      placeholder={lang === "ar" ? "الرائد العالمي في التعليم البحري والتقني." : "The global leader in marine and technical education."}
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>وصف التذييل (إنجليزي)</Label>
+                    <Label>{lang === "ar" ? "وصف التذييل (إنجليزي)" : "Footer Description (English)"}</Label>
                     <Textarea
                       value={settings.footerDescription}
                       onChange={(e) => setSettings({ ...settings, footerDescription: e.target.value })}
                       rows={2}
+                      placeholder={lang === "ar" ? "The global leader in marine and technical education." : "The global leader in marine and technical education."}
                     />
                   </div>
                 </div>
 
+                {/* Show Sections */}
                 <div className="space-y-4">
-                  <Label>إظهار الأقسام</Label>
+                  <Label>{lang === "ar" ? "إظهار الأقسام" : "Show Sections"}</Label>
                   <div className="flex flex-wrap gap-4">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -2391,7 +2687,7 @@ const renderVideoTestimonialsTab = () => {
                         checked={settings.showCourses}
                         onChange={(e) => setSettings({ ...settings, showCourses: e.target.checked })}
                       />
-                      الدورات
+                      {lang === "ar" ? "الدورات" : "Courses"}
                     </label>
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input
@@ -2399,8 +2695,18 @@ const renderVideoTestimonialsTab = () => {
                         checked={settings.showTestimonials}
                         onChange={(e) => setSettings({ ...settings, showTestimonials: e.target.checked })}
                       />
-                      التوصيات
+                      {lang === "ar" ? "التوصيات" : "Testimonials"}
                     </label>
+                    {settings.showGallery !== undefined && (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settings.showGallery}
+                          onChange={(e) => setSettings({ ...settings, showGallery: e.target.checked })}
+                        />
+                        {lang === "ar" ? "معرض الصور" : "Gallery"}
+                      </label>
+                    )}
                   </div>
                 </div>
               </CardContent>
