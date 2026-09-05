@@ -103,8 +103,6 @@ export function AddGradeModal({ isOpen, onClose, onSuccess }: AddGradeModalProps
   };
 
   const academicYears = [
-    "2024-2025",
-    "2025-2026",
     "2026-2027",
     "2027-2028",
   ];
@@ -180,7 +178,7 @@ export function AddGradeModal({ isOpen, onClose, onSuccess }: AddGradeModalProps
               id="gradeLevel"
               type="number"
               min="1"
-              max="12"
+              max="18"
               value={formData.gradeLevel}
               onChange={(e) =>
                 setFormData({ ...formData, gradeLevel: e.target.value })
